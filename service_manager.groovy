@@ -81,22 +81,43 @@ def initialize() {
     sendHubCommand(new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN))
 }
 
-
-
 def locationHandler(evt) {
     log.trace "locationHandler()"
     
     def description = evt.description
     def hub = evt?.hubId
     
+    log.trace "description=${description}"
+    
     def parsedEvent = parseEventMessage(description)
     parsedEvent << ["hub":hub]
-    
+
+    log.trace "parsedEvent: ${parsedEvent}"
+
     if (parsedEvent?.ssdpTerm?.contains("urn:schemas-upnp-org:device:AlarmDecoder:1")) {
         getDevices()
+        log.trace "1, devices=${devices}"
         if (!(devices."${parsedEvent.ssdpUSN.toString()}")) {
+            log.trace "2"
             devices << ["${parsedEvent.ssdpUSN.toString()}":parsedEvent]
+            
+            state.device_path = parsedEvent.ssdpPath
+
+            testhttp()
+
+            /*log.trace "trying to talk to api"
+            def params = [
+                uri: state.device_path,
+                path: "/api/v1/alarmdecoder?apikey=5"
+            ]
+            log.trace "result = ${get(params)}"
+            */
         }
+    }
+
+    if (parsedEvent?.body) {
+        log.trace "headers=${new String(parsedEvent.headers.decodeBase64())}"
+        log.trace "body=${new String(parsedEvent.body.decodeBase64())}"
     }
 }
 
@@ -109,6 +130,8 @@ def getDevices() {
 }
 
 private def parseEventMessage(String description) {
+    log.trace "parseEventMessage.. description=${description}"
+
     def event = [:]
     def parts = description.split(',')
     parts.each { part ->
@@ -206,4 +229,14 @@ def get(params) {
     httpGet(params) { resp ->
         return resp.data
     }
+}
+
+def testhttp() {
+    def host = state.device_path
+    host -= "http://"
+
+    def test = sendHubCommand(new physicalgraph.device.HubAction("""GET /api/v1/alarmdecoder?apikey=5 HTTP/1.1
+HOST: ${host}    
+
+""", physicalgraph.device.Protocol.LAN, "${host}"))
 }

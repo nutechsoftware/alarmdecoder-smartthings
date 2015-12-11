@@ -45,7 +45,7 @@ class SSDPServer(object):
                         request.headers['MAN'] == '"ssdp:discover"':
                     #service = request.headers['ST'].split(':', 2)[1]
                     #if service == 'api' or service == 'all':
-                    response_message = self.LOCATION_MESSAGE % dict(service=request.headers['ST'], loc='http://10.10.0.14:443', usn="uuid:a91d4fae-7dec-11d0-a765-00a0c91c6bf6")
+                    response_message = self.LOCATION_MESSAGE % dict(service=request.headers['ST'], loc='http://10.10.0.14:5000', usn="uuid:a91d4fae-7dec-11d0-a765-00a0c91c6bf6")
                     print '>', response_message
                     self._socket.sendto(response_message, addr)
 
