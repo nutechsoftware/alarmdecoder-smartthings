@@ -51,6 +51,11 @@ def updated() {
 
 def uninstalled() {
     log.trace "uninstalled"
+
+    def devices = getChildDevices()
+    devices.each {
+        deleteChildDevice(it.deviceNetworkId)
+    }
 }
 
 def initialize() {
@@ -102,13 +107,14 @@ def discover_devices() {
     int refreshCount = !state.refreshCount ? 0 : state.refreshCount as int
     state.refreshCount = refreshCount += 1
 
-    def devices = [:]
+    def found_devices = [:]
     def options = state.devices.each { k, v ->
         log.trace "discover_devices: ${v}"
-        devices["${k}"] = "${k}"
+        def ip = convertHexToIP(v.ip)
+        found_devices["${k}"] = "AlarmDecoder @ ${ip}"
     }
 
-    def numFound = devices.size() ?: 0
+    def numFound = found_devices.size() ?: 0
 
     if (!state.subscribed) {
         log.trace "discover_devices: subscribe to location"
@@ -122,7 +128,7 @@ def discover_devices() {
 
     return dynamicPage(name: "discover_devices", title: "Discovery started..", nextPage: "", refreshInterval: refreshInterval, install: true, uninstall: true) {
         section("Please wait.") {
-            input "selectedDevices", "enum", required: false, title: "Select device(s) (${numFound} found)", multiple: true, options: devices
+            input "selectedDevices", "enum", required: false, title: "Select device(s) (${numFound} found)", multiple: true, options: found_devices
             // TEMP: REMOVE THIS
             href(name: "refreshDevices", title: "Refresh", required: false, page: "discover_devices")
         }
@@ -181,15 +187,22 @@ def getDevices() {
 }
 
 def addExistingDevices() {
-    /*
-    selectedDevices.each { dni ->
-        log.trace "dni=${dni}"
+    log.trace "addExistingDevices: ${selectedDevices}"
+
+    def selected_devices = selectedDevices
+    if (selected_devices instanceof java.lang.String) {
+        selected_devices = [selected_devices]
+    }
+
+    selected_devices.each { dni ->
         def d = getChildDevice(dni)
         if (!d) {
-            log.trace "d=${d}"
+            def newDevice = devices.find { k, v -> k == dni }
+            if (newDevice) {
+                d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", dni, newDevice?.value.hub)
+            }
         }
     }
-    */
 }
 
 private def parseEventMessage(String description) {
@@ -278,4 +291,12 @@ def http_get(params) {
     httpGet(params) { resp ->
         return resp.data
     }
+}
+
+private String convertHexToIP(hex) {
+    [convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
+}
+
+private Integer convertHexToInt(hex) {
+    Integer.parseInt(hex,16)
 }
