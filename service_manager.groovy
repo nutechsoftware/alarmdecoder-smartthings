@@ -1,7 +1,7 @@
 /**
  *  AlarmDecoder Service Manager
  *
- *  Copyright 2015 Scott Petersen
+ *  Copyright 2015 Nu Tech Software Solutions, Inc.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -14,10 +14,10 @@
  *
  */
 definition(
-    name: "AlarmDecoder Service Manager",
+    name: "AlarmDecoder (Service Manager)",
     namespace: "alarmdecoder",
-    author: "Scott Petersen",
-    description: "AlarmDecoder Service Manager",
+    author: "Nu Tech Software Solutions, Inc.",
+    description: "AlarmDecoder (Service Manager)",
     category: "My Apps",
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
     iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
@@ -26,99 +26,150 @@ definition(
 
 
 preferences {
-    //page(name: "doDiscovery", title:"Discovery", content: "doDiscovery", refreshTimeout: 5)
-}
-
-/*
-def selectDevices() {
-    log.trace "selectDevices()"
-    // get SessionID
-    atomicState.sessionID = atomicState.sessionID ?: initSession()["SessionID"]
-    
-    // get device list
-    def devices = [:]
-    
-    deviceList(atomicState.sessionID)["DeviceList"].each {
-        def roomName = it["GroupName"] == "harman" ? "" : "@"+it["GroupName"]
-        devices.put(it["DeviceID"], it["DeviceName"] + roomName)
-    }
-    
-    // have user choose devices to work with
-    dynamicPage(name: "selectDevices", title: "Select Your Devices", uninstall: true, install:true) {
-        section {
-            paragraph "Tap below to see the list of HK Speakers available in your network and select the ones you want to connect to SmartThings."
-            input(name: "speakers", type: "enum", title: "Speakers", description: "Tap to choose", required: true, options: devices, multiple:true)
+    page(name: "main", title: "Discover your AlarmDecoder", install: true, uninstall: true) {
+        section("") {
+            href(name: "discover", title: "Discover", required: false, page: "discover_devices", description: "Tap to discover")
         }
     }
+    page(name: "discover_devices", title: "Discovery started..", content: "discover_devices", refreshTimeout: 5)
 }
-*/
+
+/*** Handlers ***/
 
 def installed() {
     log.debug "Installed with settings: ${settings}"
+
     initialize()
-    
-    //
 }
 
 def updated() {
     log.debug "Updated with settings: ${settings}"
+
+    unschedule()
     initialize()
 }
 
 def uninstalled() {
-    log.trace "uninstalled()"
+    log.trace "uninstalled"
 }
 
 def initialize() {
-    log.trace "initialize()"
-    
-    if (!state.subscribe) {
-        log.trace "subscribe to location"
-        subscribe(location, null, locationHandler, [filterEvents: false])
-        state.subscribe = true
+    log.trace "initialize"
+
+    unsubscribe()
+    state.subscribed = false
+
+    unschedule()
+
+    if (selectedDevices) {
+        addExistingDevices()
     }
-    
-    sendHubCommand(new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN))
+
+    scheduleRefresh()
 }
 
 def locationHandler(evt) {
-    log.trace "locationHandler()"
+    log.trace "locationHandler"
     
     def description = evt.description
     def hub = evt?.hubId
     
-    log.trace "description=${description}"
+    log.trace "locationHandler: description=${description}"
     
     def parsedEvent = parseEventMessage(description)
     parsedEvent << ["hub":hub]
 
-    log.trace "parsedEvent: ${parsedEvent}"
-
+    // LAN EVENTS
     if (parsedEvent?.ssdpTerm?.contains("urn:schemas-upnp-org:device:AlarmDecoder:1")) {
         getDevices()
-        log.trace "1, devices=${devices}"
+        
         if (!(devices."${parsedEvent.ssdpUSN.toString()}")) {
-            log.trace "2"
-            devices << ["${parsedEvent.ssdpUSN.toString()}":parsedEvent]
-            
-            state.device_path = parsedEvent.ssdpPath
+            log.trace "locationHandler: Adding device: ${parsedEvent.ssdpUSN}"
 
-            testhttp()
-
-            /*log.trace "trying to talk to api"
-            def params = [
-                uri: state.device_path,
-                path: "/api/v1/alarmdecoder?apikey=5"
-            ]
-            log.trace "result = ${get(params)}"
-            */
+            devices << ["${parsedEvent.ssdpUSN.toString()}": parsedEvent]
         }
     }
 
-    if (parsedEvent?.body) {
-        log.trace "headers=${new String(parsedEvent.headers.decodeBase64())}"
-        log.trace "body=${new String(parsedEvent.body.decodeBase64())}"
+    // HTTP EVENTS
+    if (parsedEvent?.body && parsedEvent?.headers) {
+        log.trace "locationHandler: headers=${new String(parsedEvent.headers.decodeBase64())}"
+        log.trace "locationHandler: body=${new String(parsedEvent.body.decodeBase64())}"
     }
+}
+
+def discover_devices() {
+    int refreshInterval = 5
+    int refreshCount = !state.refreshCount ? 0 : state.refreshCount as int
+    state.refreshCount = refreshCount += 1
+
+    def devices = [:]
+    def options = state.devices.each { k, v ->
+        log.trace "discover_devices: ${v}"
+        devices["${k}"] = "${k}"
+    }
+
+    def numFound = devices.size() ?: 0
+
+    if (!state.subscribed) {
+        log.trace "discover_devices: subscribe to location"
+
+        subscribe(location, null, locationHandler, [filterEvents: false])
+        state.subscribed = true
+    }
+    
+    discover_alarmdecoder()
+    verify_devices()
+
+    return dynamicPage(name: "discover_devices", title: "Discovery started..", nextPage: "", refreshInterval: refreshInterval, install: true, uninstall: true) {
+        section("Please wait.") {
+            input "selectedDevices", "enum", required: false, title: "Select device(s) (${numFound} found)", multiple: true, options: devices
+            // TEMP: REMOVE THIS
+            href(name: "refreshDevices", title: "Refresh", required: false, page: "discover_devices")
+        }
+    }
+}
+
+def verify_devices() {
+/*   
+    def path = parsedEvent.ssdpPath
+    path -= "http://"
+
+    state.device_path = path
+
+    //hub_http_get(path, "/api/v1/alarmdecoder?apikey=5")
+*/
+}
+
+
+/*** Commands ***/
+
+
+
+/*** Utility ***/
+
+def scheduleRefresh() {
+    def minutes = 5
+
+    def cron = "0 0/${minutes} * * * ?"
+    schedule(cron, refreshHandler)
+}
+
+def refreshHandler() {
+    log.trace "refreshHandler"
+
+    discover_alarmdecoder()
+}
+
+def discover_alarmdecoder() {
+    log.trace "discover_alarmdecoder"
+
+    if (!state.subscribed) {
+        log.trace "discover_alarmdecoder: subscribing!"
+        subscribe(location, null, locationHandler, [filterEvents: false])
+        state.subscribed = true
+    }
+
+    sendHubCommand(new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN))
 }
 
 def getDevices() {
@@ -129,11 +180,22 @@ def getDevices() {
     state.devices
 }
 
-private def parseEventMessage(String description) {
-    log.trace "parseEventMessage.. description=${description}"
+def addExistingDevices() {
+    /*
+    selectedDevices.each { dni ->
+        log.trace "dni=${dni}"
+        def d = getChildDevice(dni)
+        if (!d) {
+            log.trace "d=${d}"
+        }
+    }
+    */
+}
 
+private def parseEventMessage(String description) {
     def event = [:]
     def parts = description.split(',')
+
     parts.each { part ->
         part = part.trim()
         if (part.startsWith('devicetype:')) {
@@ -198,45 +260,22 @@ private def parseEventMessage(String description) {
     event
 }
 
-def doDiscovery() {
-    
-}
+def hub_http_get(host, path) {
+    log.trace "hub_http_get: host=${host}, path=${path}"
 
-
-// Handle commands
-
-
-
-
-/**************************
- * REST UTILITY FUNCTIONS *
- **************************/
-
-// All REST utility functions simply return the HTTP response data
-/*
-def initSession() {
-    log.trace "initSession()"
-    def params = [
-        uri: appSettings.ipAddress,
-        path: "/v1/init_session"
+    def httpRequest = [
+        method:     "GET",
+        path:       path,
+        headers:    [ HOST: host ]
     ]
-    get(params)
-}
-*/
 
-def get(params) {
-    log.trace "get(${params})"
+    sendHubCommand(new physicalgraph.device.HubAction(httpRequest, "${host}"))
+}
+
+def http_get(params) {
+    log.trace "http_get: ${params}"
+
     httpGet(params) { resp ->
         return resp.data
     }
-}
-
-def testhttp() {
-    def host = state.device_path
-    host -= "http://"
-
-    def test = sendHubCommand(new physicalgraph.device.HubAction("""GET /api/v1/alarmdecoder?apikey=5 HTTP/1.1
-HOST: ${host}    
-
-""", physicalgraph.device.Protocol.LAN, "${host}"))
 }
