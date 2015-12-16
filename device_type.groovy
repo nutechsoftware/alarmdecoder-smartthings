@@ -16,6 +16,14 @@
 metadata {
     definition (name: "AlarmDecoder Network Appliance", namespace: "alarmdecoder", author: "Scott Petersen") {
         capability "Refresh"
+        capability "Switch"
+        capability "Lock"
+        capability "Alarm"
+
+        attribute "urn", "string"
+        attribute "apikey", "string"
+
+        command "disarm"
     }
 
     simulator {
@@ -31,6 +39,15 @@ metadata {
 def parse(String description) {
     log.debug "Parsing '${description}'"
 
+    def event = parseEventMessage(description)
+    if (event?.apikey) {
+        state.apikey = event.apikey
+    }
+    if (event?.urn) {
+        state.urn = event.urn
+    }
+
+    log.trace "event: ${event}"
 }
 
 // handle commands
@@ -39,4 +56,138 @@ def refresh() {
     // TODO: handle 'refresh' command
 }
 
+// Switch - STAY
+def on() {
+    log.trace "on()"
+}
 
+def off() {
+    log.trace "off()"
+}
+
+// Lock - AWAY
+def lock() {
+    log.trace "lock()"
+}
+
+def unlock() {
+    log.trace "unlock()"
+}
+
+// Alarm - PANIC
+def both() {
+    log.trace "both()"
+
+
+}
+
+def arm_away() {
+    def urn = device.currentValue("urn")
+    def apikey = device.currentValue("apikey")
+
+    hub_http_get(urn, "/api/v1/alarmdecoder?apikey=${apikey}")
+}
+
+def disarm() {
+    def urn = device.currentValue("urn")
+    def apikey = device.currentValue("apikey")
+
+    hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "41122" }""")
+}
+
+// TODO: Do I need to define the rest of the Alarm commands?
+
+
+private def parseEventMessage(String description) {
+    def event = [:]
+    def parts = description.split(',')
+
+    parts.each { part ->
+        part = part.trim()
+        if (part.startsWith('devicetype:')) {
+            def valueString = part.split(":")[1].trim()
+            event.devicetype = valueString
+        }
+        else if (part.startsWith('mac:')) {
+            def valueString = part.split(":")[1].trim()
+            if (valueString) {
+                event.mac = valueString
+            }
+        }
+        else if (part.startsWith('networkAddress:')) {
+            def valueString = part.split(":")[1].trim()
+            if (valueString) {
+                event.ip = valueString
+            }
+        }
+        else if (part.startsWith('deviceAddress:')) {
+            def valueString = part.split(":")[1].trim()
+            if (valueString) {
+                event.port = valueString
+            }
+        }
+        else if (part.startsWith('ssdpPath:')) {
+            part -= "ssdpPath:"
+            def valueString = part.trim()
+            if (valueString) {
+                event.ssdpPath = valueString
+            }
+        }
+        else if (part.startsWith('ssdpUSN:')) {
+            part -= "ssdpUSN:"
+            def valueString = part.trim()
+            if (valueString) {
+                event.ssdpUSN = valueString
+            }
+        }
+        else if (part.startsWith('ssdpTerm:')) {
+            part -= "ssdpTerm:"
+            def valueString = part.trim()
+            if (valueString) {
+                event.ssdpTerm = valueString
+            }
+        }
+        else if (part.startsWith('headers')) {
+            part -= "headers:"
+            def valueString = part.trim()
+            if (valueString) {
+                event.headers = valueString
+            }
+        }
+        else if (part.startsWith('body')) {
+            part -= "body:"
+            def valueString = part.trim()
+            if (valueString) {
+                event.body = valueString
+            }
+        }
+    }
+
+    event
+}
+
+def hub_http_get(host, path, body) {
+    log.trace "hub_http_get: host=${host}, path=${path}"
+
+    def httpRequest = [
+        method:     "GET",
+        path:       path,
+        headers:    [ HOST: host ],
+        body:       body
+    ]
+
+    sendHubCommand(new physicalgraph.device.HubAction(httpRequest, "${host}"))
+}
+
+def hub_http_post(host, path, body) {
+    log.trace "hub_http_get: host=${host}, path=${path}"
+
+    def httpRequest = [
+        method:     "POST",
+        path:       path,
+        headers:    [ HOST: host, "Content-Type": "application/json" ],
+        body:       body
+    ]
+
+    sendHubCommand(new physicalgraph.device.HubAction(httpRequest, "${host}"))
+}

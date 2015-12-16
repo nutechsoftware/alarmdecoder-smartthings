@@ -24,7 +24,6 @@ definition(
     iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png") {
     /*appSetting "ipAddress"*/}
 
-
 preferences {
     page(name: "main", title: "Discover your AlarmDecoder", install: true, uninstall: true) {
         section("") {
@@ -54,7 +53,12 @@ def uninstalled() {
 
     def devices = getChildDevices()
     devices.each {
-        deleteChildDevice(it.deviceNetworkId)
+        try {
+            deleteChildDevice(it.deviceNetworkId)            
+        }
+        catch(Exception e) {
+            
+        }
     }
 }
 
@@ -200,6 +204,17 @@ def addExistingDevices() {
             def newDevice = devices.find { k, v -> k == dni }
             if (newDevice) {
                 d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", dni, newDevice?.value.hub)
+
+//                d.urn = newDevice?.value.ssdpPath
+//                d.apikey = "5"
+
+                def urn = newDevice.value.ssdpPath
+                urn -= "http://"
+
+                d.sendEvent(name: 'urn', value: urn)
+                d.sendEvent(name: 'apikey', value: 5)
+
+                d.disarm()
             }
         }
     }
@@ -299,4 +314,8 @@ private String convertHexToIP(hex) {
 
 private Integer convertHexToInt(hex) {
     Integer.parseInt(hex,16)
+}
+
+def do_stuff() {
+    log.trace "doing stuff!!!!"
 }
