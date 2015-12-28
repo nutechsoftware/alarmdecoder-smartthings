@@ -13,6 +13,8 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
+import groovy.json.JsonSlurper;
+
 metadata {
     definition (name: "AlarmDecoder Network Appliance", namespace: "alarmdecoder", author: "Scott Petersen") {
         capability "Refresh"
@@ -39,15 +41,29 @@ metadata {
 def parse(String description) {
     log.debug "Parsing '${description}'"
 
+    def events = []
+
     def event = parseEventMessage(description)
-    if (event?.apikey) {
-        state.apikey = event.apikey
-    }
-    if (event?.urn) {
-        state.urn = event.urn
+    if (event?.body && event?.headers) {
+        def slurper = new JsonSlurper()
+        log.trace "body=${event.body}"
+        String bodyText = new String(event.body.decodeBase64())
+        log.trace "body=${bodyText}"
+        def result = slurper.parseText(bodyText)
+
+        if (result.panel_armed == true) {
+            events << lock()
+        }
+        else {
+            events << unlock()
+        }
+
+        log.trace "result=${result}"
     }
 
     log.trace "event: ${event}"
+
+    return events
 }
 
 def updated() {
@@ -88,17 +104,19 @@ def off() {
 // Lock - AWAY
 def lock() {
     log.trace "lock()"
+
+    return createEvent(name: "lock", value: "locked")
 }
 
 def unlock() {
     log.trace "unlock()"
+
+    return createEvent(name: "lock", value: "unlocked")
 }
 
 // Alarm - PANIC
 def both() {
     log.trace "both()"
-
-
 }
 
 def arm_away() {

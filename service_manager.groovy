@@ -158,7 +158,7 @@ def verify_devices() {
 /*** Utility ***/
 
 def scheduleRefresh() {
-    def minutes = 5
+    def minutes = 1
 
     def cron = "0 0/${minutes} * * * ?"
     schedule(cron, refreshHandler)
@@ -167,7 +167,9 @@ def scheduleRefresh() {
 def refreshHandler() {
     log.trace "refreshHandler"
 
-    discover_alarmdecoder()
+    //discover_alarmdecoder()
+
+    refresh_alarmdecoders()
 }
 
 def discover_alarmdecoder() {
@@ -188,6 +190,15 @@ def getDevices() {
     }
     
     state.devices
+}
+
+def refresh_alarmdecoders() {
+    log.trace("refresh_alarmdecoders-")
+    getAllChildDevices().each { device ->
+        log.trace("refresh_alarmdecoders: ${device}")
+
+        device.refresh()
+    }
 }
 
 def addExistingDevices() {
