@@ -205,16 +205,20 @@ def addExistingDevices() {
             if (newDevice) {
                 d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", dni, newDevice?.value.hub)
 
-//                d.urn = newDevice?.value.ssdpPath
-//                d.apikey = "5"
+                // Set the device network ID so that hubactions get sent to the device parser.
+                def ip = newDevice.value.ip
+                def port = newDevice.value.port
+                d.deviceNetworkId = "${ip}:${port}"
 
+                // Set URN and APIKey on the child device
                 def urn = newDevice.value.ssdpPath
                 urn -= "http://"
 
                 d.sendEvent(name: 'urn', value: urn)
                 d.sendEvent(name: 'apikey', value: 5)
 
-                d.disarm()
+                // Force a status refresh
+                d.refresh()
             }
         }
     }

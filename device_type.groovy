@@ -50,10 +50,30 @@ def parse(String description) {
     log.trace "event: ${event}"
 }
 
+def updated() {
+    log.trace "Updated"
+    /*if (!state.subscribed) {
+        subscribe(location, null, locationHandler, [filterEvents: false])
+        state.subscribed = true
+    }*/
+}
+
+def uninstalled() {
+    log.trace "Uninstalled"
+    //unsubscribe()
+
+    state.subscribed = false
+}
+
 // handle commands
 def refresh() {
     log.debug "Executing 'refresh'"
     // TODO: handle 'refresh' command
+
+    def urn = device.currentValue("urn")
+    def apikey = device.currentValue("apikey")
+
+    return hub_http_get(urn, "/api/v1/alarmdecoder?apikey=${apikey}")
 }
 
 // Switch - STAY
@@ -166,17 +186,16 @@ private def parseEventMessage(String description) {
     event
 }
 
-def hub_http_get(host, path, body) {
-    log.trace "hub_http_get: host=${host}, path=${path}"
+def hub_http_get(host, path) {
+    log.trace "hub_http_get: host=${host}, path=${path} 2"
 
     def httpRequest = [
         method:     "GET",
         path:       path,
-        headers:    [ HOST: host ],
-        body:       body
+        headers:    [ HOST: host ]
     ]
 
-    sendHubCommand(new physicalgraph.device.HubAction(httpRequest, "${host}"))
+    return new physicalgraph.device.HubAction(httpRequest, "${host}")
 }
 
 def hub_http_post(host, path, body) {
