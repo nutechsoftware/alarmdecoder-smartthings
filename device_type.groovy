@@ -21,6 +21,7 @@ metadata {
         capability "Switch"
         capability "Lock"
         capability "Alarm"
+        capability "smokeDetector"
 
         attribute "urn", "string"
         attribute "apikey", "string"
@@ -54,7 +55,7 @@ def parse(String description) {
     def events = []
     def event = parseEventMessage(description)
 
-    log.trace "event: ${event}"
+    log.trace "new event: ${event}"
 
     // HTTP
     if (event?.body && event?.headers) {
@@ -62,24 +63,66 @@ def parse(String description) {
         String bodyText = new String(event.body.decodeBase64())
         def result = slurper.parseText(bodyText)
 
-        if (result.panel_armed == true) {
-            events << set_away(true)
-        }
-        else {
-            events << set_away(false)
-        }
+        log.trace "http result=${result}"
 
-        log.trace "result=${result}"
+        // TODO: Fix null entries in events?
+        events << set_away(result.panel_armed)
+        events << set_fire(result.panel_fire_detected)
+        events << set_alarming(result.panel_alarming)
     }
+
+    log.trace "resulting events=${events}"
 
     return events
 }
 
 /*** Capabilities ***/
 
+// NOTE: Do I really need these?  Should they make calls to the API to arm/disarm?
+
+def on() {
+    log.trace("on()")
+    set_stay(true)
+}
+
+def off() {
+    log.trace("off()")
+    set_stay(false)
+    set_alarming(false)
+}
+
+def strobe() {
+    log.trace("strobe() - do nothing")
+}
+
+def siren() {
+    log.trace("siren() - do nothing")
+}
+
+def both() {
+    log.trace("both() - panic")
+
+    // TODO: panic here.
+    set_alarming(true)
+}
+
+def lock() {
+    log.trace("lock()")
+    set_away(true)
+}
+
+def unlock() {
+    log.trace("unlock()")
+    set_away(false)
+}
+
 // Switch - STAY
 def set_stay(value) {
+    if (state.stay == value)
+        return
+
     log.trace "set_stay(${value})"
+    state.stay = value
 
     def event_value = "off"
     if (value)
@@ -90,7 +133,11 @@ def set_stay(value) {
 
 // Lock - AWAY
 def set_away(value) {
+    if (state.away == value)
+        return
+
     log.trace "set_away(${value})"
+    state.away = value
 
     def event_value = "unlocked"
     if (value)
@@ -99,15 +146,34 @@ def set_away(value) {
     return createEvent(name: "lock", value: event_value)
 }
 
-// Alarm - PANIC
+// Alarm
 def set_alarming(value) {
+    if (state.alarming == value)
+        return
+
     log.trace "set_alarming(${value})"
+    state.alarming = value
 
     def event_value = "off"
     if (value)
         event_value = "both"
 
     return createEvent(name: "alarm", value: event_value)
+}
+
+// smokeDetector - FIRE
+def set_fire(value) {
+    if (state.fire == value)
+        return
+
+    log.trace "set_fire(${value})"
+    state.fire = value
+
+    def event_value = "clear"
+    if (value)
+        event_value = "detected"
+
+    return createEvent(name: "smoke", value: event_value)
 }
 
 /*** Commands ***/
