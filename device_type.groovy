@@ -37,54 +37,83 @@ metadata {
     }
 }
 
+/*** Handlers ***/
+
+def updated() {
+    log.trace "Updated"
+}
+
+def uninstalled() {
+    log.trace "Uninstalled"
+}
+
 // parse events into attributes
 def parse(String description) {
     log.debug "Parsing '${description}'"
 
     def events = []
-
     def event = parseEventMessage(description)
+
+    log.trace "event: ${event}"
+
+    // HTTP
     if (event?.body && event?.headers) {
         def slurper = new JsonSlurper()
-        log.trace "body=${event.body}"
         String bodyText = new String(event.body.decodeBase64())
-        log.trace "body=${bodyText}"
         def result = slurper.parseText(bodyText)
 
         if (result.panel_armed == true) {
-            events << lock()
+            events << set_away(true)
         }
         else {
-            events << unlock()
+            events << set_away(false)
         }
 
         log.trace "result=${result}"
     }
 
-    log.trace "event: ${event}"
-
     return events
 }
 
-def updated() {
-    log.trace "Updated"
-    /*if (!state.subscribed) {
-        subscribe(location, null, locationHandler, [filterEvents: false])
-        state.subscribed = true
-    }*/
+/*** Capabilities ***/
+
+// Switch - STAY
+def set_stay(value) {
+    log.trace "set_stay(${value})"
+
+    def event_value = "off"
+    if (value)
+        event_value = "on"
+
+    return createEvent(name: "switch", value: event_value)
 }
 
-def uninstalled() {
-    log.trace "Uninstalled"
-    //unsubscribe()
+// Lock - AWAY
+def set_away(value) {
+    log.trace "set_away(${value})"
 
-    state.subscribed = false
+    def event_value = "unlocked"
+    if (value)
+        event_value = "locked"
+
+    return createEvent(name: "lock", value: event_value)
 }
 
-// handle commands
+// Alarm - PANIC
+def set_alarming(value) {
+    log.trace "set_alarming(${value})"
+
+    def event_value = "off"
+    if (value)
+        event_value = "both"
+
+    return createEvent(name: "alarm", value: event_value)
+}
+
+/*** Commands ***/
+
 def refresh() {
     log.debug "Executing 'refresh'"
-    // TODO: handle 'refresh' command
 
     def urn = device.currentValue("urn")
     def apikey = device.currentValue("apikey")
@@ -92,49 +121,21 @@ def refresh() {
     return hub_http_get(urn, "/api/v1/alarmdecoder?apikey=${apikey}")
 }
 
-// Switch - STAY
-def on() {
-    log.trace "on()"
-}
+def disarm() {
+    def urn = device.currentValue("urn")
+    def apikey = device.currentValue("apikey")
 
-def off() {
-    log.trace "off()"
-}
-
-// Lock - AWAY
-def lock() {
-    log.trace "lock()"
-
-    return createEvent(name: "lock", value: "locked")
-}
-
-def unlock() {
-    log.trace "unlock()"
-
-    return createEvent(name: "lock", value: "unlocked")
-}
-
-// Alarm - PANIC
-def both() {
-    log.trace "both()"
+    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "41122" }""")
 }
 
 def arm_away() {
     def urn = device.currentValue("urn")
     def apikey = device.currentValue("apikey")
 
-    hub_http_get(urn, "/api/v1/alarmdecoder?apikey=${apikey}")
+    return hub_http_get(urn, "/api/v1/alarmdecoder?apikey=${apikey}")
 }
 
-def disarm() {
-    def urn = device.currentValue("urn")
-    def apikey = device.currentValue("apikey")
-
-    hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "41122" }""")
-}
-
-// TODO: Do I need to define the rest of the Alarm commands?
-
+/*** Utility ***/
 
 private def parseEventMessage(String description) {
     def event = [:]
@@ -205,7 +206,7 @@ private def parseEventMessage(String description) {
 }
 
 def hub_http_get(host, path) {
-    log.trace "hub_http_get: host=${host}, path=${path} 2"
+    log.trace "hub_http_get: host=${host}, path=${path}"
 
     def httpRequest = [
         method:     "GET",
@@ -226,5 +227,5 @@ def hub_http_post(host, path, body) {
         body:       body
     ]
 
-    sendHubCommand(new physicalgraph.device.HubAction(httpRequest, "${host}"))
+    return new physicalgraph.device.HubAction(httpRequest, "${host}")
 }

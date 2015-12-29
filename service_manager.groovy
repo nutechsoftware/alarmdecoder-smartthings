@@ -106,6 +106,19 @@ def locationHandler(evt) {
     }
 }
 
+def refreshHandler() {
+    log.trace "refreshHandler"
+
+    //discover_alarmdecoder()
+    refresh_alarmdecoders()
+}
+
+
+/*** Commands ***/
+
+
+/*** Utility ***/
+
 def discover_devices() {
     int refreshInterval = 5
     int refreshCount = !state.refreshCount ? 0 : state.refreshCount as int
@@ -128,7 +141,7 @@ def discover_devices() {
     }
     
     discover_alarmdecoder()
-    verify_devices()
+    //verify_devices()
 
     return dynamicPage(name: "discover_devices", title: "Discovery started..", nextPage: "", refreshInterval: refreshInterval, install: true, uninstall: true) {
         section("Please wait.") {
@@ -137,39 +150,6 @@ def discover_devices() {
             href(name: "refreshDevices", title: "Refresh", required: false, page: "discover_devices")
         }
     }
-}
-
-def verify_devices() {
-/*   
-    def path = parsedEvent.ssdpPath
-    path -= "http://"
-
-    state.device_path = path
-
-    //hub_http_get(path, "/api/v1/alarmdecoder?apikey=5")
-*/
-}
-
-
-/*** Commands ***/
-
-
-
-/*** Utility ***/
-
-def scheduleRefresh() {
-    def minutes = 1
-
-    def cron = "0 0/${minutes} * * * ?"
-    schedule(cron, refreshHandler)
-}
-
-def refreshHandler() {
-    log.trace "refreshHandler"
-
-    //discover_alarmdecoder()
-
-    refresh_alarmdecoders()
 }
 
 def discover_alarmdecoder() {
@@ -184,12 +164,11 @@ def discover_alarmdecoder() {
     sendHubCommand(new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN))
 }
 
-def getDevices() {
-    if(!state.devices) {
-        state.devices = [:]
-    }
-    
-    state.devices
+def scheduleRefresh() {
+    def minutes = 1
+
+    def cron = "0 0/${minutes} * * * ?"
+    schedule(cron, refreshHandler)
 }
 
 def refresh_alarmdecoders() {
@@ -199,6 +178,14 @@ def refresh_alarmdecoders() {
 
         device.refresh()
     }
+}
+
+def getDevices() {
+    if(!state.devices) {
+        state.devices = [:]
+    }
+    
+    state.devices
 }
 
 def addExistingDevices() {
@@ -303,34 +290,10 @@ private def parseEventMessage(String description) {
     event
 }
 
-def hub_http_get(host, path) {
-    log.trace "hub_http_get: host=${host}, path=${path}"
-
-    def httpRequest = [
-        method:     "GET",
-        path:       path,
-        headers:    [ HOST: host ]
-    ]
-
-    sendHubCommand(new physicalgraph.device.HubAction(httpRequest, "${host}"))
-}
-
-def http_get(params) {
-    log.trace "http_get: ${params}"
-
-    httpGet(params) { resp ->
-        return resp.data
-    }
-}
-
 private String convertHexToIP(hex) {
     [convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
 }
 
 private Integer convertHexToInt(hex) {
     Integer.parseInt(hex,16)
-}
-
-def do_stuff() {
-    log.trace "doing stuff!!!!"
 }
