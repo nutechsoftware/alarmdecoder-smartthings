@@ -82,9 +82,9 @@ def parse(String description) {
         log.trace "http result=${result}"
 
         // TODO: Fix null entries in events?
-        set_away(result.panel_armed).each { e -> events << e }
         set_fire(result.panel_fire_detected).each { e -> events << e }
         set_alarming(result.panel_alarming).each { e -> events << e }
+        set_away(result.panel_armed).each { e -> events << e }
     }
 
     log.trace "resulting events=${events}"
@@ -193,6 +193,12 @@ def set_alarming(value) {
         event_value = "both"
         events << createEvent(name: "panel_state", value: "alarming")
     }
+    else {
+        if (state.away)
+            events << createEvent(name: "panel_state", value: "armed")
+        else
+            events << createEvent(name: "panel_state", value: "disarmed")
+    }
 
     events << createEvent(name: "alarm", value: event_value)
 
@@ -213,6 +219,12 @@ def set_fire(value) {
     if (value) {
         event_value = "detected"
         events << createEvent(name: "panel_state", value: "fire")
+    }
+    else {
+        if (state.away)
+            events << createEvent(name: "panel_state", value: "armed")
+        else
+            events << createEvent(name: "panel_state", value: "disarmed")
     }
 
     events << createEvent(name: "smoke", value: event_value)
