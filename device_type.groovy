@@ -38,10 +38,10 @@ metadata {
     tiles(scale: 2) {
         multiAttributeTile(name: "status", type: "generic", width: 6, height: 4) {
             tileAttribute("device.panel_state", key: "PRIMARY_CONTROL") {
-                attributeState "armed", label: '${name}', icon: "st.contact.contact.open", backgroundColor: "#ffa81e"
-                attributeState "disarmed", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#79b821"
-                attributeState "alarming", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#79b821"
-                attributeState "fire", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#79b821"
+                attributeState "armed", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#ffa81e"
+                attributeState "disarmed", label: '${name}', icon: "st.contact.contact.open", backgroundColor: "#79b821"
+                attributeState "alarming", label: '${name}', icon: "st.contact.contact.open", backgroundColor: "#ff4000"
+                attributeState "fire", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#ff0000"
             }
         }
 
@@ -145,10 +145,10 @@ def set_stay(value) {
     def event_value = "off"
     if (value) {
         event_value = "on"
-        events << device.createEvent(name: "ad_status", value: "armed")
+        events << createEvent(name: "panel_state", value: "armed")
     }
     else
-        events << device.createEvent(name: "ad_status", value: "disarmed")
+        events << createEvent(name: "panel_state", value: "disarmed")
 
     events << createEvent(name: "switch", value: event_value)
 
@@ -168,10 +168,10 @@ def set_away(value) {
     def event_value = "unlocked"
     if (value) {
         event_value = "locked"
-        events << device.createEvent(name: "ad_status", value: "armed")
+        events << createEvent(name: "panel_state", value: "armed")
     }
     else
-        events << createEvent(name: "ad_status", value: "disarmed")
+        events << createEvent(name: "panel_state", value: "disarmed")
 
     events << createEvent(name: "lock", value: event_value)
 
@@ -191,7 +191,7 @@ def set_alarming(value) {
     def event_value = "off"
     if (value) {
         event_value = "both"
-        events << device.createEvent(name: "ad_status", value: "alarming")
+        events << createEvent(name: "panel_state", value: "alarming")
     }
 
     events << createEvent(name: "alarm", value: event_value)
@@ -212,7 +212,7 @@ def set_fire(value) {
     def event_value = "clear"
     if (value) {
         event_value = "detected"
-        events << device.createEvent(name: "ad_status", value: "fire")
+        events << createEvent(name: "panel_state", value: "fire")
     }
 
     events << createEvent(name: "smoke", value: event_value)
