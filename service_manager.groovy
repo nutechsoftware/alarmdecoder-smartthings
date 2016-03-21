@@ -21,7 +21,8 @@ definition(
     category: "My Apps",
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
     iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
-    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png") {
+    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
+    singleInstance: true) {
     /*appSetting "ipAddress"*/}
 
 preferences {
@@ -96,6 +97,30 @@ def locationHandler(evt) {
             log.trace "locationHandler: Adding device: ${parsedEvent.ssdpUSN}"
 
             devices << ["${parsedEvent.ssdpUSN.toString()}": parsedEvent]
+        }
+        else {
+            def d = devices."${parsedEvent.ssdpUSN.toString()}"
+            boolean deviceChangedValues = false
+
+            log.trace "locationHandler: device already exists.. checking for changed values"
+
+            if (d.ip != parsedEvent.ip || d.port != parsedEvent.port) {
+                d.ip = parsedEvent.ip
+                d.port = parsedEvent.port
+                deviceChangedValues = true
+
+                log.trace "locationHandler: device changed values!"
+            }
+
+            if (deviceChangedValues) {
+                def children = getChildDevices()
+                children.each {
+                    if (it.getDeviceDataByName("mac") == parsedEvent.mac) {
+                        it.setDeviceNetworkId((parsedEvent.ip + ":" + parsedEvent.port))
+                        log.trace "Set new network id: " + parsedEvent.ip + ":" + parsedEvent.port
+                    }
+                }
+            }
         }
     }
 
@@ -201,12 +226,11 @@ def addExistingDevices() {
         if (!d) {
             def newDevice = devices.find { k, v -> k == dni }
             if (newDevice) {
-                d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", dni, newDevice?.value.hub)
-
                 // Set the device network ID so that hubactions get sent to the device parser.
                 def ip = newDevice.value.ip
                 def port = newDevice.value.port
-                d.deviceNetworkId = "${ip}:${port}"
+
+                d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", "${ip}:${port}", newDevice?.value.hub, [name: "${ip}:${port}", label: "AlarmDecoder", completedSetup: true])
 
                 // Set URN and APIKey on the child device
                 def urn = newDevice.value.ssdpPath

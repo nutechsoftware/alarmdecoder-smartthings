@@ -26,6 +26,8 @@ metadata {
         attribute "urn", "string"
         attribute "apikey", "string"
 
+        attribute "panel_state", "enum", ["armed", "disarmed", "alarming", "fire"]
+
         command "disarm"
     }
 
@@ -33,8 +35,22 @@ metadata {
         // TODO: define status and reply messages here
     }
 
-    tiles {
-        // TODO: define your main and details tiles here
+    tiles(scale: 2) {
+        multiAttributeTile(name: "status", type: "generic", width: 6, height: 4) {
+            tileAttribute("device.panel_state", key: "PRIMARY_CONTROL") {
+                attributeState "armed", label: '${name}', icon: "st.contact.contact.open", backgroundColor: "#ffa81e"
+                attributeState "disarmed", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#79b821"
+                attributeState "alarming", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#79b821"
+                attributeState "fire", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#79b821"
+            }
+        }
+
+        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+            state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
+        }
+
+        main(["status"])
+        details(["status", "refresh"])
     }
 }
 
@@ -66,9 +82,9 @@ def parse(String description) {
         log.trace "http result=${result}"
 
         // TODO: Fix null entries in events?
-        events << set_away(result.panel_armed)
-        events << set_fire(result.panel_fire_detected)
-        events << set_alarming(result.panel_alarming)
+        set_away(result.panel_armed).each { e -> events << e }
+        set_fire(result.panel_fire_detected).each { e -> events << e }
+        set_alarming(result.panel_alarming).each { e -> events << e }
     }
 
     log.trace "resulting events=${events}"
@@ -124,11 +140,19 @@ def set_stay(value) {
     log.trace "set_stay(${value})"
     state.stay = value
 
-    def event_value = "off"
-    if (value)
-        event_value = "on"
+    def events = []
 
-    return createEvent(name: "switch", value: event_value)
+    def event_value = "off"
+    if (value) {
+        event_value = "on"
+        events << device.createEvent(name: "ad_status", value: "armed")
+    }
+    else
+        events << device.createEvent(name: "ad_status", value: "disarmed")
+
+    events << createEvent(name: "switch", value: event_value)
+
+    return events
 }
 
 // Lock - AWAY
@@ -139,11 +163,19 @@ def set_away(value) {
     log.trace "set_away(${value})"
     state.away = value
 
-    def event_value = "unlocked"
-    if (value)
-        event_value = "locked"
+    def events = []
 
-    return createEvent(name: "lock", value: event_value)
+    def event_value = "unlocked"
+    if (value) {
+        event_value = "locked"
+        events << device.createEvent(name: "ad_status", value: "armed")
+    }
+    else
+        events << createEvent(name: "ad_status", value: "disarmed")
+
+    events << createEvent(name: "lock", value: event_value)
+
+    return events
 }
 
 // Alarm
@@ -154,11 +186,17 @@ def set_alarming(value) {
     log.trace "set_alarming(${value})"
     state.alarming = value
 
-    def event_value = "off"
-    if (value)
-        event_value = "both"
+    def events = []
 
-    return createEvent(name: "alarm", value: event_value)
+    def event_value = "off"
+    if (value) {
+        event_value = "both"
+        events << device.createEvent(name: "ad_status", value: "alarming")
+    }
+
+    events << createEvent(name: "alarm", value: event_value)
+
+    return events
 }
 
 // smokeDetector - FIRE
@@ -169,11 +207,17 @@ def set_fire(value) {
     log.trace "set_fire(${value})"
     state.fire = value
 
-    def event_value = "clear"
-    if (value)
-        event_value = "detected"
+    def events = []
 
-    return createEvent(name: "smoke", value: event_value)
+    def event_value = "clear"
+    if (value) {
+        event_value = "detected"
+        events << device.createEvent(name: "ad_status", value: "fire")
+    }
+
+    events << createEvent(name: "smoke", value: event_value)
+
+    return events
 }
 
 /*** Commands ***/
