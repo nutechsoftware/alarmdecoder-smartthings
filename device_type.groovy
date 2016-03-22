@@ -16,7 +16,8 @@
 import groovy.json.JsonSlurper;
 
 preferences {
-    input("user_code", "text", title: "Alarm Code", description: "The alarm code to use to arm and disarm the panel.")
+    input("api_key", "text", title: "API Key", description: "The key to access the REST API")
+    input("user_code", "text", title: "Alarm Code", description: "The user code for the panel")
 }
 
 metadata {
@@ -28,9 +29,7 @@ metadata {
         capability "smokeDetector"      // FIRE
 
         attribute "urn", "string"
-        attribute "apikey", "string"
-
-        attribute "panel_state", "enum", ["armed", "disarmed", "alarming", "fire"]
+        attribute "panel_state", "enum", ["armed", "armed_stay", "disarmed", "alarming", "fire"]
 
         command "disarm"
         command "arm_stay"
@@ -47,10 +46,11 @@ metadata {
     tiles(scale: 2) {
         multiAttributeTile(name: "status", type: "generic", width: 6, height: 4) {
             tileAttribute("device.panel_state", key: "PRIMARY_CONTROL") {
-                attributeState "armed", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#ffa81e"
-                attributeState "disarmed", label: '${name}', icon: "st.contact.contact.open", backgroundColor: "#79b821"
-                attributeState "alarming", label: '${name}', icon: "st.contact.contact.open", backgroundColor: "#ff4000"
-                attributeState "fire", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#ff0000"
+                attributeState "armed", label: 'Armed', icon: "st.contact.contact.closed", backgroundColor: "#ffa81e"
+                attributeState "armed_stay", label: 'Armed (stay)', icon: "st.contact.contact.closed", backgroundColor: "#ffa81e"
+                attributeState "disarmed", label: 'Disarmed', icon: "st.contact.contact.open", backgroundColor: "#79b821"
+                attributeState "alarming", label: 'Alarming!', icon: "st.contact.contact.open", backgroundColor: "#ff4000"
+                attributeState "fire", label: 'Fire!', icon: "st.contact.contact.closed", backgroundColor: "#ff0000"
             }
         }
 
@@ -107,6 +107,7 @@ def parse(String description) {
         log.trace "http result=${result}"
 
         // TODO: Fix null entries in events?
+        // TODO: Make this not sucky.
         set_fire(result.panel_fire_detected).each { e -> events << e }
         set_alarming(result.panel_alarming).each { e -> events << e }
         set_away(result.panel_armed).each { e -> events << e }
@@ -175,6 +176,7 @@ def unlock() {
 }
 
 // Switch - STAY
+// NOTE: This stuff doesn't work since we don't have a way to tell if we're armed stay or not from the alarmdecoder API.
 def set_stay(value) {
     if (state.stay == value)
         return
@@ -187,7 +189,7 @@ def set_stay(value) {
     def event_value = "off"
     if (value) {
         event_value = "on"
-        events << createEvent(name: "panel_state", value: "armed")
+        events << createEvent(name: "panel_state", value: "armed_stay")
     }
     else
         events << createEvent(name: "panel_state", value: "disarmed")
@@ -280,7 +282,7 @@ def refresh() {
     log.debug "Executing 'refresh'"
 
     def urn = device.currentValue("urn")
-    def apikey = device.currentValue("apikey")
+    def apikey = _get_api_key()
 
     return hub_http_get(urn, "/api/v1/alarmdecoder?apikey=${apikey}")
 }
@@ -386,7 +388,7 @@ private def parseEventMessage(String description) {
 
 def send_keys(keys) {
     def urn = device.currentValue("urn")
-    def apikey = device.currentValue("apikey")
+    def apikey = _get_api_key()
 
     return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${keys}" }""")  // TODO: Change key based on panel type.
 }
@@ -424,4 +426,14 @@ def _get_user_code() {
         user_code = "4112"
 
     return user_code
+}
+
+def _get_api_key() {
+    def api_key = settings.api_key
+
+    // TEMP
+    if (api_key == null)
+        api_key = 5
+
+    return api_key
 }

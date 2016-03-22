@@ -237,7 +237,6 @@ def addExistingDevices() {
                 urn -= "http://"
 
                 d.sendEvent(name: 'urn', value: urn)
-                d.sendEvent(name: 'apikey', value: 5)
 
                 // Force a status refresh
                 d.refresh()
