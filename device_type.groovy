@@ -15,6 +15,10 @@
  */
 import groovy.json.JsonSlurper;
 
+preferences {
+    input("user_code", "text", title: "Alarm Code", description: "The alarm code to use to arm and disarm the panel.")
+}
+
 metadata {
     definition (name: "AlarmDecoder Network Appliance", namespace: "alarmdecoder", author: "Scott Petersen") {
         capability "Refresh"
@@ -29,6 +33,7 @@ metadata {
         attribute "panel_state", "enum", ["armed", "disarmed", "alarming", "fire"]
 
         command "disarm"
+        command "arm_away"
     }
 
     simulator {
@@ -49,8 +54,16 @@ metadata {
             state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
         }
 
+        standardTile("arm_away", "device.arm_away", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+            state "default", action:"arm_away", icon:"st.locks.lock.locked"
+        }
+
+        standardTile("disarm", "device.disarm", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+            state "default", action:"disarm", icon:"st.locks.lock.unlocked"
+        }
+
         main(["status"])
-        details(["status", "refresh"])
+        details(["status", "refresh", "arm_away", "arm_stay", "disarm"])
     }
 }
 
@@ -246,15 +259,23 @@ def refresh() {
 def disarm() {
     def urn = device.currentValue("urn")
     def apikey = device.currentValue("apikey")
+    def user_code = settings.user_code
 
-    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "41122" }""")
+    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${user_code}1" }""")  // TODO: Change key based on panel type.
 }
 
 def arm_away() {
     def urn = device.currentValue("urn")
     def apikey = device.currentValue("apikey")
 
-    return hub_http_get(urn, "/api/v1/alarmdecoder?apikey=${apikey}")
+    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${user_code}2" }""")  // TODO: Change key based on panel type.
+}
+
+def arm_stay() {
+    def urn = device.currentValue("urn")
+    def apikey = device.currentValue("apikey")
+
+    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${user_code}3" }""")  // TODO: Change key based on panel type.
 }
 
 /*** Utility ***/
@@ -340,7 +361,7 @@ def hub_http_get(host, path) {
 }
 
 def hub_http_post(host, path, body) {
-    log.trace "hub_http_get: host=${host}, path=${path}"
+    log.trace "hub_http_post: host=${host}, path=${path}"
 
     def httpRequest = [
         method:     "POST",
