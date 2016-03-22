@@ -22,10 +22,10 @@ preferences {
 metadata {
     definition (name: "AlarmDecoder Network Appliance", namespace: "alarmdecoder", author: "Scott Petersen") {
         capability "Refresh"
-        capability "Switch"
-        capability "Lock"
-        capability "Alarm"
-        capability "smokeDetector"
+        capability "Switch"             // STAY
+        capability "Lock"               // AWAY
+        capability "Alarm"              // PANIC
+        capability "smokeDetector"      // FIRE
 
         attribute "urn", "string"
         attribute "apikey", "string"
@@ -33,7 +33,11 @@ metadata {
         attribute "panel_state", "enum", ["armed", "disarmed", "alarming", "fire"]
 
         command "disarm"
+        command "arm_stay"
         command "arm_away"
+        command "panic"
+
+        command "teststuff" // TEMP
     }
 
     simulator {
@@ -55,15 +59,23 @@ metadata {
         }
 
         standardTile("arm_away", "device.arm_away", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-            state "default", action:"arm_away", icon:"st.locks.lock.locked"
+            state "default", action:"lock.lock", icon:"st.locks.lock.locked"
+        }
+
+        standardTile("arm_stay", "device.arm_stay", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+            state "default", action:"switch.on", icon:"st.locks.lock.locked"
         }
 
         standardTile("disarm", "device.disarm", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-            state "default", action:"disarm", icon:"st.locks.lock.unlocked"
+            state "default", action:"lock.unlock", icon:"st.locks.lock.unlocked"
+        }
+
+        standardTile("teststuff", "device.teststuff", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+            state "default", action:"teststuff", icon:"st.contact.contact.closed"
         }
 
         main(["status"])
-        details(["status", "refresh", "arm_away", "arm_stay", "disarm"])
+        details(["status", "refresh", "arm_away", "arm_stay", "disarm", "teststuff"])
     }
 }
 
@@ -111,13 +123,20 @@ def parse(String description) {
 
 def on() {
     log.trace("on()")
-    set_stay(true)
+
+    return delayBetween([
+        arm_stay(),
+        refresh()
+    ], 2000)
 }
 
 def off() {
     log.trace("off()")
-    set_stay(false)
-    set_alarming(false)
+
+    return delayBetween([
+        disarm(),
+        refresh()
+    ], 2000)
 }
 
 def strobe() {
@@ -131,18 +150,28 @@ def siren() {
 def both() {
     log.trace("both() - panic")
 
-    // TODO: panic here.
-    set_alarming(true)
+    return delayBetween([
+        panic(),
+        refresh()
+    ], 2000)
 }
 
 def lock() {
     log.trace("lock()")
-    set_away(true)
+
+    return delayBetween([
+        arm_away(),
+        refresh()
+    ], 2000)
 }
 
 def unlock() {
     log.trace("unlock()")
-    set_away(false)
+
+    return delayBetween([
+        disarm(),
+        refresh()
+    ], 2000)
 }
 
 // Switch - STAY
@@ -276,6 +305,20 @@ def arm_stay() {
     def apikey = device.currentValue("apikey")
 
     return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${user_code}3" }""")  // TODO: Change key based on panel type.
+}
+
+def panic() {
+    def urn = device.currentValue("urn")
+    def apikey = device.currentValue("apikey")
+
+    // TODO: This doesn't work in any of the ways i've tried it.  Probably some limitation in groovy or json.  Going to need a panic api route.
+    def panic_key = sprintf("%c%c%c", 0x01, 0x01, 0x01)
+
+    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${panic_key}" }""")  // TODO: Change key based on panel type.
+}
+
+def teststuff() {
+
 }
 
 /*** Utility ***/
