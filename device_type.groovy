@@ -75,21 +75,17 @@ metadata {
 /*** Handlers ***/
 
 def updated() {
-    log.trace "Updated"
+    log.trace "--- handler.updated"
 }
 
 def uninstalled() {
-    log.trace "Uninstalled"
+    log.trace "--- handler.uninstalled"
 }
 
 // parse events into attributes
 def parse(String description) {
-    //log.debug "Parsing '${description}'"
-
     def events = []
     def event = parseEventMessage(description)
-
-    //log.trace "new event: ${event}"
 
     // HTTP
     if (event?.body && event?.headers) {
@@ -97,12 +93,12 @@ def parse(String description) {
         String bodyText = new String(event.body.decodeBase64())
         def result = slurper.parseText(bodyText)
 
-        log.trace "http result=${result}"
+        log.trace("--- handler.parse: http result=${result}")
 
         update_state(result).each { e-> events << e }
     }
 
-    log.trace "resulting events=${events}"
+    log.debug("--- handler.parse: resulting events=${events}")
 
     return events
 }
@@ -110,7 +106,7 @@ def parse(String description) {
 /*** Capabilities ***/
 
 def on() {
-    log.trace("on()")
+    log.trace("--- switch.on (arm stay)")
 
     return delayBetween([
         arm_stay(),
@@ -119,7 +115,7 @@ def on() {
 }
 
 def off() {
-    log.trace("off()")
+    log.trace("--- switch.off (disarm)")
 
     return delayBetween([
         disarm(),
@@ -128,15 +124,15 @@ def off() {
 }
 
 def strobe() {
-    log.trace("strobe() - do nothing")
+    log.trace("--- alarm.strobe, do nothing")
 }
 
 def siren() {
-    log.trace("siren() - do nothing")
+    log.trace("--- alarm.siren, do nothing")
 }
 
 def both() {
-    log.trace("both() - panic")
+    log.trace("--- alarm.both (panic)")
 
     return delayBetween([
         panic(),
@@ -145,7 +141,7 @@ def both() {
 }
 
 def lock() {
-    log.trace("lock()")
+    log.trace("--- lock.lock (arm)")
 
     return delayBetween([
         arm_away(),
@@ -154,7 +150,7 @@ def lock() {
 }
 
 def unlock() {
-    log.trace("unlock()")
+    log.trace("--- lock.unlock (disarm)")
 
     return delayBetween([
         disarm(),
@@ -165,7 +161,7 @@ def unlock() {
 /*** Commands ***/
 
 def refresh() {
-    log.debug "Executing 'refresh'"
+    log.trace("--- handler.refresh")
 
     def urn = device.currentValue("urn")
     def apikey = _get_api_key()
@@ -174,24 +170,32 @@ def refresh() {
 }
 
 def disarm() {
+    log.trace("--- disarm")
+
     def user_code = _get_user_code()
 
     return send_keys("${user_code}1")
 }
 
 def arm_away() {
+    log.trace("--- arm_away")
+
     def user_code = _get_user_code()
 
     return send_keys("${user_code}2")
 }
 
 def arm_stay() {
+    log.trace("--- arm_stay")
+
     def user_code = _get_user_code()
 
     return send_keys("${user_code}3")
 }
 
 def panic() {
+    log.trace("--- panic")
+
     // TODO: This doesn't work in any of the ways i've tried it.  Probably some limitation in groovy or json.  Going to need a panic api route.
     def panic_key = sprintf("%c%c%c", 0x01, 0x01, 0x01)
 
@@ -199,18 +203,23 @@ def panic() {
 }
 
 def teststuff() {
-
+    log.trace("--- test_stuff")
 }
 
 /*** Business Logic ***/
 
 def update_state(data) {
+    log.trace("--- update_state")
+
     def events = []
     def panel_state = data.panel_armed ? "armed" : "disarmed"
 
     // If our old armed state doesn't match, generate a lock event.
     if (state.armed != data.panel_armed)
+    {
+        log.debug("--- update_state: armed state changed.  new value: ${data.panel_armed}")
         events << createEvent(name: "lock", value: data.panel_armed ? "locked" : "unlocked")
+    }
 
     // If the panel is alarming, override armed/disarmed.
     if (data.panel_alarming)
@@ -218,7 +227,10 @@ def update_state(data) {
 
     // If our old alarming state doesn't match generate an alarm event.
     if (state.alarming != data.panel_alarming)
+    {
+        log.debug("--- update_state: alarming state changed.  new value: ${data.panel_alarming}")
         events << createEvent(name: "alarm", value: data.panel_alarming ? "both" : "off")
+    }
 
     // If the panel has detected a fire override all previous states.
     if (data.panel_fire_detected)
@@ -226,11 +238,17 @@ def update_state(data) {
 
     // If our old fire state doesn't match generate a smoke event.
     if (state.fire != data.panel_fire_detected)
+    {
+        log.debug("--- update_state: fire state changed.  new value: ${data.panel_fire_detected}")
         events << createEvent(name: "smoke", value: data.panel_fire_detected ? "detected" : "clear")    
+    }
 
     // And finally if our new panel state differs from our old one generate a new panel_state event.
     if (state.panel_state != panel_state)
+    {
+        log.debug("--- update_state: panel_state changed.  new value: ${panel_state}")
         events << createEvent(name: "panel_state", value: panel_state)
+    }
 
     // Set new states.
     state.panel_state = panel_state
@@ -312,6 +330,8 @@ private def parseEventMessage(String description) {
 }
 
 def send_keys(keys) {
+    log.trace("--- send_keys: keys=${keys}")
+
     def urn = device.currentValue("urn")
     def apikey = _get_api_key()
 
@@ -319,7 +339,7 @@ def send_keys(keys) {
 }
 
 def hub_http_get(host, path) {
-    log.trace "hub_http_get: host=${host}, path=${path}"
+    log.trace "--- hub_http_get: host=${host}, path=${path}"
 
     def httpRequest = [
         method:     "GET",
@@ -331,7 +351,7 @@ def hub_http_get(host, path) {
 }
 
 def hub_http_post(host, path, body) {
-    log.trace "hub_http_post: host=${host}, path=${path}"
+    log.trace "--- hub_http_post: host=${host}, path=${path}"
 
     def httpRequest = [
         method:     "POST",
