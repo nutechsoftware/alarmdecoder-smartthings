@@ -54,28 +54,21 @@ metadata {
             }
         }
 
-        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+        standardTile("refresh", "device.refresh", inactiveLabel: false, width: 2, height: 2) {
             state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
         }
 
-        standardTile("arm_away", "device.arm_away", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-            state "default", action:"lock.lock", icon:"st.locks.lock.locked"
+        standardTile("arm_disarm", "device.lock", inactiveLabel: false, width: 2, height: 2) {
+            state "locked", action:"lock.unlock", icon:"st.Home.home2", label: "Disarm"
+            state "unlocked", action:"lock.lock", icon:"st.Home.home3", label: "Arm"
         }
 
-        standardTile("arm_stay", "device.arm_stay", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-            state "default", action:"switch.on", icon:"st.locks.lock.locked"
-        }
-
-        standardTile("disarm", "device.disarm", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-            state "default", action:"lock.unlock", icon:"st.locks.lock.unlocked"
-        }
-
-        standardTile("teststuff", "device.teststuff", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+        standardTile("teststuff", "device.teststuff", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
             state "default", action:"teststuff", icon:"st.contact.contact.closed"
         }
 
         main(["status"])
-        details(["status", "refresh", "arm_away", "arm_stay", "disarm", "teststuff"])
+        details(["status", "refresh", "arm_disarm", "teststuff"])
     }
 }
 
@@ -91,12 +84,12 @@ def uninstalled() {
 
 // parse events into attributes
 def parse(String description) {
-    log.debug "Parsing '${description}'"
+    //log.debug "Parsing '${description}'"
 
     def events = []
     def event = parseEventMessage(description)
 
-    log.trace "new event: ${event}"
+    //log.trace "new event: ${event}"
 
     // HTTP
     if (event?.body && event?.headers) {
@@ -106,11 +99,7 @@ def parse(String description) {
 
         log.trace "http result=${result}"
 
-        // TODO: Fix null entries in events?
-        // TODO: Make this not sucky.
-        set_fire(result.panel_fire_detected).each { e -> events << e }
-        set_alarming(result.panel_alarming).each { e -> events << e }
-        set_away(result.panel_armed).each { e -> events << e }
+        update_state(result).each { e-> events << e }
     }
 
     log.trace "resulting events=${events}"
@@ -119,8 +108,6 @@ def parse(String description) {
 }
 
 /*** Capabilities ***/
-
-// NOTE: Do I really need these?  Should they make calls to the API to arm/disarm?
 
 def on() {
     log.trace("on()")
@@ -175,107 +162,6 @@ def unlock() {
     ], 2000)
 }
 
-// Switch - STAY
-// NOTE: This stuff doesn't work since we don't have a way to tell if we're armed stay or not from the alarmdecoder API.
-def set_stay(value) {
-    if (state.stay == value)
-        return
-
-    log.trace "set_stay(${value})"
-    state.stay = value
-
-    def events = []
-
-    def event_value = "off"
-    if (value) {
-        event_value = "on"
-        events << createEvent(name: "panel_state", value: "armed_stay")
-    }
-    else
-        events << createEvent(name: "panel_state", value: "disarmed")
-
-    events << createEvent(name: "switch", value: event_value)
-
-    return events
-}
-
-// Lock - AWAY
-def set_away(value) {
-    if (state.away == value)
-        return
-
-    log.trace "set_away(${value})"
-    state.away = value
-
-    def events = []
-
-    def event_value = "unlocked"
-    if (value) {
-        event_value = "locked"
-        events << createEvent(name: "panel_state", value: "armed")
-    }
-    else
-        events << createEvent(name: "panel_state", value: "disarmed")
-
-    events << createEvent(name: "lock", value: event_value)
-
-    return events
-}
-
-// Alarm
-def set_alarming(value) {
-    if (state.alarming == value)
-        return
-
-    log.trace "set_alarming(${value})"
-    state.alarming = value
-
-    def events = []
-
-    def event_value = "off"
-    if (value) {
-        event_value = "both"
-        events << createEvent(name: "panel_state", value: "alarming")
-    }
-    else {
-        if (state.away)
-            events << createEvent(name: "panel_state", value: "armed")
-        else
-            events << createEvent(name: "panel_state", value: "disarmed")
-    }
-
-    events << createEvent(name: "alarm", value: event_value)
-
-    return events
-}
-
-// smokeDetector - FIRE
-def set_fire(value) {
-    if (state.fire == value)
-        return
-
-    log.trace "set_fire(${value})"
-    state.fire = value
-
-    def events = []
-
-    def event_value = "clear"
-    if (value) {
-        event_value = "detected"
-        events << createEvent(name: "panel_state", value: "fire")
-    }
-    else {
-        if (state.away)
-            events << createEvent(name: "panel_state", value: "armed")
-        else
-            events << createEvent(name: "panel_state", value: "disarmed")
-    }
-
-    events << createEvent(name: "smoke", value: event_value)
-
-    return events
-}
-
 /*** Commands ***/
 
 def refresh() {
@@ -314,6 +200,45 @@ def panic() {
 
 def teststuff() {
 
+}
+
+/*** Business Logic ***/
+
+def update_state(data) {
+    def events = []
+    def panel_state = data.panel_armed ? "armed" : "disarmed"
+
+    // If our old armed state doesn't match, generate a lock event.
+    if (state.armed != data.panel_armed)
+        events << createEvent(name: "lock", value: data.panel_armed ? "locked" : "unlocked")
+
+    // If the panel is alarming, override armed/disarmed.
+    if (data.panel_alarming)
+        panel_state = "alarming"
+
+    // If our old alarming state doesn't match generate an alarm event.
+    if (state.alarming != data.panel_alarming)
+        events << createEvent(name: "alarm", value: data.panel_alarming ? "both" : "off")
+
+    // If the panel has detected a fire override all previous states.
+    if (data.panel_fire_detected)
+        panel_state = "fire"
+
+    // If our old fire state doesn't match generate a smoke event.
+    if (state.fire != data.panel_fire_detected)
+        events << createEvent(name: "smoke", value: data.panel_fire_detected ? "detected" : "clear")    
+
+    // And finally if our new panel state differs from our old one generate a new panel_state event.
+    if (state.panel_state != panel_state)
+        events << createEvent(name: "panel_state", value: panel_state)
+
+    // Set new states.
+    state.panel_state = panel_state
+    state.fire = data.panel_fire_detected
+    state.alarming = data.panel_alarming
+    state.armed = data.panel_armed
+
+    return events
 }
 
 /*** Utility ***/
@@ -390,7 +315,7 @@ def send_keys(keys) {
     def urn = device.currentValue("urn")
     def apikey = _get_api_key()
 
-    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${keys}" }""")  // TODO: Change key based on panel type.
+    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${keys}" }""")
 }
 
 def hub_http_get(host, path) {
