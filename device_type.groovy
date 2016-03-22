@@ -286,35 +286,28 @@ def refresh() {
 }
 
 def disarm() {
-    def urn = device.currentValue("urn")
-    def apikey = device.currentValue("apikey")
-    def user_code = settings.user_code
+    def user_code = _get_user_code()
 
-    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${user_code}1" }""")  // TODO: Change key based on panel type.
+    return send_keys("${user_code}1")
 }
 
 def arm_away() {
-    def urn = device.currentValue("urn")
-    def apikey = device.currentValue("apikey")
+    def user_code = _get_user_code()
 
-    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${user_code}2" }""")  // TODO: Change key based on panel type.
+    return send_keys("${user_code}2")
 }
 
 def arm_stay() {
-    def urn = device.currentValue("urn")
-    def apikey = device.currentValue("apikey")
+    def user_code = _get_user_code()
 
-    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${user_code}3" }""")  // TODO: Change key based on panel type.
+    return send_keys("${user_code}3")
 }
 
 def panic() {
-    def urn = device.currentValue("urn")
-    def apikey = device.currentValue("apikey")
-
     // TODO: This doesn't work in any of the ways i've tried it.  Probably some limitation in groovy or json.  Going to need a panic api route.
     def panic_key = sprintf("%c%c%c", 0x01, 0x01, 0x01)
 
-    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${panic_key}" }""")  // TODO: Change key based on panel type.
+    return send_keys("${panic_key}")
 }
 
 def teststuff() {
@@ -391,6 +384,13 @@ private def parseEventMessage(String description) {
     event
 }
 
+def send_keys(keys) {
+    def urn = device.currentValue("urn")
+    def apikey = device.currentValue("apikey")
+
+    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${keys}" }""")  // TODO: Change key based on panel type.
+}
+
 def hub_http_get(host, path) {
     log.trace "hub_http_get: host=${host}, path=${path}"
 
@@ -414,4 +414,14 @@ def hub_http_post(host, path, body) {
     ]
 
     return new physicalgraph.device.HubAction(httpRequest, "${host}")
+}
+
+def _get_user_code() {
+    def user_code = settings.user_code
+
+    // TEMP
+    if (user_code == null)
+        user_code = "4112"
+
+    return user_code
 }
