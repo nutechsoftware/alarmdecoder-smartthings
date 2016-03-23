@@ -47,10 +47,10 @@ metadata {
     tiles(scale: 2) {
         multiAttributeTile(name: "status", type: "generic", width: 6, height: 4) {
             tileAttribute("device.panel_state", key: "PRIMARY_CONTROL") {
-                attributeState "armed", label: 'Armed', icon: "st.contact.contact.closed", backgroundColor: "#ffa81e"
-                attributeState "armed_stay", label: 'Armed (stay)', icon: "st.contact.contact.closed", backgroundColor: "#ffa81e"
-                attributeState "disarmed", label: 'Disarmed', icon: "st.contact.contact.open", backgroundColor: "#79b821"
-                attributeState "alarming", label: 'Alarming!', icon: "st.contact.contact.open", backgroundColor: "#ff4000"
+                attributeState "armed", label: 'Armed', icon: "st.security.alarm.on", backgroundColor: "#ffa81e"
+                attributeState "armed_stay", label: 'Armed (stay)', icon: "st.security.alarm.on", backgroundColor: "#ffa81e"
+                attributeState "disarmed", label: 'Disarmed', icon: "st.security.alarm.off", backgroundColor: "#79b821"
+                attributeState "alarming", label: 'Alarming!', icon: "st.home.home2", backgroundColor: "#ff4000"
                 attributeState "fire", label: 'Fire!', icon: "st.contact.contact.closed", backgroundColor: "#ff0000"
             }
         }
@@ -60,16 +60,20 @@ metadata {
         }
 
         standardTile("arm_disarm", "device.lock", inactiveLabel: false, width: 2, height: 2) {
-            state "locked", action:"lock.unlock", icon:"st.Home.home2", label: "Disarm"
-            state "unlocked", action:"lock.lock", icon:"st.Home.home3", label: "Arm"
+            state "locked", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM"
+            state "unlocked", action:"lock.lock", icon:"st.security.alarm.on", label: "ARM"
+        }
+
+        standardTile("panic", "device.panic", inactiveLabel: false, width: 2, height: 2) {
+            state "default", action:"alarm.both", icon:"st.Health & Wellness.health9", label: "PANIC"
         }
 
         standardTile("teststuff", "device.teststuff", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
-            state "default", action:"teststuff", icon:"st.contact.contact.closed"
+            state "default", action:"teststuff", icon:"st.secondary.test"
         }
 
         main(["status"])
-        details(["status", "refresh", "arm_disarm", "teststuff"])
+        details(["status", "refresh", "arm_disarm", "panic", "teststuff"])
     }
 }
 
@@ -195,7 +199,7 @@ def arm_away() {
     if (settings.panel_type == "ADEMCO")
         keys = "${user_code}2"
     else if (settings.panel_type == "DSC")
-        keys = ""  // TODO: needs special keys.
+        keys = "a"
     else
         log.warn("--- arm_away: unknown panel_type.")
 
@@ -211,7 +215,7 @@ def arm_stay() {
     if (settings.panel_type == "ADEMCO")
         keys = "${user_code}3"
     else if (settings.panel_type == "DSC")
-        keys = ""  // TODO: needs special keys.
+        keys = "s"
     else
         log.warn("--- arm_stay: unknown panel_type.")
 
@@ -222,15 +226,15 @@ def panic() {
     log.trace("--- panic")
 
     // TODO: This doesn't work in any of the ways i've tried it.  Probably some limitation in groovy or json.  Going to need a panic api route.
-    def panic_key = sprintf("%c%c%c", 0x01, 0x01, 0x01)
+    def keys = ""
     if (settings.panel_type == "ADEMCO")
-        keys = ""  // TODO: needs special keys.
+        keys = "<PANIC>"
     else if (settings.panel_type == "DSC")
-        keys = ""  // TODO: needs special keys.
+        keys = ""  // TODO: how does one panic a DSC panel?  police?
     else
         log.warn("--- panic: unknown panel_type.")
 
-    return send_keys("${panic_key}")
+    return send_keys(keys)
 }
 
 def teststuff() {
