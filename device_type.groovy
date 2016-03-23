@@ -18,6 +18,7 @@ import groovy.json.JsonSlurper;
 preferences {
     input("api_key", "text", title: "API Key", description: "The key to access the REST API")
     input("user_code", "text", title: "Alarm Code", description: "The user code for the panel")
+    input("panel_type", "enum", title: "Panel Type", description: "Type of panel", options: ["ADEMCO", "DSC"], defaultValue: "ADEMCO", required: true)
 }
 
 metadata {
@@ -173,24 +174,48 @@ def disarm() {
     log.trace("--- disarm")
 
     def user_code = _get_user_code()
+    def keys = ""
 
-    return send_keys("${user_code}1")
+    if (settings.panel_type == "ADEMCO")
+        keys = "${user_code}1"
+    else if (settings.panel_type == "DSC")
+        keys = "${user_code}"
+    else
+        log.warn("--- disarm: unknown panel_type.")
+
+    return send_keys(keys)
 }
 
 def arm_away() {
     log.trace("--- arm_away")
 
     def user_code = _get_user_code()
+    def keys = ""
 
-    return send_keys("${user_code}2")
+    if (settings.panel_type == "ADEMCO")
+        keys = "${user_code}2"
+    else if (settings.panel_type == "DSC")
+        keys = ""  // TODO: needs special keys.
+    else
+        log.warn("--- arm_away: unknown panel_type.")
+
+    return send_keys(keys)
 }
 
 def arm_stay() {
     log.trace("--- arm_stay")
 
     def user_code = _get_user_code()
+    def keys = ""
 
-    return send_keys("${user_code}3")
+    if (settings.panel_type == "ADEMCO")
+        keys = "${user_code}3"
+    else if (settings.panel_type == "DSC")
+        keys = ""  // TODO: needs special keys.
+    else
+        log.warn("--- arm_stay: unknown panel_type.")
+
+    return send_keys(keys)
 }
 
 def panic() {
@@ -198,6 +223,12 @@ def panic() {
 
     // TODO: This doesn't work in any of the ways i've tried it.  Probably some limitation in groovy or json.  Going to need a panic api route.
     def panic_key = sprintf("%c%c%c", 0x01, 0x01, 0x01)
+    if (settings.panel_type == "ADEMCO")
+        keys = ""  // TODO: needs special keys.
+    else if (settings.panel_type == "DSC")
+        keys = ""  // TODO: needs special keys.
+    else
+        log.warn("--- panic: unknown panel_type.")
 
     return send_keys("${panic_key}")
 }
