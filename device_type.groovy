@@ -31,6 +31,7 @@ metadata {
 
         attribute "urn", "string"
         attribute "panel_state", "enum", ["armed", "armed_stay", "disarmed", "alarming", "fire"]
+        attribute "armed", "enum", ["armed", "disarmed", "arming", "disarming"]
 
         command "disarm"
         command "arm_stay"
@@ -55,14 +56,18 @@ metadata {
             }
         }
 
-        standardTile("arm_disarm", "device.lock", inactiveLabel: false, width: 2, height: 2) {
-            state "locked", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM"
-            state "unlocked", action:"lock.lock", icon:"st.security.alarm.on", label: "AWAY"
+        standardTile("arm_disarm", "device.armed", inactiveLabel: false, width: 2, height: 2) {
+            state "armed", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
+            state "disarmed", action:"lock.lock", icon:"st.security.alarm.on", label: "AWAY", nextState: "arming"
+            state "arming", action:"lock.unlock", icon:"st.security.alarm.off", label: "ARMING", nextState: "armed"
+            state "disarming", action:"lock.lock", icon:"st.security.alarm.on", label: "DISARMING", nextState: "disarmed"
         }
 
-        standardTile("stay_disarm", "device.switch", inactiveLabel: false, width: 2, height: 2) {
-            state "on", action:"switch.off", icon:"st.security.alarm.off", label: "DISARM"
-            state "off", action:"switch.on", icon:"st.Home.home4", label: "STAY"
+        standardTile("stay_disarm", "device.armed", inactiveLabel: false, width: 2, height: 2) {
+            state "armed", action:"switch.off", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
+            state "disarmed", action:"switch.on", icon:"st.Home.home4", label: "STAY", nextState: "arming"
+            state "arming", action:"lock.unlock", icon:"st.security.alarm.off", label: "ARMING", nextState: "armed"
+            state "disarming", action:"lock.lock", icon:"st.Home.home4", label: "DISARMING", nextState: "disarmed"
         }
 
         standardTile("panic", "device.panic", inactiveLabel: false, width: 2, height: 2) {
@@ -259,6 +264,7 @@ def update_state(data) {
     {
         log.debug("--- update_state: armed state changed.  new value: ${data.panel_armed}")
         events << createEvent(name: "lock", value: data.panel_armed ? "locked" : "unlocked")
+        events << createEvent(name: "armed", value: data.panel_armed ? "armed" : "disarmed")
     }
 
     // If the panel is alarming, override armed/disarmed.
@@ -284,7 +290,7 @@ def update_state(data) {
     }
 
     // And finally if our new panel state differs from our old one generate a new panel_state event.
-    if (state.panel_state != panel_state)
+    if (state.panel_state != panel_state || state.panel_state == 'alarming')
     {
         log.debug("--- update_state: panel_state changed.  new value: ${panel_state}")
         events << createEvent(name: "panel_state", value: panel_state)
