@@ -55,17 +55,22 @@ metadata {
             }
         }
 
-        standardTile("refresh", "device.refresh", inactiveLabel: false, width: 2, height: 2) {
-            state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
-        }
-
         standardTile("arm_disarm", "device.lock", inactiveLabel: false, width: 2, height: 2) {
             state "locked", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM"
-            state "unlocked", action:"lock.lock", icon:"st.security.alarm.on", label: "ARM"
+            state "unlocked", action:"lock.lock", icon:"st.security.alarm.on", label: "AWAY"
+        }
+
+        standardTile("stay_disarm", "device.switch", inactiveLabel: false, width: 2, height: 2) {
+            state "on", action:"switch.off", icon:"st.security.alarm.off", label: "DISARM"
+            state "off", action:"switch.on", icon:"st.Home.home4", label: "STAY"
         }
 
         standardTile("panic", "device.panic", inactiveLabel: false, width: 2, height: 2) {
             state "default", action:"alarm.both", icon:"st.Health & Wellness.health9", label: "PANIC"
+        }
+
+        standardTile("refresh", "device.refresh", inactiveLabel: false, width: 2, height: 2) {
+            state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
         }
 
         standardTile("teststuff", "device.teststuff", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
@@ -73,7 +78,7 @@ metadata {
         }
 
         main(["status"])
-        details(["status", "refresh", "arm_disarm", "panic", "teststuff"])
+        details(["status", "arm_disarm", "stay_disarm", "panic", "refresh", "teststuff"])
     }
 }
 
