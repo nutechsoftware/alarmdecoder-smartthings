@@ -32,6 +32,18 @@ metadata {
         attribute "urn", "string"
         attribute "panel_state", "enum", ["armed", "armed_stay", "disarmed", "alarming", "fire"]
         attribute "armed", "enum", ["armed", "disarmed", "arming", "disarming"]
+        attribute "zoneStatus1", "number"
+        attribute "zoneStatus2", "number"
+        attribute "zoneStatus3", "number"
+        attribute "zoneStatus4", "number"
+        attribute "zoneStatus5", "number"
+        attribute "zoneStatus6", "number"
+        attribute "zoneStatus7", "number"
+        attribute "zoneStatus8", "number"
+        attribute "zoneStatus9", "number"
+        attribute "zoneStatus10", "number"
+        attribute "zoneStatus11", "number"
+        attribute "zoneStatus12", "number"
 
         command "disarm"
         command "arm_stay"
@@ -74,16 +86,100 @@ metadata {
             state "default", action:"alarm.both", icon:"st.Health & Wellness.health9", label: "PANIC"
         }
 
-        standardTile("refresh", "device.refresh", inactiveLabel: false, width: 2, height: 2) {
+        valueTile("zoneStatus1", "device.zoneStatus1", inactiveLabel: false, width: 1, height: 1) {
+            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 1, color: "#ff0000"],
+                [value: 99, color: "#ff0000"]
+            ]
+        }
+
+        valueTile("zoneStatus2", "device.zoneStatus2", inactiveLabel: false, width: 1, height: 1) {
+            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 1, color: "#ff0000"],
+                [value: 99, color: "#ff0000"]
+            ]
+        }
+
+        valueTile("zoneStatus3", "device.zoneStatus3", inactiveLabel: false, width: 1, height: 1) {
+            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 1, color: "#ff0000"],
+                [value: 99, color: "#ff0000"]
+            ]
+        }
+
+        valueTile("zoneStatus4", "device.zoneStatus4", inactiveLabel: false, width: 1, height: 1) {
+            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 1, color: "#ff0000"],
+                [value: 99, color: "#ff0000"]
+            ]
+        }
+
+        valueTile("zoneStatus5", "device.zoneStatus5", inactiveLabel: false, width: 1, height: 1) {
+            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 1, color: "#ff0000"],
+                [value: 99, color: "#ff0000"]
+            ]
+        }
+
+        valueTile("zoneStatus6", "device.zoneStatus6", inactiveLabel: false, width: 1, height: 1) {
+            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 1, color: "#ff0000"],
+                [value: 99, color: "#ff0000"]
+            ]
+        }
+
+        valueTile("zoneStatus7", "device.zoneStatus7", inactiveLabel: false, width: 1, height: 1) {
+            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 1, color: "#ff0000"],
+                [value: 99, color: "#ff0000"]
+            ]
+        }
+
+        valueTile("zoneStatus8", "device.zoneStatus8", inactiveLabel: false, width: 1, height: 1) {
+            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 1, color: "#ff0000"],
+                [value: 99, color: "#ff0000"]
+            ]
+        }
+
+        valueTile("zoneStatus9", "device.zoneStatus9", inactiveLabel: false, width: 1, height: 1) {
+            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 1, color: "#ff0000"],
+                [value: 99, color: "#ff0000"]
+            ]
+        }
+
+        valueTile("zoneStatus10", "device.zoneStatus10", inactiveLabel: false, width: 1, height: 1) {
+            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 1, color: "#ff0000"],
+                [value: 99, color: "#ff0000"]
+            ]
+        }
+
+        valueTile("zoneStatus11", "device.zoneStatus11", inactiveLabel: false, width: 1, height: 1) {
+            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 1, color: "#ff0000"],
+                [value: 99, color: "#ff0000"]
+            ]
+        }
+
+        valueTile("zoneStatus12", "device.zoneStatus12", inactiveLabel: false, width: 1, height: 1) {
+            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 1, color: "#ff0000"],
+                [value: 99, color: "#ff0000"]
+            ]
+        }
+
+        standardTile("refresh", "device.refresh", inactiveLabel: false, width: 3, height: 2) {
             state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
         }
 
-        standardTile("teststuff", "device.teststuff", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
+        standardTile("teststuff", "device.teststuff", inactiveLabel: false, decoration: "flat", width: 3, height: 2) {
             state "default", action:"teststuff", icon:"st.secondary.test"
         }
 
         main(["status"])
-        details(["status", "arm_disarm", "stay_disarm", "panic", "refresh", "teststuff"])
+        details(["status", "arm_disarm", "stay_disarm", "panic", "zoneStatus1", "zoneStatus2", "zoneStatus3", "zoneStatus4", "zoneStatus5", "zoneStatus6", "zoneStatus7", "zoneStatus8", "zoneStatus9", "zoneStatus10", "zoneStatus11", "zoneStatus12", "refresh", "teststuff"])
     }
 }
 
@@ -296,6 +392,9 @@ def update_state(data) {
         events << createEvent(name: "panel_state", value: panel_state)
     }
 
+    def zone_events = build_zone_events(data)
+    events = events.plus(zone_events)
+
     // Set new states.
     state.panel_state = panel_state
     state.fire = data.panel_fire_detected
@@ -306,6 +405,22 @@ def update_state(data) {
 }
 
 /*** Utility ***/
+
+private def build_zone_events(data) {
+    def events = []
+
+    def temp_faultedzones = data.panel_zones_faulted
+    def number_of_zones_faulted = temp_faultedzones.size()
+
+    for (def i = 1; i <= 12; i++) {
+        if (i <= number_of_zones_faulted)
+            events << createEvent(name: "zoneStatus${i}", value: temp_faultedzones[i-1])
+        else
+            events << createEvent(name: "zoneStatus${i}", value: null)
+    }
+
+    return events
+}
 
 private def parseEventMessage(String description) {
     def event = [:]
