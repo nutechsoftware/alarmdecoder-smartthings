@@ -78,8 +78,8 @@ metadata {
         standardTile("stay_disarm", "device.armed", inactiveLabel: false, width: 2, height: 2) {
             state "armed", action:"switch.off", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
             state "disarmed", action:"switch.on", icon:"st.Home.home4", label: "STAY", nextState: "arming"
-            state "arming", action:"lock.unlock", icon:"st.security.alarm.off", label: "ARMING", nextState: "armed"
-            state "disarming", action:"lock.lock", icon:"st.Home.home4", label: "DISARMING", nextState: "disarmed"
+            state "arming", action:"switch.off", icon:"st.security.alarm.off", label: "ARMING", nextState: "armed"
+            state "disarming", action:"switch.on", icon:"st.Home.home4", label: "DISARMING", nextState: "disarmed"
         }
 
         standardTile("panic", "device.panic", inactiveLabel: false, width: 2, height: 2) {
@@ -187,6 +187,11 @@ metadata {
 
 def updated() {
     log.trace "--- handler.updated"
+
+    state.panel_state = "disarmed"
+    state.fire = false
+    state.alarming = false
+    state.armed = false
 }
 
 def uninstalled() {
@@ -219,6 +224,8 @@ def parse(String description) {
 def on() {
     log.trace("--- switch.on (arm stay)")
 
+    sendEvent(name: "armed", value: "armed")    // NOTE: Not sure if it's the best way to accomplish it, but solves the weird tile state issues I was having.
+
     return delayBetween([
         arm_stay(),
         refresh()
@@ -227,6 +234,8 @@ def on() {
 
 def off() {
     log.trace("--- switch.off (disarm)")
+
+    sendEvent(name: "armed", value: "disarmed")  // NOTE: Not sure if it's the best way to accomplish it, but solves the weird tile state issues I was having.
 
     return delayBetween([
         disarm(),
@@ -254,6 +263,8 @@ def both() {
 def lock() {
     log.trace("--- lock.lock (arm)")
 
+    sendEvent(name: "armed", value: "armed")    // NOTE: Not sure if it's the best way to accomplish it, but solves the weird tile state issues I was having.
+
     return delayBetween([
         arm_away(),
         refresh()
@@ -263,13 +274,13 @@ def lock() {
 def unlock() {
     log.trace("--- lock.unlock (disarm)")
 
+    sendEvent(name: "armed", value: "disarmed") // NOTE: Not sure if it's the best way to accomplish it, but solves the weird tile state issues I was having.
+
     return delayBetween([
         disarm(),
         refresh()
     ], 2000)
 }
-
-/*** Commands ***/
 
 def refresh() {
     log.trace("--- handler.refresh")
@@ -279,6 +290,8 @@ def refresh() {
 
     return hub_http_get(urn, "/api/v1/alarmdecoder?apikey=${apikey}")
 }
+
+/*** Commands ***/
 
 def disarm() {
     log.trace("--- disarm")
@@ -331,7 +344,6 @@ def arm_stay() {
 def panic() {
     log.trace("--- panic")
 
-    // TODO: This doesn't work in any of the ways i've tried it.  Probably some limitation in groovy or json.  Going to need a panic api route.
     def keys = ""
     if (settings.panel_type == "ADEMCO")
         keys = "<PANIC>"
@@ -355,42 +367,16 @@ def update_state(data) {
     def events = []
     def panel_state = data.panel_armed ? "armed" : "disarmed"
 
-    // If our old armed state doesn't match, generate a lock event.
-    if (state.armed != data.panel_armed)
-    {
-        log.debug("--- update_state: armed state changed.  new value: ${data.panel_armed}")
-        events << createEvent(name: "lock", value: data.panel_armed ? "locked" : "unlocked")
-        events << createEvent(name: "armed", value: data.panel_armed ? "armed" : "disarmed")
-    }
-
-    // If the panel is alarming, override armed/disarmed.
     if (data.panel_alarming)
         panel_state = "alarming"
-
-    // If our old alarming state doesn't match generate an alarm event.
-    if (state.alarming != data.panel_alarming)
-    {
-        log.debug("--- update_state: alarming state changed.  new value: ${data.panel_alarming}")
-        events << createEvent(name: "alarm", value: data.panel_alarming ? "both" : "off")
-    }
-
-    // If the panel has detected a fire override all previous states.
-    if (data.panel_fire_detected)
+    if (data.panel_fire_detected)  // NOTE: Fire overrides alarm since it's definitely more serious.
         panel_state = "fire"
 
-    // If our old fire state doesn't match generate a smoke event.
-    if (state.fire != data.panel_fire_detected)
-    {
-        log.debug("--- update_state: fire state changed.  new value: ${data.panel_fire_detected}")
-        events << createEvent(name: "smoke", value: data.panel_fire_detected ? "detected" : "clear")    
-    }
-
-    // And finally if our new panel state differs from our old one generate a new panel_state event.
-    if (state.panel_state != panel_state || state.panel_state == 'alarming')
-    {
-        log.debug("--- update_state: panel_state changed.  new value: ${panel_state}")
-        events << createEvent(name: "panel_state", value: panel_state)
-    }
+    events << createEvent(name: "lock", value: data.panel_armed ? "locked" : "unlocked")
+    events << createEvent(name: "armed", value: data.panel_armed ? "armed" : "disarmed")
+    events << createEvent(name: "alarm", value: data.panel_alarming ? "both" : "off")
+    events << createEvent(name: "smoke", value: data.panel_fire_detected ? "detected" : "clear")
+    events << createEvent(name: "panel_state", value: panel_state)
 
     def zone_events = build_zone_events(data)
     events = events.plus(zone_events)
