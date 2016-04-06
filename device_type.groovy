@@ -16,9 +16,15 @@
 import groovy.json.JsonSlurper;
 
 preferences {
-    input("api_key", "text", title: "API Key", description: "The key to access the REST API")
-    input("user_code", "text", title: "Alarm Code", description: "The user code for the panel")
-    input("panel_type", "enum", title: "Panel Type", description: "Type of panel", options: ["ADEMCO", "DSC"], defaultValue: "ADEMCO", required: true)
+    section() {
+        input("api_key", "text", title: "API Key", description: "The key to access the REST API")
+        input("user_code", "text", title: "Alarm Code", description: "The user code for the panel")
+        input("panel_type", "enum", title: "Panel Type", description: "Type of panel", options: ["ADEMCO", "DSC"], defaultValue: "ADEMCO", required: true)
+    }
+    section() {
+        //input("zonetracker1", "capability.switch", title: "ZoneTracker #1 - Switch", description: "Switch to use for Zone Tracker #1.")
+        input("zonetracker1zone", "number", title: "ZoneTracker #1 - Zone Number", description: "Zone number to associate with this switch.")
+    }
 }
 
 metadata {
@@ -400,7 +406,14 @@ private def build_zone_events(data) {
 
     for (def i = 1; i <= 12; i++) {
         if (i <= number_of_zones_faulted)
+        {
             events << createEvent(name: "zoneStatus${i}", value: temp_faultedzones[i-1])
+            if (temp_faultedzones[i-1] == settings.zonetracker1zone)
+                events << createEvent(name: "zonetracker1on", value: true)
+                //zonetracker1.on()
+                //parent.switch1On()
+            //    zonetracker1.on()
+        }
         else
             events << createEvent(name: "zoneStatus${i}", value: null)
     }

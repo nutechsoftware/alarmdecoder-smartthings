@@ -52,13 +52,21 @@ def updated() {
 def uninstalled() {
     log.trace "uninstalled"
 
+    unschedule()
+    unsubscribe()
+    runIn(300, do_uninstall)
+}
+
+def do_uninstall() {
     def devices = getChildDevices()
+
     devices.each {
         try {
-            deleteChildDevice(it.deviceNetworkId)            
+            log.trace "deleting child device: ${it.deviceNetworkId}"
+            deleteChildDevice(it.deviceNetworkId)
         }
         catch(Exception e) {
-            
+            log.trace("exception while uninstalling: ${e}")
         }
     }
 }
@@ -141,6 +149,15 @@ def refreshHandler() {
 
 /*** Commands ***/
 
+def switch1On(evt) {
+    log.trace("switch1On!")
+    //k, v -> k.contains("switch:1")
+    //getDevices()
+
+    def d = getChildDevices().each { k, v -> log.trace("${k} -> ${v}") }
+    //log.trace("switch1On: ${d}")
+}
+
 
 /*** Utility ***/
 
@@ -153,7 +170,8 @@ def discover_devices() {
     def options = state.devices.each { k, v ->
         log.trace "discover_devices: ${v}"
         def ip = convertHexToIP(v.ip)
-        found_devices["${k}"] = "AlarmDecoder @ ${ip}"
+        //found_devices["${k}"] = "AlarmDecoder @ ${ip}"
+        found_devices["${v.ip}:${v.port}"] = "AlarmDecoder @ ${ip}"
     }
 
     def numFound = found_devices.size() ?: 0
@@ -223,14 +241,18 @@ def addExistingDevices() {
 
     selected_devices.each { dni ->
         def d = getChildDevice(dni)
+        log.trace("addExistingDevices, getChildDevice(${dni})")
         if (!d) {
-            def newDevice = devices.find { k, v -> k == dni }
+            log.trace("devices=${devices}")
+            def newDevice = devices.find { /*k, v -> k == dni*/ k, v -> dni == "${v.ip}:${v.port}" }
+            log.trace("addExistingDevices, devices.find=${newDevice}")
             if (newDevice) {
                 // Set the device network ID so that hubactions get sent to the device parser.
                 def ip = newDevice.value.ip
                 def port = newDevice.value.port
 
                 d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", "${ip}:${port}", newDevice?.value.hub, [name: "${ip}:${port}", label: "AlarmDecoder", completedSetup: true])
+                subscribe(d, "zonetracker1on", switch1On)
 
                 // Set URN and APIKey on the child device
                 def urn = newDevice.value.ssdpPath
@@ -239,7 +261,21 @@ def addExistingDevices() {
                 d.sendEvent(name: 'urn', value: urn)
 
                 // Force a status refresh
+                // NOTE: needed?  won't work without an api key specified..
                 d.refresh()
+
+                // Add virtual zone switches.
+                for (def i = 0; i < 8; i++)
+                {
+                    def newSwitch = devices.find { k, v -> k == "${ip}:${port}:switch${i+1}" }
+                    if (!newSwitch)
+                    {
+                        def zone_switch = addChildDevice("alarmdecoder", "VirtualSwitch", "${ip}:${port}:switch${i+1}", newDevice.value.hub, [name: "${ip}:${port}:switch${i+1}", label: "AlarmDecoder Zone #${i+1}", completedSetup: true])
+
+                        //subscribe(zone_switch, "switch.on", switch1on)
+                        //subscribe(zone_switch, "switch.off", switch1off)
+                    }
+                }
             }
         }
     }
