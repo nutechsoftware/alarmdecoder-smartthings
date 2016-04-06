@@ -409,10 +409,7 @@ private def build_zone_events(data) {
         {
             events << createEvent(name: "zoneStatus${i}", value: temp_faultedzones[i-1])
             if (temp_faultedzones[i-1] == settings.zonetracker1zone)
-                events << createEvent(name: "zonetracker1on", value: true)
-                //zonetracker1.on()
-                //parent.switch1On()
-            //    zonetracker1.on()
+                events << createEvent(name: "zone-on", value: 1)
         }
         else
             events << createEvent(name: "zoneStatus${i}", value: null)

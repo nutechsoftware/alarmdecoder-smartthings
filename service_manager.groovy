@@ -149,13 +149,20 @@ def refreshHandler() {
 
 /*** Commands ***/
 
-def switch1On(evt) {
-    log.trace("switch1On!")
-    //k, v -> k.contains("switch:1")
-    //getDevices()
+def zoneOn(evt) {
+    log.trace("zoneOn: desc=${evt.value}")
+    
+    def d = getChildDevices().find { it.deviceNetworkId.contains("switch${evt.value}") }
+    if (d)
+        d.on()
+}
 
-    def d = getChildDevices().each { k, v -> log.trace("${k} -> ${v}") }
-    //log.trace("switch1On: ${d}")
+def zoneOff(evt) {
+    log.trace("zoneOff: desc=${evt.value}")
+    
+    def d = getChildDevices().find { it.deviceNetworkId.contains("switch${evt.value}") }
+    if (d)
+        d.off()
 }
 
 
@@ -252,7 +259,8 @@ def addExistingDevices() {
                 def port = newDevice.value.port
 
                 d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", "${ip}:${port}", newDevice?.value.hub, [name: "${ip}:${port}", label: "AlarmDecoder", completedSetup: true])
-                subscribe(d, "zonetracker1on", switch1On)
+                subscribe(d, "zone-on", zoneOn)
+                subscribe(d, "zone-off", zoneOff)
 
                 // Set URN and APIKey on the child device
                 def urn = newDevice.value.ssdpPath
