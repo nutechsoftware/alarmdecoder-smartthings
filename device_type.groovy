@@ -1,7 +1,7 @@
 /**
  *  AlarmDecoder Network Appliance
  *
- *  Copyright 2015 Scott Petersen
+ *  Copyright 2016 Nu Tech Software Solutions, Inc.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -17,13 +17,19 @@ import groovy.json.JsonSlurper;
 
 preferences {
     section() {
-        input("api_key", "text", title: "API Key", description: "The key to access the REST API")
-        input("user_code", "text", title: "Alarm Code", description: "The user code for the panel")
+        input("api_key", "text", title: "API Key", description: "The key to access the REST API", required: true)
+        input("user_code", "text", title: "Alarm Code", description: "The user code for the panel", required: true)
         input("panel_type", "enum", title: "Panel Type", description: "Type of panel", options: ["ADEMCO", "DSC"], defaultValue: "ADEMCO", required: true)
     }
     section() {
-        //input("zonetracker1", "capability.switch", title: "ZoneTracker #1 - Switch", description: "Switch to use for Zone Tracker #1.")
-        input("zonetracker1zone", "number", title: "ZoneTracker #1 - Zone Number", description: "Zone number to associate with this switch.")
+        input("zonetracker1zone", "number", title: "ZoneTracker Switch #1", description: "Zone number to associate with this switch.")
+        input("zonetracker2zone", "number", title: "ZoneTracker Switch #2", description: "Zone number to associate with this switch.")
+        input("zonetracker3zone", "number", title: "ZoneTracker Switch #3", description: "Zone number to associate with this switch.")
+        input("zonetracker4zone", "number", title: "ZoneTracker Switch #4", description: "Zone number to associate with this switch.")
+        input("zonetracker5zone", "number", title: "ZoneTracker Switch #5", description: "Zone number to associate with this switch.")
+        input("zonetracker6zone", "number", title: "ZoneTracker Switch #6", description: "Zone number to associate with this switch.")
+        input("zonetracker7zone", "number", title: "ZoneTracker Switch #7", description: "Zone number to associate with this switch.")
+        input("zonetracker8zone", "number", title: "ZoneTracker Switch #8", description: "Zone number to associate with this switch.")
     }
 }
 
@@ -194,6 +200,7 @@ metadata {
 def updated() {
     log.trace "--- handler.updated"
 
+    state.faulted_zones = []
     state.panel_state = "disarmed"
     state.fire = false
     state.alarming = false
@@ -217,6 +224,7 @@ def parse(String description) {
 
         log.trace("--- handler.parse: http result=${result}")
 
+        // Update alarm system state.
         update_state(result).each { e-> events << e }
     }
 
@@ -401,18 +409,56 @@ def update_state(data) {
 private def build_zone_events(data) {
     def events = []
 
+    // TODO: probably remove this.
+    if (state.faulted_zones == null)
+        state.faulted_zones = []
+
     def temp_faultedzones = data.panel_zones_faulted
     def number_of_zones_faulted = temp_faultedzones.size()
 
+    def new_faults = temp_faultedzones.minus(state.faulted_zones)
+    def cleared_faults = state.faulted_zones.minus(temp_faultedzones)
+
+    // Trigger switches for newly faulted zones.
+    for (def i = 0; i < new_faults.size(); i++)
+    {
+        def switch_events = update_zone_switches(new_faults[i], true)
+        events = events.plus(switch_events)
+    }
+
+    // Reset switches for cleared zones.
+    for (def i = 0; i < cleared_faults.size(); i++)
+    {
+        def switch_events = update_zone_switches(cleared_faults[i], false)
+        events = events.plus(switch_events)
+    }
+
+    // Fill zone tiles
     for (def i = 1; i <= 12; i++) {
         if (i <= number_of_zones_faulted)
-        {
             events << createEvent(name: "zoneStatus${i}", value: temp_faultedzones[i-1])
-            if (temp_faultedzones[i-1] == settings.zonetracker1zone)
-                events << createEvent(name: "zone-on", value: 1)
-        }
         else
             events << createEvent(name: "zoneStatus${i}", value: null)
+    }
+
+    state.faulted_zones = temp_faultedzones
+
+    return events
+}
+
+private def update_zone_switches(zone, faulted) {
+    def events = []
+
+    // Iterate through the zone tracker settings.  If the zone number matches,
+    // trigger an event for the service manager to use to flip the virtual
+    // switches.
+    for (def i = 1; i <= 8; i++) {
+        if (zone == settings."zonetracker${i}zone") {
+            if (faulted)
+                events << createEvent(name: "zone-on", value: i)
+            else
+                events << createEvent(name: "zone-off", value: i)
+        }
     }
 
     return events

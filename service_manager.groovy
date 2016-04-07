@@ -1,7 +1,7 @@
 /**
  *  AlarmDecoder Service Manager
  *
- *  Copyright 2015 Nu Tech Software Solutions, Inc.
+ *  Copyright 2016 Nu Tech Software Solutions, Inc.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -22,8 +22,7 @@ definition(
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
     iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
     iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
-    singleInstance: true) {
-    /*appSetting "ipAddress"*/}
+    singleInstance: true) { }
 
 preferences {
     page(name: "main", title: "Discover your AlarmDecoder", install: true, uninstall: true) {
@@ -52,23 +51,12 @@ def updated() {
 def uninstalled() {
     log.trace "uninstalled"
 
+    // HACK: Work around SmartThings wonky uninstall.  They claim unsubscribe is uncessary, 
+    //       but it is, as is the runIn() since everything is asynchronous.  Otherwise events
+    //       don't get correctly unbound and the devices can't be deleted because they're in use.
     unschedule()
     unsubscribe()
     runIn(300, do_uninstall)
-}
-
-def do_uninstall() {
-    def devices = getChildDevices()
-
-    devices.each {
-        try {
-            log.trace "deleting child device: ${it.deviceNetworkId}"
-            deleteChildDevice(it.deviceNetworkId)
-        }
-        catch(Exception e) {
-            log.trace("exception while uninstalling: ${e}")
-        }
-    }
 }
 
 def initialize() {
@@ -142,10 +130,8 @@ def locationHandler(evt) {
 def refreshHandler() {
     log.trace "refreshHandler"
 
-    //discover_alarmdecoder()
     refresh_alarmdecoders()
 }
-
 
 /*** Commands ***/
 
@@ -165,7 +151,6 @@ def zoneOff(evt) {
         d.off()
 }
 
-
 /*** Utility ***/
 
 def discover_devices() {
@@ -177,7 +162,6 @@ def discover_devices() {
     def options = state.devices.each { k, v ->
         log.trace "discover_devices: ${v}"
         def ip = convertHexToIP(v.ip)
-        //found_devices["${k}"] = "AlarmDecoder @ ${ip}"
         found_devices["${v.ip}:${v.port}"] = "AlarmDecoder @ ${ip}"
     }
 
@@ -191,7 +175,6 @@ def discover_devices() {
     }
     
     discover_alarmdecoder()
-    //verify_devices()
 
     return dynamicPage(name: "discover_devices", title: "Discovery started..", nextPage: "", refreshInterval: refreshInterval, install: true, uninstall: true) {
         section("Please wait.") {
@@ -212,6 +195,20 @@ def discover_alarmdecoder() {
     }
 
     sendHubCommand(new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN))
+}
+
+def do_uninstall() {
+    def devices = getChildDevices()
+
+    devices.each {
+        try {
+            log.trace "deleting child device: ${it.deviceNetworkId}"
+            deleteChildDevice(it.deviceNetworkId)
+        }
+        catch(Exception e) {
+            log.trace("exception while uninstalling: ${e}")
+        }
+    }
 }
 
 def scheduleRefresh() {
@@ -258,6 +255,7 @@ def addExistingDevices() {
                 def ip = newDevice.value.ip
                 def port = newDevice.value.port
 
+                // Create device and subscribe to it's zone-on/off events.
                 d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", "${ip}:${port}", newDevice?.value.hub, [name: "${ip}:${port}", label: "AlarmDecoder", completedSetup: true])
                 subscribe(d, "zone-on", zoneOn)
                 subscribe(d, "zone-off", zoneOff)
@@ -268,21 +266,12 @@ def addExistingDevices() {
 
                 d.sendEvent(name: 'urn', value: urn)
 
-                // Force a status refresh
-                // NOTE: needed?  won't work without an api key specified..
-                d.refresh()
-
                 // Add virtual zone switches.
                 for (def i = 0; i < 8; i++)
                 {
                     def newSwitch = devices.find { k, v -> k == "${ip}:${port}:switch${i+1}" }
                     if (!newSwitch)
-                    {
-                        def zone_switch = addChildDevice("alarmdecoder", "VirtualSwitch", "${ip}:${port}:switch${i+1}", newDevice.value.hub, [name: "${ip}:${port}:switch${i+1}", label: "AlarmDecoder Zone #${i+1}", completedSetup: true])
-
-                        //subscribe(zone_switch, "switch.on", switch1on)
-                        //subscribe(zone_switch, "switch.off", switch1off)
-                    }
+                        def zone_switch = addChildDevice("alarmdecoder", "VirtualSwitch", "${ip}:${port}:switch${i+1}", newDevice.value.hub, [name: "${ip}:${port}:switch${i+1}", label: "AlarmDecoder Zone Switch #${i+1}", completedSetup: true])
                 }
             }
         }
