@@ -267,7 +267,7 @@ def addExistingDevices() {
                 def urn = newDevice.value.ssdpPath
                 urn -= "http://"
 
-                d.sendEvent(name: 'urn', value: urn)
+                d.sendEvent(name: 'urn', value: urn, displayed: false)
 
                 // Add virtual zone switches.
                 for (def i = 0; i < 8; i++)
