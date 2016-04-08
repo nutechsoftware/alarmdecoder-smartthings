@@ -225,7 +225,10 @@ def parse(String description) {
         log.trace("--- handler.parse: http result=${result}")
 
         // Update alarm system state.
-        update_state(result).each { e-> events << e }
+        if (result.error != null)
+            log.error("Error accessing AlarmDecoder API: ${result.code} - ${result.error}")
+        else if (result.panel_armed != null)
+            update_state(result).each { e-> events << e }
     }
 
     log.debug("--- handler.parse: resulting events=${events}")
@@ -238,8 +241,8 @@ def parse(String description) {
 def on() {
     log.trace("--- switch.on (arm stay)")
 
-    sendEvent(name: "armed", value: "armed")    // NOTE: Not sure if it's the best way to accomplish it, but solves the weird tile state issues I was having.
-
+    sendEvent(name: "armed", value: "armed")    // NOTE: Not sure if it's the best way to accomplish it,
+                                                //       but solves the weird tile state issues I was having.
     return delayBetween([
         arm_stay(),
         refresh()
@@ -249,8 +252,8 @@ def on() {
 def off() {
     log.trace("--- switch.off (disarm)")
 
-    sendEvent(name: "armed", value: "disarmed")  // NOTE: Not sure if it's the best way to accomplish it, but solves the weird tile state issues I was having.
-
+    sendEvent(name: "armed", value: "disarmed") // NOTE: Not sure if it's the best way to accomplish it,
+                                                //       but solves the weird tile state issues I was having.
     return delayBetween([
         disarm(),
         refresh()
@@ -277,7 +280,8 @@ def both() {
 def lock() {
     log.trace("--- lock.lock (arm)")
 
-    sendEvent(name: "armed", value: "armed")    // NOTE: Not sure if it's the best way to accomplish it, but solves the weird tile state issues I was having.
+    sendEvent(name: "armed", value: "armed")    // NOTE: Not sure if it's the best way to accomplish it,
+                                                //       but solves the weird tile state issues I was having.
 
     return delayBetween([
         arm_away(),
@@ -288,7 +292,8 @@ def lock() {
 def unlock() {
     log.trace("--- lock.unlock (disarm)")
 
-    sendEvent(name: "armed", value: "disarmed") // NOTE: Not sure if it's the best way to accomplish it, but solves the weird tile state issues I was having.
+    sendEvent(name: "armed", value: "disarmed") // NOTE: Not sure if it's the best way to accomplish it,
+                                                //       but solves the weird tile state issues I was having.
 
     return delayBetween([
         disarm(),
@@ -413,15 +418,22 @@ private def build_zone_events(data) {
     if (state.faulted_zones == null)
         state.faulted_zones = []
 
+    //log.trace("Previous faulted zones: ${state.faulted_zones}")
+
     def temp_faultedzones = data.panel_zones_faulted
     def number_of_zones_faulted = temp_faultedzones.size()
 
     def new_faults = temp_faultedzones.minus(state.faulted_zones)
     def cleared_faults = state.faulted_zones.minus(temp_faultedzones)
 
+    //log.trace("Current faulted zones: ${temp_faultedzones}")
+    //log.trace("New faults: ${new_faults}")
+    //log.trace("Cleared faults: ${cleared_faults}")
+
     // Trigger switches for newly faulted zones.
     for (def i = 0; i < new_faults.size(); i++)
     {
+        //log.trace("Setting switch ${new_faults[i]}")
         def switch_events = update_zone_switches(new_faults[i], true)
         events = events.plus(switch_events)
     }
@@ -429,16 +441,23 @@ private def build_zone_events(data) {
     // Reset switches for cleared zones.
     for (def i = 0; i < cleared_faults.size(); i++)
     {
+        //log.trace("Clearing switch ${cleared_faults[i]}")
         def switch_events = update_zone_switches(cleared_faults[i], false)
         events = events.plus(switch_events)
     }
 
+    //log.trace("Filling zone tiles..")
+
     // Fill zone tiles
     for (def i = 1; i <= 12; i++) {
-        if (i <= number_of_zones_faulted)
-            events << createEvent(name: "zoneStatus${i}", value: temp_faultedzones[i-1])
-        else
-            events << createEvent(name: "zoneStatus${i}", value: null)
+        if (number_of_zones_faulted > 0 && i <= number_of_zones_faulted) {
+            if (device.currentValue("zoneStatus${1}") != temp_faultedzones[i-1])
+                events << createEvent(name: "zoneStatus${i}", value: temp_faultedzones[i-1])
+        }
+        else {
+            if (device.currentValue("zoneStatus${i}") != null)
+                events << createEvent(name: "zoneStatus${i}", value: null)
+        }
     }
 
     state.faulted_zones = temp_faultedzones
@@ -455,9 +474,9 @@ private def update_zone_switches(zone, faulted) {
     for (def i = 1; i <= 8; i++) {
         if (zone == settings."zonetracker${i}zone") {
             if (faulted)
-                events << createEvent(name: "zone-on", value: i)
+                events << createEvent(name: "zone-on", value: i, isStateChange: true)
             else
-                events << createEvent(name: "zone-off", value: i)
+                events << createEvent(name: "zone-off", value: i, isStateChange: true)
         }
     }
 

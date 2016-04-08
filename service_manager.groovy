@@ -221,9 +221,12 @@ def scheduleRefresh() {
 def refresh_alarmdecoders() {
     log.trace("refresh_alarmdecoders-")
     getAllChildDevices().each { device ->
-        log.trace("refresh_alarmdecoders: ${device}")
-
-        device.refresh()
+        // Only refresh the main device.
+        if (!device.deviceNetworkId.contains(":switch"))
+        {
+            log.trace("refresh_alarmdecoders: ${device}")
+            device.refresh()
+        }
     }
 }
 
@@ -257,8 +260,8 @@ def addExistingDevices() {
 
                 // Create device and subscribe to it's zone-on/off events.
                 d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", "${ip}:${port}", newDevice?.value.hub, [name: "${ip}:${port}", label: "AlarmDecoder", completedSetup: true])
-                subscribe(d, "zone-on", zoneOn)
-                subscribe(d, "zone-off", zoneOff)
+                subscribe(d, "zone-on", zoneOn, [filterEvents: false])
+                subscribe(d, "zone-off", zoneOff, [filterEvents: false])
 
                 // Set URN and APIKey on the child device
                 def urn = newDevice.value.ssdpPath
@@ -271,7 +274,12 @@ def addExistingDevices() {
                 {
                     def newSwitch = devices.find { k, v -> k == "${ip}:${port}:switch${i+1}" }
                     if (!newSwitch)
+                    {
                         def zone_switch = addChildDevice("alarmdecoder", "VirtualSwitch", "${ip}:${port}:switch${i+1}", newDevice.value.hub, [name: "${ip}:${port}:switch${i+1}", label: "AlarmDecoder Zone Switch #${i+1}", completedSetup: true])
+
+                        // Default switch to off.
+                        zone_switch.off()
+                    }
                 }
             }
         }
