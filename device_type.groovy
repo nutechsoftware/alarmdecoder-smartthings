@@ -74,7 +74,7 @@ metadata {
             tileAttribute("device.panel_state", key: "PRIMARY_CONTROL") {
                 attributeState "armed", label: 'Armed', icon: "st.security.alarm.on", backgroundColor: "#ffa81e"
                 attributeState "armed_stay", label: 'Armed (stay)', icon: "st.security.alarm.on", backgroundColor: "#ffa81e"
-                attributeState "disarmed", label: 'Disarmed', icon: "st.security.alarm.off", backgroundColor: "#79b821"
+                attributeState "disarmed", label: 'Disarmed', icon: "st.security.alarm.off", backgroundColor: "#79b821", defaultState: true
                 attributeState "alarming", label: 'Alarming!', icon: "st.home.home2", backgroundColor: "#ff4000"
                 attributeState "fire", label: 'Fire!', icon: "st.contact.contact.closed", backgroundColor: "#ff0000"
             }
@@ -226,7 +226,7 @@ def parse(String description) {
 
         // Update alarm system state.
         if (result.error != null)
-            log.error("Error accessing AlarmDecoder API: ${result.code} - ${result.error}")
+            log.error("Error accessing AlarmDecoder API: ${result.error.code} - ${result.error.message}")
         else if (result.panel_armed != null)
             update_state(result).each { e-> events << e }
     }
@@ -392,7 +392,7 @@ def update_state(data) {
         panel_state = "fire"
 
     events << createEvent(name: "lock", value: data.panel_armed ? "locked" : "unlocked")
-    events << createEvent(name: "armed", value: data.panel_armed ? "armed" : "disarmed")
+    events << createEvent(name: "armed", value: data.panel_armed ? "armed" : "disarmed", displayed: false)
     events << createEvent(name: "alarm", value: data.panel_alarming ? "both" : "off")
     events << createEvent(name: "smoke", value: data.panel_fire_detected ? "detected" : "clear")
     events << createEvent(name: "panel_state", value: panel_state)
@@ -420,11 +420,11 @@ private def build_zone_events(data) {
 
     //log.trace("Previous faulted zones: ${state.faulted_zones}")
 
-    def temp_faultedzones = data.panel_zones_faulted
-    def number_of_zones_faulted = temp_faultedzones.size()
+    def current_faults = data.panel_zones_faulted
+    def number_of_zones_faulted = current_faults.size()
 
-    def new_faults = temp_faultedzones.minus(state.faulted_zones)
-    def cleared_faults = state.faulted_zones.minus(temp_faultedzones)
+    def new_faults = current_faults.minus(state.faulted_zones)
+    def cleared_faults = state.faulted_zones.minus(current_faults)
 
     //log.trace("Current faulted zones: ${temp_faultedzones}")
     //log.trace("New faults: ${new_faults}")
@@ -451,16 +451,19 @@ private def build_zone_events(data) {
     // Fill zone tiles
     for (def i = 1; i <= 12; i++) {
         if (number_of_zones_faulted > 0 && i <= number_of_zones_faulted) {
-            if (device.currentValue("zoneStatus${1}") != temp_faultedzones[i-1])
-                events << createEvent(name: "zoneStatus${i}", value: temp_faultedzones[i-1])
+            if (device.currentValue("zoneStatus${i}") != current_faults[i-1])
+                events << createEvent(name: "zoneStatus${i}", value: current_faults[i-1], displayed: false)
         }
         else {
             if (device.currentValue("zoneStatus${i}") != null)
-                events << createEvent(name: "zoneStatus${i}", value: null)
+                events << createEvent(name: "zoneStatus${i}", value: "", displayed: false)  // HACK: Setting this to an empty string has less issues
+                                                                                            //       than setting it to null.  Setting it to null
+                                                                                            //       results in a NumberFormatException after installing
+                                                                                            //       a new version of the device type.
         }
     }
 
-    state.faulted_zones = temp_faultedzones
+    state.faulted_zones = current_faults
 
     return events
 }
@@ -474,9 +477,9 @@ private def update_zone_switches(zone, faulted) {
     for (def i = 1; i <= 8; i++) {
         if (zone == settings."zonetracker${i}zone") {
             if (faulted)
-                events << createEvent(name: "zone-on", value: i, isStateChange: true)
+                events << createEvent(name: "zone-on", value: i, isStateChange: true, displayed: false)
             else
-                events << createEvent(name: "zone-off", value: i, isStateChange: true)
+                events << createEvent(name: "zone-off", value: i, isStateChange: true, displayed: false)
         }
     }
 
