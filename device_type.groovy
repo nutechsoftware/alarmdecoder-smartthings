@@ -197,6 +197,11 @@ metadata {
 
 /*** Handlers ***/
 
+def installed() {
+    for (def i = 1; i <= 12; i++)
+        sendEvent(name: "zoneStatus${i}", value: "", displayed: false)
+}
+
 def updated() {
     log.trace "--- handler.updated"
 
@@ -205,6 +210,9 @@ def updated() {
     state.fire = false
     state.alarming = false
     state.armed = false
+
+    for (def i = 1; i <= 12; i++)
+        sendEvent(name: "zoneStatus${i}", value: "", displayed: false)
 }
 
 def uninstalled() {
