@@ -599,19 +599,11 @@ def hub_http_post(host, path, body) {
 def _get_user_code() {
     def user_code = settings.user_code
 
-    // TEMP
-    if (user_code == null)
-        user_code = "4112"
-
     return user_code
 }
 
 def _get_api_key() {
     def api_key = settings.api_key
-
-    // TEMP
-    if (api_key == null)
-        api_key = 5
 
     return api_key
 }
