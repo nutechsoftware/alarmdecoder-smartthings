@@ -426,7 +426,7 @@ private def build_zone_events(data) {
     if (state.faulted_zones == null)
         state.faulted_zones = []
 
-    //log.trace("Previous faulted zones: ${state.faulted_zones}")
+    log.trace("Previous faulted zones: ${state.faulted_zones}")
 
     def current_faults = data.panel_zones_faulted
     def number_of_zones_faulted = current_faults.size()
@@ -434,14 +434,14 @@ private def build_zone_events(data) {
     def new_faults = current_faults.minus(state.faulted_zones)
     def cleared_faults = state.faulted_zones.minus(current_faults)
 
-    //log.trace("Current faulted zones: ${temp_faultedzones}")
-    //log.trace("New faults: ${new_faults}")
-    //log.trace("Cleared faults: ${cleared_faults}")
+    log.trace("Current faulted zones: ${current_faults}")
+    log.trace("New faults: ${new_faults}")
+    log.trace("Cleared faults: ${cleared_faults}")
 
     // Trigger switches for newly faulted zones.
     for (def i = 0; i < new_faults.size(); i++)
     {
-        //log.trace("Setting switch ${new_faults[i]}")
+        log.trace("Setting switch ${new_faults[i]}")
         def switch_events = update_zone_switches(new_faults[i], true)
         events = events.plus(switch_events)
     }
@@ -449,7 +449,7 @@ private def build_zone_events(data) {
     // Reset switches for cleared zones.
     for (def i = 0; i < cleared_faults.size(); i++)
     {
-        //log.trace("Clearing switch ${cleared_faults[i]}")
+        log.trace("Clearing switch ${cleared_faults[i]}")
         def switch_events = update_zone_switches(cleared_faults[i], false)
         events = events.plus(switch_events)
     }
@@ -477,6 +477,8 @@ private def build_zone_events(data) {
 }
 
 private def update_zone_switches(zone, faulted) {
+    log.trace("update_zone_switches: ${zone} -> ${faulted}")
+
     def events = []
 
     // Iterate through the zone tracker settings.  If the zone number matches,
@@ -484,6 +486,7 @@ private def update_zone_switches(zone, faulted) {
     // switches.
     for (def i = 1; i <= 8; i++) {
         if (zone == settings."zonetracker${i}zone") {
+            log.trace("Found matching switch: ${i}")
             if (faulted)
                 events << createEvent(name: "zone-on", value: i, isStateChange: true, displayed: false)
             else

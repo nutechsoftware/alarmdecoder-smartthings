@@ -136,7 +136,7 @@ def refreshHandler() {
 /*** Commands ***/
 
 def zoneOn(evt) {
-    log.trace("zoneOn: desc=${evt.value}")
+    log.trace("zoneOn: switch id=${evt.value}")
     
     def d = getChildDevices().find { it.deviceNetworkId.contains("switch${evt.value}") }
     if (d)
@@ -144,7 +144,7 @@ def zoneOn(evt) {
 }
 
 def zoneOff(evt) {
-    log.trace("zoneOff: desc=${evt.value}")
+    log.trace("zoneOff: switch id=${evt.value}")
     
     def d = getChildDevices().find { it.deviceNetworkId.contains("switch${evt.value}") }
     if (d)
