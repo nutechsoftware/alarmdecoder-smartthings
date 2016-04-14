@@ -17,8 +17,8 @@ import groovy.json.JsonSlurper;
 
 preferences {
     section() {
-        input("api_key", "text", title: "API Key", description: "The key to access the REST API", required: true)
-        input("user_code", "text", title: "Alarm Code", description: "The user code for the panel", required: true)
+        input("api_key", "password", title: "API Key", description: "The key to access the REST API", required: true)
+        input("user_code", "password", title: "Alarm Code", description: "The user code for the panel", required: true)
         input("panel_type", "enum", title: "Panel Type", description: "Type of panel", options: ["ADEMCO", "DSC"], defaultValue: "ADEMCO", required: true)
     }
     section() {
@@ -61,8 +61,6 @@ metadata {
         command "arm_stay"
         command "arm_away"
         command "panic"
-
-        command "teststuff" // TEMP
     }
 
     simulator {
@@ -182,12 +180,8 @@ metadata {
             ]
         }
 
-        standardTile("refresh", "device.refresh", inactiveLabel: false, width: 3, height: 2) {
+        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", width: 6, height: 2) {
             state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
-        }
-
-        standardTile("teststuff", "device.teststuff", inactiveLabel: false, decoration: "flat", width: 3, height: 2) {
-            state "default", action:"teststuff", icon:"st.secondary.test"
         }
 
         main(["status"])
