@@ -44,6 +44,7 @@ metadata {
         attribute "urn", "string"
         attribute "panel_state", "enum", ["armed", "armed_stay", "disarmed", "alarming", "fire"]
         attribute "armed", "enum", ["armed", "disarmed", "arming", "disarming"]
+        attribute "panic", "string"
         attribute "zoneStatus1", "number"
         attribute "zoneStatus2", "number"
         attribute "zoneStatus3", "number"
@@ -59,8 +60,10 @@ metadata {
 
         command "disarm"
         command "arm_stay"
-        command "arm_away"
-        command "panic"
+        command "arm_away"     
+        command "panicx"
+        command "panic1"
+        command "panic2"
     }
 
     simulator {
@@ -93,7 +96,9 @@ metadata {
         }
 
         standardTile("panic", "device.panic", inactiveLabel: false, width: 2, height: 2) {
-            state "default", action:"alarm.both", icon:"st.Health & Wellness.health9", label: "PANIC"
+            state "default", icon:"st.Health & Wellness.health9", label: "PANIC", nextState: "panic1", action: "panic1"
+            state "panic1", icon: "st.Health & Wellness.health9", label: "PANIC", nextState: "panic2", action: "panic2", backgroundColor: "#ffa81e"
+            state "panic2", icon: "st.Health & Wellness.health9", label: "PANIC", nextState: "default", action: "alarm.both", backgroundColor: "#ff4000"
         }
 
         valueTile("zoneStatus1", "device.zoneStatus1", inactiveLabel: false, width: 1, height: 1) {
@@ -204,6 +209,7 @@ def updated() {
     state.fire = false
     state.alarming = false
     state.armed = false
+    state.panic_started = null;
 
     for (def i = 1; i <= 12; i++)
         sendEvent(name: "zoneStatus${i}", value: "", displayed: false)
@@ -273,8 +279,10 @@ def siren() {
 def both() {
     log.trace("--- alarm.both (panic)")
 
+    state.panic_started = null;
+
     return delayBetween([
-        panic(),
+        panicx(),
         refresh()
     ], 2000)
 }
@@ -362,7 +370,7 @@ def arm_stay() {
     return send_keys(keys)
 }
 
-def panic() {
+def panicx() {
     log.trace("--- panic")
 
     def keys = ""
@@ -376,8 +384,28 @@ def panic() {
     return send_keys(keys)
 }
 
-def teststuff() {
-    log.trace("--- test_stuff")
+def panic1() {
+    state.panic_started = new Date().time
+
+    runIn(10, checkPanic);
+
+    log.trace("Panic stage 1: ${state.panic_started}")
+}
+
+def panic2() {
+    state.panic_started = new Date().time
+
+    runIn(10, checkPanic);
+
+    log.trace("Panic stage 2: ${state.panic_started}")
+}
+
+def checkPanic() {
+    log.trace("checkPanic");
+    if (state.panic_started != null && new Date().time - state.panic_started >= 10) {
+        sendEvent(name: "panic", value: "default", isStateChange: true);
+        log.trace("clearing panic");
+    }
 }
 
 /*** Business Logic ***/
