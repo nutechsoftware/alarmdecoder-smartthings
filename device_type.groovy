@@ -44,7 +44,7 @@ metadata {
         attribute "urn", "string"
         attribute "panel_state", "enum", ["armed", "armed_stay", "disarmed", "alarming", "fire"]
         attribute "armed", "enum", ["armed", "disarmed", "arming", "disarming"]
-        attribute "panic", "string"
+        attribute "panic_state", "string"
         attribute "zoneStatus1", "number"
         attribute "zoneStatus2", "number"
         attribute "zoneStatus3", "number"
@@ -61,7 +61,7 @@ metadata {
         command "disarm"
         command "arm_stay"
         command "arm_away"     
-        command "panicx"
+        command "panic"
         command "panic1"
         command "panic2"
     }
@@ -95,7 +95,7 @@ metadata {
             state "disarming", action:"switch.on", icon:"st.Home.home4", label: "DISARMING", nextState: "disarmed"
         }
 
-        standardTile("panic", "device.panic", inactiveLabel: false, width: 2, height: 2) {
+        standardTile("panic", "device.panic_state", inactiveLabel: false, width: 2, height: 2) {
             state "default", icon:"st.Health & Wellness.health9", label: "PANIC", nextState: "panic1", action: "panic1"
             state "panic1", icon: "st.Health & Wellness.health9", label: "PANIC", nextState: "panic2", action: "panic2", backgroundColor: "#ffa81e"
             state "panic2", icon: "st.Health & Wellness.health9", label: "PANIC", nextState: "default", action: "alarm.both", backgroundColor: "#ff4000"
@@ -282,7 +282,7 @@ def both() {
     state.panic_started = null;
 
     return delayBetween([
-        panicx(),
+        panic(),
         refresh()
     ], 2000)
 }
@@ -370,7 +370,7 @@ def arm_stay() {
     return send_keys(keys)
 }
 
-def panicx() {
+def panic() {
     log.trace("--- panic")
 
     def keys = ""
@@ -403,7 +403,7 @@ def panic2() {
 def checkPanic() {
     log.trace("checkPanic");
     if (state.panic_started != null && new Date().time - state.panic_started >= 10) {
-        sendEvent(name: "panic", value: "default", isStateChange: true);
+        sendEvent(name: "panic_state", value: "default", isStateChange: true);
         log.trace("clearing panic");
     }
 }
