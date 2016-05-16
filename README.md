@@ -11,7 +11,7 @@ This repository provides support for the AlarmDecoder webapp inside of the Smart
 * Lock - Used to represent the panel in an ARMED AWAY state.  Triggering lock.lock() will arm the panel and lock.unlock() will disarm the panel.  This is the primary capability for watching for armed/disarmed events.
 * Alarm - Used to indicate an alarming state and also may trigger a panic on the panel with alarm.both().
 * SmokeDetector - Used to indicate if a FIRE was detected on the panel.
-* Virtual Switches - The service manager smartapp creates 8 virtual switches which are used to provide triggers when configured zones are tripped on the alarm panel.
+* Virtual Switches - The service manager smartapp creates 8 virtual contact sensors which are used to provide triggers when configured zones are tripped on the alarm panel.
 
 ## Setup
 
@@ -19,7 +19,7 @@ This repository provides support for the AlarmDecoder webapp inside of the Smart
 2. Click on My Device Handlers
   1. Click on Create New Device Handler
   2. Click the From Code tab
-  3. Paste the contents of virtual_switch.groovy into the box and press Create.
+  3. Paste the contents of virtual_contact_sensor.groovy into the box and press Create.
   4. Click Publish -> For Me
 3. Repeat the process with device_type.groovy.
 4. Click on My SmartApps
