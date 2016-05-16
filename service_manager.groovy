@@ -140,7 +140,7 @@ def zoneOn(evt) {
     
     def d = getChildDevices().find { it.deviceNetworkId.contains("switch${evt.value}") }
     if (d)
-        d.on()
+        d.sendEvent(name: "contact", value: "closed", isStateChange: true, filtered: true)
 }
 
 def zoneOff(evt) {
@@ -148,7 +148,7 @@ def zoneOff(evt) {
     
     def d = getChildDevices().find { it.deviceNetworkId.contains("switch${evt.value}") }
     if (d)
-        d.off()
+        d.sendEvent(name: "contact", value: "open", isStateChange: true, filtered: true)
 }
 
 /*** Utility ***/
@@ -270,16 +270,16 @@ def addExistingDevices() {
                 subscribe(d, "zone-on", zoneOn, [filterEvents: false])
                 subscribe(d, "zone-off", zoneOff, [filterEvents: false])
 
-                // Add virtual zone switches.
+                // Add virtual zone contact sensors.
                 for (def i = 0; i < 8; i++)
                 {
                     def newSwitch = devices.find { k, v -> k == "${ip}:${port}:switch${i+1}" }
                     if (!newSwitch)
                     {
-                        def zone_switch = addChildDevice("alarmdecoder", "VirtualSwitch", "${ip}:${port}:switch${i+1}", newDevice.value.hub, [name: "${ip}:${port}:switch${i+1}", label: "AlarmDecoder Zone Switch #${i+1}", completedSetup: true])
+                        def zone_switch = addChildDevice("alarmdecoder", "VirtualContactSensor", "${ip}:${port}:switch${i+1}", newDevice.value.hub, [name: "${ip}:${port}:switch${i+1}", label: "AlarmDecoder Zone Sensor #${i+1}", completedSetup: true])
 
-                        // Default switch to off.
-                        zone_switch.off()
+                        // Default contact to closed.
+                        zone_switch.sendEvent(name: "contact", value: "open", isStateChange: true, displayed: false);
                     }
                 }
             }
