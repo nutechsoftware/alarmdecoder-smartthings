@@ -260,14 +260,15 @@ def addExistingDevices() {
 
                 // Create device and subscribe to it's zone-on/off events.
                 d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", "${ip}:${port}", newDevice?.value.hub, [name: "${ip}:${port}", label: "AlarmDecoder", completedSetup: true])
-                subscribe(d, "zone-on", zoneOn, [filterEvents: false])
-                subscribe(d, "zone-off", zoneOff, [filterEvents: false])
 
                 // Set URN and APIKey on the child device
                 def urn = newDevice.value.ssdpPath
                 urn -= "http://"
 
                 d.sendEvent(name: 'urn', value: urn, displayed: false)
+
+                subscribe(d, "zone-on", zoneOn, [filterEvents: false])
+                subscribe(d, "zone-off", zoneOff, [filterEvents: false])
 
                 // Add virtual zone switches.
                 for (def i = 0; i < 8; i++)
