@@ -22,14 +22,14 @@ preferences {
         input("panel_type", "enum", title: "Panel Type", description: "Type of panel", options: ["ADEMCO", "DSC"], defaultValue: "ADEMCO", required: true)
     }
     section() {
-        input("zonetracker1zone", "number", title: "ZoneTracker Switch #1", description: "Zone number to associate with this switch.")
-        input("zonetracker2zone", "number", title: "ZoneTracker Switch #2", description: "Zone number to associate with this switch.")
-        input("zonetracker3zone", "number", title: "ZoneTracker Switch #3", description: "Zone number to associate with this switch.")
-        input("zonetracker4zone", "number", title: "ZoneTracker Switch #4", description: "Zone number to associate with this switch.")
-        input("zonetracker5zone", "number", title: "ZoneTracker Switch #5", description: "Zone number to associate with this switch.")
-        input("zonetracker6zone", "number", title: "ZoneTracker Switch #6", description: "Zone number to associate with this switch.")
-        input("zonetracker7zone", "number", title: "ZoneTracker Switch #7", description: "Zone number to associate with this switch.")
-        input("zonetracker8zone", "number", title: "ZoneTracker Switch #8", description: "Zone number to associate with this switch.")
+        input("zonetracker1zone", "number", title: "ZoneTracker Sensor #1", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker2zone", "number", title: "ZoneTracker Sensor #2", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker3zone", "number", title: "ZoneTracker Sensor #3", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker4zone", "number", title: "ZoneTracker Sensor #4", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker5zone", "number", title: "ZoneTracker Sensor #5", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker6zone", "number", title: "ZoneTracker Sensor #6", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker7zone", "number", title: "ZoneTracker Sensor #7", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker8zone", "number", title: "ZoneTracker Sensor #8", description: "Zone number to associate with this contact sensor.")
     }
 }
 
