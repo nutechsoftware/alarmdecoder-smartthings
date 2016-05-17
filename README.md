@@ -11,7 +11,7 @@ This repository provides support for the AlarmDecoder webapp inside of the Smart
 * Lock - Used to represent the panel in an ARMED AWAY state.  Triggering lock.lock() will arm the panel and lock.unlock() will disarm the panel.  This is the primary capability for watching for armed/disarmed events.
 * Alarm - Used to indicate an alarming state and also may trigger a panic on the panel with alarm.both().
 * SmokeDetector - Used to indicate if a FIRE was detected on the panel.
-* Virtual Switches - The service manager smartapp creates 8 virtual contact sensors which are used to provide triggers when configured zones are tripped on the alarm panel.
+* Virtual Zone Sensors - The service manager smartapp creates 8 virtual contact sensors which are used to provide triggers when configured zones are tripped on the alarm panel.
 
 ## Setup
 
@@ -38,7 +38,7 @@ This repository provides support for the AlarmDecoder webapp inside of the Smart
 17. Input the API key you generated from [https://alarmdecoder.local/api/](https://alarmdecoder.local/api/)
 18. Input the alarm code you'd like to use to arm/disarm your panel.
 19. Select your panel type.
-20. Zone switches may be configured to turn themselves on and off when a zone is faulted.  For example, specifying zone 7 for Zonetracker Switch #1 would trip that switch whenever zone 7 is faulted.
+20. Zone sensors may be configured to open and close themselves when a zone is faulted.  For example, specifying zone 7 for Zonetracker Sensor #1 would trip that sensor whenever zone 7 is faulted.
 
 ## Known Issues
 
