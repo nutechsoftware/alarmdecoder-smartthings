@@ -41,7 +41,6 @@ metadata {
         capability "Alarm"              // PANIC
         capability "smokeDetector"      // FIRE
 
-        attribute "urn", "string"
         attribute "panel_state", "enum", ["armed", "armed_stay", "disarmed", "alarming", "fire"]
         attribute "armed", "enum", ["armed", "disarmed", "arming", "disarming"]
         attribute "panic_state", "string"
@@ -314,7 +313,7 @@ def unlock() {
 def refresh() {
     log.trace("--- handler.refresh")
 
-    def urn = device.currentValue("urn")
+    def urn = getDataValue("urn")
     def apikey = _get_api_key()
 
     return hub_http_get(urn, "/api/v1/alarmdecoder?apikey=${apikey}")
@@ -587,7 +586,7 @@ private def parseEventMessage(String description) {
 def send_keys(keys) {
     log.trace("--- send_keys: keys=${keys}")
 
-    def urn = device.currentValue("urn")
+    def urn = getDataValue("urn")
     def apikey = _get_api_key()
 
     return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${keys}" }""")
