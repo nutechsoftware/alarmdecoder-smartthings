@@ -51,7 +51,7 @@ def updated() {
 def uninstalled() {
     log.trace "uninstalled"
 
-    // HACK: Work around SmartThings wonky uninstall.  They claim unsubscribe is uncessary, 
+    // HACK: Work around SmartThings wonky uninstall.  They claim unsubscribe is uncessary,
     //       but it is, as is the runIn() since everything is asynchronous.  Otherwise events
     //       don't get correctly unbound and the devices can't be deleted because they're in use.
     unschedule()
@@ -77,19 +77,19 @@ def initialize() {
 
 def locationHandler(evt) {
     log.trace "locationHandler"
-    
+
     def description = evt.description
     def hub = evt?.hubId
-    
+
     log.trace "locationHandler: description=${description}"
-    
+
     def parsedEvent = parseEventMessage(description)
     parsedEvent << ["hub":hub]
 
     // LAN EVENTS
     if (parsedEvent?.ssdpTerm?.contains("urn:schemas-upnp-org:device:AlarmDecoder:1")) {
         getDevices()
-        
+
         if (!(state.devices."${parsedEvent.ssdpUSN.toString()}")) {
             log.trace "locationHandler: Adding device: ${parsedEvent.ssdpUSN}"
 
@@ -138,18 +138,30 @@ def refreshHandler() {
 
 def zoneOn(evt) {
     log.trace("zoneOn: desc=${evt.value}")
-    
+
     def d = getChildDevices().find { it.deviceNetworkId.contains("switch${evt.value}") }
     if (d)
-        d.sendEvent(name: "contact", value: "closed", isStateChange: true, filtered: true)
+    {
+        def sensorValue = "closed"
+        if (settings.defaultSensorToClosed == true)
+            sensorValue = "open"
+
+        d.sendEvent(name: "contact", value: sensorValue, isStateChange: true, filtered: true)
+    }
 }
 
 def zoneOff(evt) {
     log.trace("zoneOff: desc=${evt.value}")
-    
+
     def d = getChildDevices().find { it.deviceNetworkId.contains("switch${evt.value}") }
     if (d)
-        d.sendEvent(name: "contact", value: "open", isStateChange: true, filtered: true)
+    {
+        def sensorValue = "open"
+        if (settings.defaultSensorToClosed == true)
+            sensorValue = "closed"
+
+        d.sendEvent(name: "contact", value: sensorValue, isStateChange: true, filtered: true)
+    }
 }
 
 /*** Utility ***/
@@ -174,12 +186,13 @@ def discover_devices() {
         subscribe(location, null, locationHandler, [filterEvents: false])
         state.subscribed = true
     }
-    
+
     discover_alarmdecoder()
 
     return dynamicPage(name: "discover_devices", title: "Discovery started..", nextPage: "", refreshInterval: refreshInterval, install: true, uninstall: true) {
         section("Please wait.") {
             input "selectedDevices", "enum", required: false, title: "Select device(s) (${numFound} found)", multiple: true, options: found_devices
+            input(name: "defaultSensorToClosed", type: "bool", defaultValue: true, title: "Default zone sensors to closed?")
             // TEMP: REMOVE THIS
             href(name: "refreshDevices", title: "Refresh", required: false, page: "discover_devices")
         }
@@ -235,7 +248,7 @@ def getDevices() {
     if(!state.devices) {
         state.devices = [:]
     }
-    
+
     state.devices
 }
 
@@ -291,8 +304,12 @@ private def configureDevices() {
         {
             def zone_switch = addChildDevice("alarmdecoder", "VirtualContactSensor", "${state.ip}:${state.port}:switch${i+1}", state.hub, [name: "${state.ip}:${state.port}:switch${i+1}", label: "AlarmDecoder Zone Sensor #${i+1}", completedSetup: true])
 
-            // Default contact to open.
-            zone_switch.sendEvent(name: "contact", value: "open", isStateChange: true, displayed: false)
+            def sensorValue = "open"
+            if (settings.defaultSensorToClosed == true)
+                sensorValue = "closed"
+
+            // Set default contact state.
+            zone_switch.sendEvent(name: "contact", value: sensorValue, isStateChange: true, displayed: false)
         }
     }
 }
