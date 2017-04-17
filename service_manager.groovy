@@ -69,6 +69,7 @@ def initialize() {
 
     if (selectedDevices) {
         addExistingDevices()
+        configureDevices()
     }
 
     scheduleRefresh()
@@ -89,13 +90,13 @@ def locationHandler(evt) {
     if (parsedEvent?.ssdpTerm?.contains("urn:schemas-upnp-org:device:AlarmDecoder:1")) {
         getDevices()
         
-        if (!(devices."${parsedEvent.ssdpUSN.toString()}")) {
+        if (!(state.devices."${parsedEvent.ssdpUSN.toString()}")) {
             log.trace "locationHandler: Adding device: ${parsedEvent.ssdpUSN}"
 
             devices << ["${parsedEvent.ssdpUSN.toString()}": parsedEvent]
         }
         else {
-            def d = devices."${parsedEvent.ssdpUSN.toString()}"
+            def d = state.devices."${parsedEvent.ssdpUSN.toString()}"
             boolean deviceChangedValues = false
 
             log.trace "locationHandler: device already exists.. checking for changed values"
@@ -251,38 +252,47 @@ def addExistingDevices() {
         log.trace("addExistingDevices, getChildDevice(${dni})")
         if (!d) {
             log.trace("devices=${devices}")
-            def newDevice = devices.find { /*k, v -> k == dni*/ k, v -> dni == "${v.ip}:${v.port}" }
+            def newDevice = state.devices.find { /*k, v -> k == dni*/ k, v -> dni == "${v.ip}:${v.port}" }
             log.trace("addExistingDevices, devices.find=${newDevice}")
+
             if (newDevice) {
                 // Set the device network ID so that hubactions get sent to the device parser.
-                def ip = newDevice.value.ip
-                def port = newDevice.value.port
+                state.ip = newDevice.value.ip
+                state.port = newDevice.value.port
+                state.hub = newDevice.value.hub
 
-                // Create device and subscribe to it's zone-on/off events.
-                d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", "${ip}:${port}", newDevice?.value.hub, [name: "${ip}:${port}", label: "AlarmDecoder", completedSetup: true])
-
-                // Set URN and APIKey on the child device
+                // Set URN for the child device
                 def urn = newDevice.value.ssdpPath
                 urn -= "http://"
+                state.urn = urn
 
-                d.sendEvent(name: 'urn', value: urn, displayed: false)
-
-                subscribe(d, "zone-on", zoneOn, [filterEvents: false])
-                subscribe(d, "zone-off", zoneOff, [filterEvents: false])
-
-                // Add virtual zone contact sensors.
-                for (def i = 0; i < 8; i++)
-                {
-                    def newSwitch = devices.find { k, v -> k == "${ip}:${port}:switch${i+1}" }
-                    if (!newSwitch)
-                    {
-                        def zone_switch = addChildDevice("alarmdecoder", "VirtualContactSensor", "${ip}:${port}:switch${i+1}", newDevice.value.hub, [name: "${ip}:${port}:switch${i+1}", label: "AlarmDecoder Zone Sensor #${i+1}", completedSetup: true])
-
-                        // Default contact to closed.
-                        zone_switch.sendEvent(name: "contact", value: "open", isStateChange: true, displayed: false);
-                    }
-                }
+                // Create device and subscribe to it's zone-on/off events.
+                d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", "${state.ip}:${state.port}", newDevice?.value.hub, [name: "${state.ip}:${state.port}", label: "AlarmDecoder", completedSetup: true, data:[urn: state.urn]])
             }
+        }
+    }
+}
+
+private def configureDevices() {
+    def device = getChildDevice("${state.ip}:${state.port}")
+    if (!device) {
+        log.trace("configureDevices: Could not find primary device.")
+        return
+    }
+
+    subscribe(device, "zone-on", zoneOn, [filterEvents: false])
+    subscribe(device, "zone-off", zoneOff, [filterEvents: false])
+
+    // Add virtual zone contact sensors.
+    for (def i = 0; i < 8; i++)
+    {
+        def newSwitch = state.devices.find { k, v -> k == "${state.ip}:${state.port}:switch${i+1}" }
+        if (!newSwitch)
+        {
+            def zone_switch = addChildDevice("alarmdecoder", "VirtualContactSensor", "${state.ip}:${state.port}:switch${i+1}", state.hub, [name: "${state.ip}:${state.port}:switch${i+1}", label: "AlarmDecoder Zone Sensor #${i+1}", completedSetup: true])
+
+            // Default contact to open.
+            zone_switch.sendEvent(name: "contact", value: "open", isStateChange: true, displayed: false)
         }
     }
 }
