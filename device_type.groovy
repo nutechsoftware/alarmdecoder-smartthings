@@ -59,7 +59,7 @@ metadata {
 
         command "disarm"
         command "arm_stay"
-        command "arm_away"     
+        command "arm_away"
         command "panic"
         command "panic1"
         command "panic2"
@@ -102,6 +102,7 @@ metadata {
 
         valueTile("zoneStatus1", "device.zoneStatus1", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
             ]
@@ -109,6 +110,7 @@ metadata {
 
         valueTile("zoneStatus2", "device.zoneStatus2", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
             ]
@@ -116,6 +118,7 @@ metadata {
 
         valueTile("zoneStatus3", "device.zoneStatus3", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
             ]
@@ -123,6 +126,7 @@ metadata {
 
         valueTile("zoneStatus4", "device.zoneStatus4", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
             ]
@@ -130,6 +134,7 @@ metadata {
 
         valueTile("zoneStatus5", "device.zoneStatus5", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
             ]
@@ -137,6 +142,7 @@ metadata {
 
         valueTile("zoneStatus6", "device.zoneStatus6", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
             ]
@@ -144,6 +150,7 @@ metadata {
 
         valueTile("zoneStatus7", "device.zoneStatus7", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
             ]
@@ -151,6 +158,7 @@ metadata {
 
         valueTile("zoneStatus8", "device.zoneStatus8", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
             ]
@@ -158,6 +166,7 @@ metadata {
 
         valueTile("zoneStatus9", "device.zoneStatus9", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
             ]
@@ -165,6 +174,7 @@ metadata {
 
         valueTile("zoneStatus10", "device.zoneStatus10", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
             ]
@@ -172,6 +182,7 @@ metadata {
 
         valueTile("zoneStatus11", "device.zoneStatus11", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
             ]
@@ -179,6 +190,7 @@ metadata {
 
         valueTile("zoneStatus12", "device.zoneStatus12", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"", label: '${currentValue}', backgroundColors: [
+                [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
             ]
