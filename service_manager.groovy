@@ -64,6 +64,10 @@ def initialize() {
 
     unsubscribe()
     state.subscribed = false
+    state.lastSHMStatus = null
+    state.lastAlarmDecoderStatus = null
+
+    subscribe(location, "alarmSystemStatus", shmAlarmHandler)
 
     unschedule()
 
@@ -164,6 +168,44 @@ def zoneOff(evt) {
     }
 }
 
+def shmAlarmHandler(evt) {
+    if (settings.shmIntegration == false)
+        return
+
+    log.trace("shmAlarmHandler -- ${evt.value}")
+
+    if (state.lastSHMStatus != evt.value && evt.value != state.lastAlarmDecoderStatus)
+    {
+        getAllChildDevices().each { device ->
+            if (!device.deviceNetworkId.contains(":switch"))
+            {
+                if (evt.value == "away")
+                    device.lock()
+                else if (evt.value == "stay")
+                    device.on()
+                else if (evt.value == "off")
+                    device.off()
+                else
+                    log.debug "Unknown SHM alarm value: ${evt.value}"
+            }
+        }
+    }
+
+    state.lastSHMStatus = evt.value
+}
+
+def alarmdecoderAlarmHandler(evt) {
+    if (settings.shmIntegration == false || settings.shmChangeSHMStatus == false)
+        return
+
+    log.trace("alarmdecoderAlarmHandler: ${evt.value}")
+
+    if (state.lastAlarmDecoderStatus != evt.value && evt.value != state.lastSHMStatus)
+        sendLocationEvent(name: "alarmSystemStatus", value: evt.value)
+
+    state.lastAlarmDecoderStatus = evt.value
+}
+
 /*** Utility ***/
 
 def discover_devices() {
@@ -189,12 +231,18 @@ def discover_devices() {
 
     discover_alarmdecoder()
 
-    return dynamicPage(name: "discover_devices", title: "Discovery started..", nextPage: "", refreshInterval: refreshInterval, install: true, uninstall: true) {
-        section("Please wait.") {
+    return dynamicPage(name: "discover_devices", title: "Setup", nextPage: "", refreshInterval: refreshInterval, install: true, uninstall: true) {
+        section("Devices") {
             input "selectedDevices", "enum", required: false, title: "Select device(s) (${numFound} found)", multiple: true, options: found_devices
-            input(name: "defaultSensorToClosed", type: "bool", defaultValue: true, title: "Default zone sensors to closed?")
-            // TEMP: REMOVE THIS
+            // TEMP: REMOVE THIS?
             href(name: "refreshDevices", title: "Refresh", required: false, page: "discover_devices")
+        }
+        section("Smart Home Monitor Integration") {
+            input(name: "shmIntegration", type: "bool", defaultValue: true, title: "Integrate with Smart Home Monitor?")
+            input(name: "shmChangeSHMStatus", type: "bool", defaultValue: true, title: "Automatically change Smart Home Monitor status when armed or disarmed?")
+        }
+        section("Zone Sensors") {
+            input(name: "defaultSensorToClosed", type: "bool", defaultValue: true, title: "Default zone sensors to closed?")
         }
     }
 }
@@ -295,6 +343,7 @@ private def configureDevices() {
 
     subscribe(device, "zone-on", zoneOn, [filterEvents: false])
     subscribe(device, "zone-off", zoneOff, [filterEvents: false])
+    subscribe(device, "alarmStatus", alarmdecoderAlarmHandler, [filterEvents: false])
 
     // Add virtual zone contact sensors.
     for (def i = 0; i < 8; i++)
