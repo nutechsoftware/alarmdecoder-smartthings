@@ -1,4 +1,4 @@
-This repository provides support for the AlarmDecoder webapp inside of the SmartThings home automation platform.  In the future it will also support the Z-Wave version of our product.
+This repository provides support for the AlarmDecoder webapp inside of the SmartThings home automation platform.
 
 ## Requirements
 
