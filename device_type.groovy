@@ -437,8 +437,16 @@ def update_state(data) {
     events << createEvent(name: "alarm", value: data.panel_alarming ? "both" : "off")
     events << createEvent(name: "smoke", value: data.panel_fire_detected ? "detected" : "clear")
     events << createEvent(name: "panel_state", value: panel_state)
-    // TODO: alarmStatus STAY support.
-    events << createEvent(name: "alarmStatus", value: data.panel_armed ? "away" : "off", isStateChange: true, displayed: false)
+
+    // Create an event to notify Smart Home Monitor.
+    def alarm_status = "off"
+    if (data.panel_armed)
+    {
+        alarm_status = "away"
+        if (data.panel_armed_stay != null && data.panel_armed_stay == true)
+            alarm_status = "stay"
+    }
+    events << createEvent(name: "alarmStatus", value: alarm_status, isStateChange: true, displayed: false)
 
     def zone_events = build_zone_events(data)
     events = events.plus(zone_events)
