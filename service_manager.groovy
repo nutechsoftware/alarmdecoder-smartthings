@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
+
 definition(
     name: "AlarmDecoder (Service Manager)",
     namespace: "alarmdecoder",
@@ -31,6 +32,14 @@ preferences {
         }
     }
     page(name: "discover_devices", title: "Discovery started..", content: "discover_devices", refreshTimeout: 5)
+}
+
+mappings {
+    path("/update") {
+        action: [
+            GET: "webserviceUpdate"
+        ]
+    }
 }
 
 /*** Handlers ***/
@@ -136,6 +145,14 @@ def refreshHandler() {
     log.trace "refreshHandler"
 
     refresh_alarmdecoders()
+}
+
+def webserviceUpdate()
+{
+    log.trace "webserviceUpdate"
+
+    refresh_alarmdecoders()
+    return [status: "OK"]
 }
 
 /*** Commands ***/
