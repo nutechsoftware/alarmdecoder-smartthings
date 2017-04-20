@@ -358,7 +358,7 @@ def arm_away() {
     if (settings.panel_type == "ADEMCO")
         keys = "${user_code}2"
     else if (settings.panel_type == "DSC")
-        keys = "a"
+        keys = "<S5>"
     else
         log.warn("--- arm_away: unknown panel_type.")
 
@@ -374,7 +374,7 @@ def arm_stay() {
     if (settings.panel_type == "ADEMCO")
         keys = "${user_code}3"
     else if (settings.panel_type == "DSC")
-        keys = "s"
+        keys = "<S4>"
     else
         log.warn("--- arm_stay: unknown panel_type.")
 
@@ -384,14 +384,7 @@ def arm_stay() {
 def panic() {
     log.trace("--- panic")
 
-    def keys = ""
-    if (settings.panel_type == "ADEMCO")
-        keys = "<PANIC>"
-    else if (settings.panel_type == "DSC")
-        keys = ""  // TODO: how does one panic a DSC panel?  police?
-    else
-        log.warn("--- panic: unknown panel_type.")
-
+    def keys = "<S2>"
     return send_keys(keys)
 }
 
@@ -425,7 +418,8 @@ def update_state(data) {
     log.trace("--- update_state")
 
     def events = []
-    def panel_state = data.panel_armed ? "armed" : "disarmed"
+    def armed = data.panel_armed || (data.panel_armed_stay != null && data.panel_armed_stay == true)
+    def panel_state = armed ? "armed" : "disarmed"
 
     if (data.panel_alarming)
         panel_state = "alarming"
@@ -433,17 +427,17 @@ def update_state(data) {
         panel_state = "fire"
 
     events << createEvent(name: "lock", value: data.panel_armed ? "locked" : "unlocked")
-    events << createEvent(name: "armed", value: data.panel_armed ? "armed" : "disarmed", displayed: false)
+    events << createEvent(name: "armed", value: armed ? "armed" : "disarmed", displayed: false)
     events << createEvent(name: "alarm", value: data.panel_alarming ? "both" : "off")
     events << createEvent(name: "smoke", value: data.panel_fire_detected ? "detected" : "clear")
     events << createEvent(name: "panel_state", value: panel_state)
 
     // Create an event to notify Smart Home Monitor.
     def alarm_status = "off"
-    if (data.panel_armed)
+    if (armed)
     {
         alarm_status = "away"
-        if (data.panel_armed_stay != null && data.panel_armed_stay == true)
+        if (data.panel_armed_stay == true)
             alarm_status = "stay"
     }
     events << createEvent(name: "alarmStatus", value: alarm_status, isStateChange: true, displayed: false)
