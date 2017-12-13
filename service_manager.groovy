@@ -340,9 +340,8 @@ def addExistingDevices() {
                 state.hub = newDevice.value.hub
 
                 // Set URN for the child device
-                def urn = newDevice.value.ssdpPath
-                urn -= "http://"
-                state.urn = urn
+                state.urn = convertHexToIP(state.ip) + ":" + convertHexToInt(state.port)
+                log.trace("AlarmDecoder webapp api endpoint('${state.urn}')")
 
                 // Create device and subscribe to it's zone-on/off events.
                 d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", "${state.ip}:${state.port}", newDevice?.value.hub, [name: "${state.ip}:${state.port}", label: "AlarmDecoder", completedSetup: true, data:[urn: state.urn]])
