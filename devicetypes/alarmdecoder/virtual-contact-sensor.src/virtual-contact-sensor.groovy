@@ -1,7 +1,7 @@
 /* Virtual Contact Sensor for alarm panel zones */
 
 metadata {
-    definition (name: "VirtualContactSensor", namespace: "alarmdecoder", author: "scott@nutech.com") {
+    definition (name: "virtual contact sensor", namespace: "alarmdecoder", author: "scott@nutech.com") {
         capability "Contact Sensor"
         capability "Refresh"
     }

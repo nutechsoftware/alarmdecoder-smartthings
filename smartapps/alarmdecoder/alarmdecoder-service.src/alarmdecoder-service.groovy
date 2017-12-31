@@ -15,7 +15,7 @@
  */
 
 definition(
-    name: "AlarmDecoder (Service Manager)",
+    name: "alarmdecoder service",
     namespace: "alarmdecoder",
     author: "Nu Tech Software Solutions, Inc.",
     description: "AlarmDecoder (Service Manager)",
@@ -344,7 +344,7 @@ def addExistingDevices() {
                 log.trace("AlarmDecoder webapp api endpoint('${state.urn}')")
 
                 // Create device and subscribe to it's zone-on/off events.
-                d = addChildDevice("alarmdecoder", "AlarmDecoder Network Appliance", "${state.ip}:${state.port}", newDevice?.value.hub, [name: "${state.ip}:${state.port}", label: "AlarmDecoder", completedSetup: true, data:[urn: state.urn]])
+                d = addChildDevice("alarmdecoder", "network appliance", "${state.ip}:${state.port}", newDevice?.value.hub, [name: "${state.ip}:${state.port}", label: "AlarmDecoder", completedSetup: true, data:[urn: state.urn]])
             }
         }
     }
@@ -367,7 +367,7 @@ private def configureDevices() {
         def newSwitch = state.devices.find { k, v -> k == "${state.ip}:${state.port}:switch${i+1}" }
         if (!newSwitch)
         {
-            def zone_switch = addChildDevice("alarmdecoder", "VirtualContactSensor", "${state.ip}:${state.port}:switch${i+1}", state.hub, [name: "${state.ip}:${state.port}:switch${i+1}", label: "AlarmDecoder Zone Sensor #${i+1}", completedSetup: true])
+            def zone_switch = addChildDevice("alarmdecoder", "virtual contact sensor", "${state.ip}:${state.port}:switch${i+1}", state.hub, [name: "${state.ip}:${state.port}:switch${i+1}", label: "AlarmDecoder Zone Sensor #${i+1}", completedSetup: true])
 
             def sensorValue = "open"
             if (settings.defaultSensorToClosed == true)

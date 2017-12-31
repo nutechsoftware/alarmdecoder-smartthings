@@ -34,7 +34,7 @@ preferences {
 }
 
 metadata {
-    definition (name: "AlarmDecoder Network Appliance", namespace: "alarmdecoder", author: "Scott Petersen") {
+    definition (name: "network appliance", namespace: "alarmdecoder", author: "Scott Petersen") {
         capability "Refresh"
         capability "Switch"             // STAY
         capability "Lock"               // AWAY
