@@ -54,14 +54,16 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
 13. Click **Select Devices** and select your AlarmDecoder.
 14. Click **Install**
 15. After install there will be two boxes at the bottom titled 'API Token' and 'API Endpoint'.  Record these so you can input them into the webapp for full integration.
-16. Open up the SmartThings app **on your phone**
-17. Tap **My Home** and select the **Things** tab
-18. Select the **AlarmDecoder** device
-19. Tap the gear icon and select **Edit Device**
-20. Enter the API key you generated from [https://alarmdecoder.local/api/](https://alarmdecoder.local/api/)
-21. Enter the alarm code you'd like to use to arm/disarm your panel.
-22. Select your panel type.
-23. Zone sensors may be configured to open and close themselves when a zone is faulted.  For example, specifying zone 7 for Zonetracker Sensor #1 would trip that sensor whenever zone 7 is faulted.
+
+### Configure AlarmDecoder device
+1. Open up the SmartThings app **on your phone**
+2. Tap **My Home** and select the **Things** tab
+3. Select the **AlarmDecoder** device
+4. Tap the gear icon and select **Edit Device**
+5. Enter the API key you generated from [https://alarmdecoder.local/api/](https://alarmdecoder.local/api/)
+6. Enter the alarm code you'd like to use to arm/disarm your panel.
+7. Select your panel type.
+8. Zone sensors may be configured to open and close themselves when a zone is faulted.  For example, specifying zone 7 for Zonetracker Sensor #1 would trip that sensor whenever zone 7 is faulted.
 
 ## Enabling SmartThings Integration in the Webapp
 1. Log into your AlarmDecoder webapp.
