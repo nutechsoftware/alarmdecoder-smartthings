@@ -389,8 +389,13 @@ def refresh_alarmdecoders() {
         // Only refresh the main device.
         if (!device.deviceNetworkId.contains(":switch"))
         {
-            log.trace("refresh_alarmdecoders: ${device}")
-            device.refresh()
+            def apikey = device._get_api_key()
+            if(apikey) {
+                log.trace("refresh_alarmdecoders: request update from ${device} @ ${device.getDataValue("urn")}")
+                device.refresh()
+            } else {
+                log.trace("refresh_alarmdecoders no API KEY for: ${device} @ ${device.getDataValue("urn")}")
+            }
         }
     }
 }
