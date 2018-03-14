@@ -181,7 +181,7 @@ def initialize() {
 
 /**
  * locationHandler(evt)
- * Local network messages sent to port 39500 and UPNP 1900 will be captured here.
+ * Local network messages sent to TCP port 39500 and UPNP UDP port 1900 will be captured here.
  *
  * Test from the AlarmDecoder Appliance:
  *   curl -H "Content-Type: application/json" -X POST -d ‘{"message":"Hi, this is a test from AlarmDecoder network device"}’ http://YOUR.HUB.IP.ADDRESS:39500
@@ -197,7 +197,7 @@ def locationHandler(evt) {
     def parsedEvent = parseEventMessage(description)
     parsedEvent << ["hub":hub]
 
-    // UPNP LAN EVENTS on port 1900 from 'AlarmDecoder:1' devices only
+    // UPNP LAN EVENTS on UDP port 1900 from 'AlarmDecoder:1' devices only
     if (parsedEvent?.ssdpTerm?.contains("urn:schemas-upnp-org:device:AlarmDecoder:1")) {
 
         // make sure our state.devices is initialized. return discard.
@@ -234,7 +234,7 @@ def locationHandler(evt) {
         }
     }
 
-    // HTTP EVENTS on port 39500
+    // HTTP EVENTS on TCP port 39500
     if (parsedEvent?.body && parsedEvent?.headers) {
         log.trace "locationHandler: headers=${new String(parsedEvent.headers.decodeBase64())}"
         log.trace "locationHandler: body=${new String(parsedEvent.body.decodeBase64())}"
@@ -352,7 +352,7 @@ def initSubscriptions() {
     log.trace "initialize: subscribe to SHM alarmSystemStatus API messages"
     subscribe(location, "alarmSystemStatus", shmAlarmHandler)
 
-    /* subscribe to local LAN messages to this HUB on port 39500 and UPNP 1900 */
+    /* subscribe to local LAN messages to this HUB on TCP port 39500 and UPNP UDP port 1900 */
     log.trace "initialize: subscribe to locations local LAN messages"
     subscribe(location, null, locationHandler, [filterEvents: false])
 
@@ -477,7 +477,7 @@ private def configureDevices() {
 /**
  * Parse local network messages.
  *
- * May be to port 1900 for UPNP message or to port 39500
+ * May be to UDP port 1900 for UPNP message or to TCP port 39500
  * for local network to hub push messages.
  *
  */
