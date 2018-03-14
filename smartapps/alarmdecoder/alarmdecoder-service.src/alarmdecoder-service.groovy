@@ -181,7 +181,7 @@ def initialize() {
 
 /**
  * locationHandler(evt)
- * Local network messages sent to port 39500 will be captured here.
+ * Local network messages sent to port 39500 and UPNP 1900 will be captured here.
  *
  * Test from the AlarmDecoder Appliance:
  *   curl -H "Content-Type: application/json" -X POST -d ‘{"message":"Hi, this is a test from AlarmDecoder network device"}’ http://YOUR.HUB.IP.ADDRESS:39500
@@ -234,7 +234,7 @@ def locationHandler(evt) {
         }
     }
 
-    // HTTP EVENTS
+    // HTTP EVENTS on port 39500
     if (parsedEvent?.body && parsedEvent?.headers) {
         log.trace "locationHandler: headers=${new String(parsedEvent.headers.decodeBase64())}"
         log.trace "locationHandler: body=${new String(parsedEvent.body.decodeBase64())}"
@@ -352,7 +352,7 @@ def initSubscriptions() {
     log.trace "initialize: subscribe to SHM alarmSystemStatus API messages"
     subscribe(location, "alarmSystemStatus", shmAlarmHandler)
 
-    /* subscribe to local LAN messages to this HUB on port 39500 */
+    /* subscribe to local LAN messages to this HUB on port 39500 and UPNP 1900 */
     log.trace "initialize: subscribe to locations local LAN messages"
     subscribe(location, null, locationHandler, [filterEvents: false])
 
