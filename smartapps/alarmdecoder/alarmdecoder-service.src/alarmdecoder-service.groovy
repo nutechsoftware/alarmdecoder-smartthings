@@ -1,7 +1,7 @@
 /**
  *  AlarmDecoder Service Manager
  *
- *  Copyright 2016 Nu Tech Software Solutions, Inc.
+ *  Copyright 2016-2018 Nu Tech Software Solutions, Inc.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -26,14 +26,35 @@ definition(
     singleInstance: true) { }
 
 preferences {
-    page(name: "main", title: "Discover your AlarmDecoder", install: true, uninstall: true) {
+    page name: "main"
+    page(name: "discover_devices", title: "Discovery started..", content: "discover_devices", refreshTimeout: 5)
+}
+
+/**
+ * our main page dynamicly generated so we can do some code as it is shown.
+ */
+def main() {
+
+    // make sure we are listening to all network subscriptions
+    initSubscriptions()
+
+    // send out a UPNP broadcast discovery
+    discover_alarmdecoder()
+
+    dynamicPage(name: "main", title: "Discover your AlarmDecoder", install: true, uninstall: true) {
         section("") {
             href(name: "discover", title: "Discover", required: false, page: "discover_devices", description: "Tap to discover")
         }
     }
-    page(name: "discover_devices", title: "Discovery started..", content: "discover_devices", refreshTimeout: 5)
 }
 
+/**
+ * Allow remote device to force the HUB to request an
+ * update from the AlarmDecoder.
+ *
+ * Just a few steps :( but it works.
+ * AD2 -> ST-CLOUD -> ST-HUB -> AD2 -> ST-HUB -> ST-CLOUD
+ */
 mappings {
     path("/update") {
         action: [
@@ -42,43 +63,110 @@ mappings {
     }
 }
 
-/*** Handlers ***/
+/**
+ * Page discover_devices generator. Called periodically to refresh content of the page.
+ */
+def discover_devices() {
+    int refreshInterval = 5
+    int refreshCount = !state.refreshCount ? 0 : state.refreshCount as int
+    state.refreshCount = refreshCount += 1
 
+    // send out UPNP discovery messages and watch for responses
+    discover_alarmdecoder()
+
+    // build list of currently known AlarmDecoder parent devices
+    def found_devices = [:]
+    def options = state.devices.each { k, v ->
+        log.trace "discover_devices: ${v}"
+        def ip = convertHexToIP(v.ip)
+        found_devices["${v.ip}:${v.port}"] = "AlarmDecoder @ ${ip}"
+    }
+
+    // How many do we have?
+    def numFound = found_devices.size() ?: 0
+
+
+    return dynamicPage(name: "discover_devices", title: "Setup", nextPage: "", refreshInterval: refreshInterval, install: true, uninstall: true) {
+        section("Devices") {
+            input "selectedDevices", "enum", required: true, title: "Select device(s) (${numFound} found)", multiple: true, options: found_devices
+            // Allow user to force a new UPNP discovery message
+            href(name: "refreshDevices", title: "Refresh", required: false, page: "discover_devices")
+        }
+        section("Smart Home Monitor Integration") {
+            input(name: "shmIntegration", type: "bool", defaultValue: true, title: "Integrate with Smart Home Monitor?")
+            input(name: "shmChangeSHMStatus", type: "bool", defaultValue: true, title: "Automatically change Smart Home Monitor status when armed or disarmed?")
+        }
+        section("Zone Sensors") {
+            input(name: "defaultSensorToClosed", type: "bool", defaultValue: true, title: "Default zone sensors to closed?")
+        }
+    }
+}
+
+/*** Pre-Defined callbacks ***/
+
+/**
+ *  installed()
+ */
 def installed() {
     log.debug "Installed with settings: ${settings}"
 
+    // initialize everything
     initialize()
 }
 
+/**
+ * updated()
+ */
 def updated() {
     log.debug "Updated with settings: ${settings}"
 
-    unschedule()
+    // re initialize everything
     initialize()
 }
 
+/**
+ * uninstalled()
+ */
 def uninstalled() {
     log.trace "uninstalled"
 
-    // HACK: Work around SmartThings wonky uninstall.  They claim unsubscribe is uncessary,
-    //       but it is, as is the runIn() since everything is asynchronous.  Otherwise events
-    //       don't get correctly unbound and the devices can't be deleted because they're in use.
+    // disable all scheduling and subscriptions
     unschedule()
-    unsubscribe()
-    runIn(300, do_uninstall)
+
+    // remove all the devices and children
+    def devices = getChildDevices()
+    devices.each {
+        try {
+            log.trace "deleting child device: ${it.deviceNetworkId}"
+            deleteChildDevice(it.deviceNetworkId)
+        }
+        catch(Exception e) {
+            log.trace("exception while uninstalling: ${e}")
+        }
+    }
+
 }
 
+/**
+ * initialize called upon update and at startup
+ *   Add subscriptions and schdules
+ *   Create our default state
+ *
+ */
 def initialize() {
     log.trace "initialize"
 
+    // unsubscribe from everything
     unsubscribe()
-    state.subscribed = false
+
+    // remove all schedules
+    unschedule()
+
+    // Create our default state values
     state.lastSHMStatus = null
     state.lastAlarmDecoderStatus = null
 
-    subscribe(location, "alarmSystemStatus", shmAlarmHandler)
-
-    unschedule()
+    initSubscriptions()
 
     if (selectedDevices) {
         addExistingDevices()
@@ -88,6 +176,16 @@ def initialize() {
     scheduleRefresh()
 }
 
+
+/*** Handlers ***/
+
+/**
+ * locationHandler(evt)
+ * Local network messages sent to port 39500 will be captured here.
+ *
+ * Test from the AlarmDecoder Appliance:
+ *   curl -H "Content-Type: application/json" -X POST -d ‘{"message":"Hi, this is a test from AlarmDecoder network device"}’ http://YOUR.HUB.IP.ADDRESS:39500
+ */
 def locationHandler(evt) {
     log.trace "locationHandler"
 
@@ -99,8 +197,10 @@ def locationHandler(evt) {
     def parsedEvent = parseEventMessage(description)
     parsedEvent << ["hub":hub]
 
-    // LAN EVENTS
+    // UPNP LAN EVENTS on port 1900 from 'AlarmDecoder:1' devices only
     if (parsedEvent?.ssdpTerm?.contains("urn:schemas-upnp-org:device:AlarmDecoder:1")) {
+
+        // make sure our state.devices is initialized. return discard.
         getDevices()
 
         if (!(state.devices."${parsedEvent.ssdpUSN.toString()}")) {
@@ -141,12 +241,18 @@ def locationHandler(evt) {
     }
 }
 
+/**
+ * Handle cron refresh event
+ */
 def refreshHandler() {
     log.trace "refreshHandler"
 
     refresh_alarmdecoders()
 }
 
+/**
+ * Handle remote web requests to the ST cloud services for http://somegraph/update
+ */
 def webserviceUpdate()
 {
     log.trace "webserviceUpdate"
@@ -155,8 +261,9 @@ def webserviceUpdate()
     return [status: "OK"]
 }
 
-/*** Commands ***/
-
+/**
+ * Handle Device Command zoneOn()
+ */
 def zoneOn(evt) {
     log.trace("zoneOn: desc=${evt.value}")
 
@@ -171,6 +278,9 @@ def zoneOn(evt) {
     }
 }
 
+/**
+ * Handle Device Command zoneOff()
+ */
 def zoneOff(evt) {
     log.trace("zoneOff: desc=${evt.value}")
 
@@ -185,6 +295,10 @@ def zoneOff(evt) {
     }
 }
 
+/**
+ * Handle Smart Home Monitor App alarmSystemStatus events and update the UI of the App.
+ *
+ */
 def shmAlarmHandler(evt) {
     if (settings.shmIntegration == false)
         return
@@ -211,6 +325,11 @@ def shmAlarmHandler(evt) {
     state.lastSHMStatus = evt.value
 }
 
+/**
+ * Handle Alarm events from the AlarmDecoder and
+ * send them back to the Smart Home Monitor API to update the
+ * status of the alarm panel
+ */
 def alarmdecoderAlarmHandler(evt) {
     if (settings.shmIntegration == false || settings.shmChangeSHMStatus == false)
         return
@@ -225,71 +344,33 @@ def alarmdecoderAlarmHandler(evt) {
 
 /*** Utility ***/
 
-def discover_devices() {
-    int refreshInterval = 5
-    int refreshCount = !state.refreshCount ? 0 : state.refreshCount as int
-    state.refreshCount = refreshCount += 1
+/**
+ * Enable primary network and system subscriptions
+ */
+def initSubscriptions() {
+    // subscribe to the Smart Home Manager api for alarm status events
+    log.trace "initialize: subscribe to SHM alarmSystemStatus API messages"
+    subscribe(location, "alarmSystemStatus", shmAlarmHandler)
 
-    def found_devices = [:]
-    def options = state.devices.each { k, v ->
-        log.trace "discover_devices: ${v}"
-        def ip = convertHexToIP(v.ip)
-        found_devices["${v.ip}:${v.port}"] = "AlarmDecoder @ ${ip}"
-    }
+    /* subscribe to local LAN messages to this HUB on port 39500 */
+    log.trace "initialize: subscribe to locations local LAN messages"
+    subscribe(location, null, locationHandler, [filterEvents: false])
 
-    def numFound = found_devices.size() ?: 0
-
-    if (!state.subscribed) {
-        log.trace "discover_devices: subscribe to location"
-
-        subscribe(location, null, locationHandler, [filterEvents: false])
-        state.subscribed = true
-    }
-
-    discover_alarmdecoder()
-
-    return dynamicPage(name: "discover_devices", title: "Setup", nextPage: "", refreshInterval: refreshInterval, install: true, uninstall: true) {
-        section("Devices") {
-            input "selectedDevices", "enum", required: false, title: "Select device(s) (${numFound} found)", multiple: true, options: found_devices
-            // TEMP: REMOVE THIS?
-            href(name: "refreshDevices", title: "Refresh", required: false, page: "discover_devices")
-        }
-        section("Smart Home Monitor Integration") {
-            input(name: "shmIntegration", type: "bool", defaultValue: true, title: "Integrate with Smart Home Monitor?")
-            input(name: "shmChangeSHMStatus", type: "bool", defaultValue: true, title: "Automatically change Smart Home Monitor status when armed or disarmed?")
-        }
-        section("Zone Sensors") {
-            input(name: "defaultSensorToClosed", type: "bool", defaultValue: true, title: "Default zone sensors to closed?")
-        }
-    }
 }
 
+/**
+ * Called by discover_devices page periodically
+ */
 def discover_alarmdecoder() {
     log.trace "discover_alarmdecoder"
 
-    if (!state.subscribed) {
-        log.trace "discover_alarmdecoder: subscribing!"
-        subscribe(location, null, locationHandler, [filterEvents: false])
-        state.subscribed = true
-    }
-
+    // Request HUB send out a UpNp broadcast discovery messages on the local network
     sendHubCommand(new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN))
 }
 
-def do_uninstall() {
-    def devices = getChildDevices()
-
-    devices.each {
-        try {
-            log.trace "deleting child device: ${it.deviceNetworkId}"
-            deleteChildDevice(it.deviceNetworkId)
-        }
-        catch(Exception e) {
-            log.trace("exception while uninstalling: ${e}")
-        }
-    }
-}
-
+/**
+ * create cron schedule and call back handlers
+ */
 def scheduleRefresh() {
     def minutes = 1
 
@@ -297,6 +378,11 @@ def scheduleRefresh() {
     schedule(cron, refreshHandler)
 }
 
+/**
+ * Call refresh() on the AlarmDecoder parent device object.
+ * This will force the HUB send a REST API request to the AlarmDecoder Network Appliance.
+ * and get back the current status of the AlarmDecoder.
+ */
 def refresh_alarmdecoders() {
     log.trace("refresh_alarmdecoders-")
     getAllChildDevices().each { device ->
@@ -309,6 +395,9 @@ def refresh_alarmdecoders() {
     }
 }
 
+/**
+ * return the list of known devices and initialize the list if needed.
+ */
 def getDevices() {
     if(!state.devices) {
         state.devices = [:]
@@ -317,6 +406,9 @@ def getDevices() {
     state.devices
 }
 
+/**
+ * Add devices selected in the GUI if new.
+ */
 def addExistingDevices() {
     log.trace "addExistingDevices: ${selectedDevices}"
 
@@ -350,6 +442,9 @@ def addExistingDevices() {
     }
 }
 
+/**
+ * Configure the root device(s) to listen to events etc
+ */
 private def configureDevices() {
     def device = getChildDevice("${state.ip}:${state.port}")
     if (!device) {
@@ -379,6 +474,13 @@ private def configureDevices() {
     }
 }
 
+/**
+ * Parse local network messages.
+ *
+ * May be to port 1900 for UPNP message or to port 39500
+ * for local network to hub push messages.
+ *
+ */
 private def parseEventMessage(String description) {
     def event = [:]
     def parts = description.split(',')
@@ -447,10 +549,16 @@ private def parseEventMessage(String description) {
     event
 }
 
+/**
+ * Convert from internal format networkAddress:C0A8016F to a real IP address string 192.168.1.111
+ */
 private String convertHexToIP(hex) {
     [convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
 }
 
+/**
+ * convert hex encoded string to integer
+ */
 private Integer convertHexToInt(hex) {
     Integer.parseInt(hex,16)
 }
