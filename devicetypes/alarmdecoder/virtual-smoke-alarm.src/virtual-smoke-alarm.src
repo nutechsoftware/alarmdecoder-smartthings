@@ -1,5 +1,5 @@
 /**
- *  Virtual Contact Sensor for alarm panel zones
+ *  Virtual Smoke Alarm for alarm panel
  *
  *  Copyright 2016-2018 Nu Tech Software Solutions, Inc.
  *
@@ -14,16 +14,16 @@
  *
  */
 metadata {
-    definition (name: "AlarmDecoder virtual contact sensor", namespace: "alarmdecoder", author: "scott@nutech.com") {
-        capability "Contact Sensor"
+    definition (name: "AlarmDecoder virtual smoke alarm", namespace: "alarmdecoder", author: "sean@nutech.com") {
+        capability "smokeDetector"
         capability "Refresh"
     }
 
     // tile definitions
     tiles {
-        standardTile("sensor", "device.contact", width: 2, height: 2, canChangeIcon: true) {
-            state "closed", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#79b821"
-            state "open", label: '${name}', icon: "st.contact.contact.open", backgroundColor: "#ffffff"
+        standardTile("sensor", "device.smoke", width: 2, height: 2, canChangeIcon: true) {
+            state "clear", label: '${name}', icon: "st.alarm.smoke.clear", backgroundColor: "#79b821"
+            state "detected", label: '${name}', icon: "st.alarm.smoke.smoke", backgroundColor: "#ffffff"
         }
         standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat") {
             state "default", label:'Refresh', action:"device.refresh", icon: "st.secondary.refresh-icon"

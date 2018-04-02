@@ -14,6 +14,13 @@
  *
  */
 import groovy.json.JsonSlurper;
+import groovy.util.XmlParser;
+
+import groovy.transform.Field
+/*
+ * Turn on verbose debugging
+ */
+@Field debug = false
 
 preferences {
     section() {
@@ -34,12 +41,12 @@ preferences {
 }
 
 metadata {
-    definition (name: "network appliance", namespace: "alarmdecoder", author: "Scott Petersen") {
+    definition (name: "AlarmDecoder network appliance", namespace: "alarmdecoder", author: "Scott Petersen") {
         capability "Refresh"
         capability "Switch"             // STAY
         capability "Lock"               // AWAY
         capability "Alarm"              // PANIC
-        capability "smokeDetector"      // FIRE
+        capability "Contact Sensor"     // ALARM -> Smart Home Monitor
 
         attribute "panel_state", "enum", ["armed", "armed_stay", "disarmed", "alarming", "fire"]
         attribute "armed", "enum", ["armed", "disarmed", "arming", "disarming"]
@@ -216,18 +223,89 @@ def updated() {
     log.trace "--- handler.updated"
 
     state.faulted_zones = []
+
+    // Raw panel state values
+    state.panel_armed = false
+    state.panel_armed_stay = false
+    state.panel_fire_detected = false
+    state.panel_alarming = false
+    state.panel_panicked = false
+    state.panel_on_battery = true
+    state.panel_powered = true
+
+    // Calculated alarm state ENUM
     state.panel_state = "disarmed"
-    state.fire = false
-    state.alarming = false
+    state.alarm_status = "off"
     state.armed = false
+
+    // internal state vars
     state.panic_started = null;
 
     for (def i = 1; i <= 12; i++)
         sendEvent(name: "zoneStatus${i}", value: "", displayed: false)
+
+    // subscribe if settings change
+    subscribeNotifications()
 }
 
 def uninstalled() {
     log.trace "--- handler.uninstalled"
+}
+
+// Subscribe to the AlarmDecoder upnp event notification
+// FIXME: Need to get this from the eventSubURL in the ssdpPath: /static/device_description.xml
+def subscribeNotifications() {
+    subscribeAction(getDataValue("urn"), "/api/v1/alarmdecoder/event?apikey=${_get_api_key()}")
+}
+
+// Parse JSON and new state. Build UI and return UI update events
+def parse_json(String headers, String body) {
+    log.trace("--- parse_json ${body}")
+
+    def slurper = new JsonSlurper()
+    def result = slurper.parseText(body)
+
+    // Build our events list from our current state
+    def events = []
+    update_state(result).each { e-> events << e }
+}
+
+// Parse XML and new state. Build UI and return UI update events
+def parse_xml(String headers, String body) {
+    log.trace("--- parse_xml")
+
+    def xmlResult = new XmlSlurper().parseText(body)
+
+    def resultMap = [:]
+    resultMap['last_message_received'] = xmlResult.property.panelstate.last_message_received.text()
+    resultMap['panel_alarming'] = xmlResult.property.panelstate.panel_alarming.toBoolean()
+    resultMap['panel_armed'] = xmlResult.property.panelstate.panel_armed.toBoolean()
+    resultMap['panel_armed_stay'] = xmlResult.property.panelstate.panel_armed_stay.toBoolean()
+    resultMap['panel_bypassed'] = xmlResult.property.panelstate.panel_bypassed.toBoolean()
+    resultMap['panel_fire_detected'] = xmlResult.property.panelstate.panel_fire_detected.toBoolean()
+    resultMap['panel_on_battery'] = xmlResult.property.panelstate.panel_on_battery.toBoolean()
+    resultMap['panel_panicked'] = xmlResult.property.panelstate.panel_panicked.toBoolean()
+    resultMap['panel_powered'] = xmlResult.property.panelstate.panel_powered.toBoolean()
+    resultMap['panel_ready'] = xmlResult.property.panelstate.panel_ready.toBoolean()
+    resultMap['panel_type'] = xmlResult.property.panelstate.panel_type.text()
+
+    // build list of faulted zones unpack xml
+    def zones = []
+    xmlResult.property.panelstate.panel_zones_faulted.z.each { e-> zones << e.text() }
+    resultMap['panel_zones_faulted'] = zones
+
+    // unpack the relay xml
+    def relays = []
+    xmlResult.property.panelstate.panel_relay_status.r.each { e->
+        relays << ['address': e.a, 'channel': e.c, 'value': e.v]
+    }
+    resultMap['panel_relay_status'] = relays
+
+    // Build our events list from our current state
+    def events = []
+    update_state(resultMap).each { e-> events << e }
+
+    return events
 }
 
 // parse events into attributes
@@ -235,22 +313,40 @@ def parse(String description) {
     def events = []
     def event = parseEventMessage(description)
 
-    // HTTP
-    if (event?.body && event?.headers) {
-        def slurper = new JsonSlurper()
-        String bodyText = new String(event.body.decodeBase64())
-        def result = slurper.parseText(bodyText)
+    // If we initiate a connection it will get an id.
+    // Just grab the last for loging.
+    def rID = ((event.requestId && event.requestId.length() > 12) ? event.requestId.substring(event.requestId.length()-12) : "000000000000")
 
-        log.trace("--- handler.parse: http result=${result}")
+    log.info("---  parse: mac: ${event?.mac} requestId: ${rID}")
 
-        // Update alarm system state.
-        if (result.error != null)
-            log.error("Error accessing AlarmDecoder API: ${result.error.code} - ${result.error.message}")
-        else if (result.panel_armed != null)
-            update_state(result).each { e-> events << e }
+    // HTTP we just need headers for a valid HTTP request.
+    if (event?.headers) {
+        def headerString = new String(event.headers.decodeBase64())
+
+        // body may be empty.
+        def bodyString = (event?.body) ? (new String(event.body.decodeBase64())) : ""
+
+        def type = (headerString =~ /Content-Type:.*/) ? (headerString =~ /Content-Type:.*/)[0] : null
+
+        if (debug) {
+            log.debug("---  parse: ${rID}: headers: ${headerString}")
+            log.debug("---  parse: ${rID}: body: ${bodyString}")
+        }
+
+        def result
+
+        // Based upon content type process the headers and body
+        if (type?.contains("json") && bodyString.length()) {
+            parse_json(headerString, bodyString).each { e-> events << e }
+        } else
+        if (type?.contains("xml") && bodyString.length()) {
+            parse_xml(headerString, bodyString).each { e-> events << e }
+        }
+
     }
 
-    log.debug("--- handler.parse: resulting events=${events}")
+    if (debug)
+       log.debug("---  parse: ${rID}: events: ${events}")
 
     return events
 }
@@ -262,10 +358,7 @@ def on() {
 
     sendEvent(name: "armed", value: "armed")    // NOTE: Not sure if it's the best way to accomplish it,
                                                 //       but solves the weird tile state issues I was having.
-    return delayBetween([
-        arm_stay(),
-        refresh()
-    ], 2000)
+    arm_stay()
 }
 
 def off() {
@@ -273,10 +366,7 @@ def off() {
 
     sendEvent(name: "armed", value: "disarmed") // NOTE: Not sure if it's the best way to accomplish it,
                                                 //       but solves the weird tile state issues I was having.
-    return delayBetween([
-        disarm(),
-        refresh()
-    ], 2000)
+    disarm()
 }
 
 def strobe() {
@@ -292,10 +382,7 @@ def both() {
 
     state.panic_started = null;
 
-    return delayBetween([
-        panic(),
-        refresh()
-    ], 2000)
+    panic()
 }
 
 def lock() {
@@ -304,10 +391,7 @@ def lock() {
     sendEvent(name: "armed", value: "armed")    // NOTE: Not sure if it's the best way to accomplish it,
                                                 //       but solves the weird tile state issues I was having.
 
-    return delayBetween([
-        arm_away(),
-        refresh()
-    ], 2000)
+    arm_away()
 }
 
 def unlock() {
@@ -315,11 +399,7 @@ def unlock() {
 
     sendEvent(name: "armed", value: "disarmed") // NOTE: Not sure if it's the best way to accomplish it,
                                                 //       but solves the weird tile state issues I was having.
-
-    return delayBetween([
-        disarm(),
-        refresh()
-    ], 2000)
+    disarm()
 }
 
 def refresh() {
@@ -416,21 +496,44 @@ def checkPanic() {
 
 def update_state(data) {
     log.trace("--- update_state")
-
+    def forceguiUpdate = false
     def events = []
+
+    // Get our armed state
     def armed = data.panel_armed || (data.panel_armed_stay != null && data.panel_armed_stay == true)
-    def panel_state = armed ? "armed" : "disarmed"
 
-    if (data.panel_alarming)
+    def panel_state = armed ? (data.panel_armed_stay ? "armed_stay" : "armed") : "disarmed"
+
+    //FORCE ARMED if ALARMING to be sure SHM gets it as it will not show alarms if not armed :(
+    if (data.panel_alarming) {
+        armed = true
         panel_state = "alarming"
-    if (data.panel_fire_detected)  // NOTE: Fire overrides alarm since it's definitely more serious.
-        panel_state = "fire"
+    }
 
-    events << createEvent(name: "lock", value: data.panel_armed ? "locked" : "unlocked")
-    events << createEvent(name: "armed", value: armed ? "armed" : "disarmed", displayed: false)
-    events << createEvent(name: "alarm", value: data.panel_alarming ? "both" : "off")
-    events << createEvent(name: "smoke", value: data.panel_fire_detected ? "detected" : "clear")
-    events << createEvent(name: "panel_state", value: panel_state)
+    // NOTE: Fire overrides alarm since it's definitely more serious.
+    if (data.panel_fire_detected) {
+        panel_state = "fire"
+    }
+
+    // Update our Smoke Sensor virtual device that SHM or others the current state.
+    if (forceguiUpdate || data.panel_fire_detected != state.panel_fire_detected)
+        events << createEvent(name: "smoke-set", value: data.panel_fire_detected ? "detected" : "clear", displayed: true, isStateChange: true)
+
+    // If STAY/AWAY changes data.panel_armed_stay
+    if (forceguiUpdate || data.panel_armed_stay != state.panel_armed_stay)
+        events << createEvent(name: "lock", value: data.panel_armed_stay ? "lock" : "unlock", displayed: true, isStateChange: true)
+
+    // If the panel ARMED state changes
+    if (forceguiUpdate || armed != state.armed)
+        events << createEvent(name: "armed", value: armed ? "armed" : "disarmed", displayed: true, isStateChange: true)
+
+    // If the PANIC state changes
+    if (forceguiUpdate || data.panel_alarming != state.alarming)
+        events << createEvent(name: "alarm", value: data.panel_alarming ? "both" : "off", displayed: true, isStateChange: true)
+
+    // set our panel_state
+    if (forceguiUpdate || panel_state != state.panel_state)
+        events << createEvent(name: "panel_state", value: panel_state, displayed: true, isStateChange: true)
 
     // Create an event to notify Smart Home Monitor.
     def alarm_status = "off"
@@ -440,16 +543,34 @@ def update_state(data) {
         if (data.panel_armed_stay == true)
             alarm_status = "stay"
     }
-    events << createEvent(name: "alarmStatus", value: alarm_status, isStateChange: true, displayed: false)
 
+    // Update SHM
+    // "enum", ["off", "stay", "away"]
+    if (forceguiUpdate || alarm_status != state.alarm_status)
+        events << createEvent(name: "alarmStatus", value: alarm_status, displayed: true, isStateChange: true)
+
+    // Update our contact sensor so SHM or others know we are in an alarm state. In alarm close contact.
+    // "enum", ["open", "close"]
+    if (forceguiUpdate || data.panel_alarming != state.alarming)
+        events << createEvent(name: "contact", value: data.panel_alarming ? "open" : "close", displayed: true, isStateChange: true)
+
+    // will only add events for zones that change state.
     def zone_events = build_zone_events(data)
     events = events.plus(zone_events)
 
-    // Set new states.
+    // Update our saved state
+    /// Calculated state enum
     state.panel_state = panel_state
-    state.fire = data.panel_fire_detected
-    state.alarming = data.panel_alarming
-    state.armed = data.panel_armed
+    state.armed = armed
+
+    /// raw panel state bits
+    state.panel_armed = data.panel_armed
+    state.panel_armed_stay = data.panel_armed_stay
+    state.panel_fire_detected = data.panel_fire_detected
+    state.panel_alarming = data.panel_alarming
+    state.alarm_status = alarm_status
+    state.panel_powered = data.panel_powered
+    state.panel_on_battery = data.panel_on_battery
 
     return events
 }
@@ -547,6 +668,32 @@ private def parseEventMessage(String description) {
                 event.mac = valueString
             }
         }
+        // If we made the request we will get the requestId of the host we contacted.
+        // If we did not provide one in HubAction() then it will be auto generated
+        // ex. c089d06f-ba3c-4baa-a1a4-950b9ffd372a
+        else if (part.startsWith('requestId:')) {
+            part -= "requestId:"
+            def valueString = part.trim()
+            if (valueString) {
+                event.requestId = valueString
+            }
+        }
+        // If we made the request we will get the IP of the host we contacted.
+        else if (part.startsWith('ip:')) {
+            part -= "ip:"
+            def valueString = part.trim()
+            if (valueString) {
+                event.ip = valueString
+            }
+        }
+        // If we made the request we will get the PORT of the host we contacted.
+        else if (part.startsWith('port:')) {
+            part -= "port:"
+            def valueString = part.trim()
+            if (valueString) {
+                event.port = valueString
+            }
+        }
         else if (part.startsWith('networkAddress:')) {
             def valueString = part.split(":")[1].trim()
             if (valueString) {
@@ -580,14 +727,14 @@ private def parseEventMessage(String description) {
                 event.ssdpTerm = valueString
             }
         }
-        else if (part.startsWith('headers')) {
+        else if (part.startsWith('headers:')) {
             part -= "headers:"
             def valueString = part.trim()
             if (valueString) {
                 event.headers = valueString
             }
         }
-        else if (part.startsWith('body')) {
+        else if (part.startsWith('body:')) {
             part -= "body:"
             def valueString = part.trim()
             if (valueString) {
@@ -643,4 +790,44 @@ def _get_api_key() {
     def api_key = settings.api_key
 
     return api_key
+}
+
+/**
+ * Subscribe to an AlarmDecoder for event PUSH notifications.
+ *
+ * Let the AlarmDecoder know you want to be notified of events for a given path.
+ *
+ */
+def subscribeAction(urn, path, callbackPath="") {
+    log.trace "subscribeAction(${urn}, ${path}, ${callbackPath})"
+
+    // get our HUBs details so the AlarmDecoder knows how to call us back on events
+    def address = getCallBackAddress()
+
+    def result = new physicalgraph.device.HubAction(
+        method: "SUBSCRIBE",
+        path: path,
+        headers: [
+            HOST: urn,
+            CALLBACK: "<http://${address}/notify$callbackPath>",
+            NT: "upnp:event",
+            TIMEOUT: "Second-28800"
+        ]
+    )
+
+    // We get requestId back in parse() so we know what it is.
+    result.requestId = "SUBSCRIBE"
+
+    // log.debug "SUBSCRIBE result: ${result}"
+
+    return result
+
+}
+
+
+/**
+ * gets the address of the hub
+ */
+def getCallBackAddress() {
+    return device.hub.getDataValue("localIP") + ":" + device.hub.getDataValue("localSrvPortTCP")
 }
