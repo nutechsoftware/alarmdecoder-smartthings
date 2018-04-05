@@ -113,10 +113,10 @@ metadata {
             state "disarmed", action:"switch.on", icon:"st.Home.home4", label: "STAY", nextState: "arming"
             state "arming", action:"switch.off", icon:"st.security.alarm.off", label: "ARMING", nextState: "armed"
             state "disarming", action:"switch.on", icon:"st.Home.home4", label: "DISARMING", nextState: "disarmed"
-            state "alarming", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
-            state "fire", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
-            state "ready", action:"lock.lock", icon:"st.security.alarm.off", label: "STAY", nextState: "arming"
-            state "notready", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
+            state "alarming", action:"switch.off", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
+            state "fire", action:"swich.off", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
+            state "ready", action:"switch.on", icon:"st.security.alarm.off", label: "STAY", nextState: "arming"
+            state "notready", action:"switch.off", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
         }
 
         standardTile("panic", "device.panic_state", inactiveLabel: false, width: 2, height: 2) {
