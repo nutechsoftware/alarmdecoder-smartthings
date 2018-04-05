@@ -48,7 +48,7 @@ metadata {
         capability "Alarm"              // PANIC
         capability "Contact Sensor"     // ALARM -> Smart Home Monitor
 
-        attribute "panel_state", "enum", ["armed", "armed_stay", "disarmed", "alarming", "fire"]
+        attribute "panel_state", "enum", ["armed", "armed_stay", "disarmed", "alarming", "fire", "ready", "notready"]
         attribute "armed", "enum", ["armed", "disarmed", "arming", "disarming"]
         attribute "panic_state", "string"
         attribute "zoneStatus1", "number"
@@ -67,9 +67,15 @@ metadata {
         command "disarm"
         command "arm_stay"
         command "arm_away"
+        command "fire"
+        command "fire1"
+        command "fire2"
         command "panic"
         command "panic1"
         command "panic2"
+        command "aux"
+        command "aux1"
+        command "aux2"
     }
 
     simulator {
@@ -84,27 +90,51 @@ metadata {
                 attributeState "disarmed", label: 'Disarmed', icon: "st.security.alarm.off", backgroundColor: "#79b821", defaultState: true
                 attributeState "alarming", label: 'Alarming!', icon: "st.home.home2", backgroundColor: "#ff4000"
                 attributeState "fire", label: 'Fire!', icon: "st.contact.contact.closed", backgroundColor: "#ff0000"
+                attributeState "ready", label: 'Ready', icon: "st.security.alarm.off", backgroundColor: "#79b821"
+                attributeState "notready", label: 'Not Ready', icon: "st.security.alarm.off", backgroundColor: "#ffa81e"
             }
         }
 
-        standardTile("arm_disarm", "device.armed", inactiveLabel: false, width: 2, height: 2) {
+        standardTile("arm_disarm", "device.panel_state", inactiveLabel: false, width: 1, height: 1) {
             state "armed", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
+            state "armed_stay", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
             state "disarmed", action:"lock.lock", icon:"st.security.alarm.on", label: "AWAY", nextState: "arming"
             state "arming", action:"lock.unlock", icon:"st.security.alarm.off", label: "ARMING", nextState: "armed"
             state "disarming", action:"lock.lock", icon:"st.security.alarm.on", label: "DISARMING", nextState: "disarmed"
+            state "alarming", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
+            state "fire", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
+            state "ready", action:"lock.lock", icon:"st.security.alarm.off", label: "AWAY", nextState: "arming"
+            state "notready", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
         }
 
-        standardTile("stay_disarm", "device.armed", inactiveLabel: false, width: 2, height: 2) {
+        standardTile("stay_disarm", "device.panel_state", inactiveLabel: false, width: 1, height: 1) {
             state "armed", action:"switch.off", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
+            state "armed_stay", action:"switch.off", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
             state "disarmed", action:"switch.on", icon:"st.Home.home4", label: "STAY", nextState: "arming"
             state "arming", action:"switch.off", icon:"st.security.alarm.off", label: "ARMING", nextState: "armed"
             state "disarming", action:"switch.on", icon:"st.Home.home4", label: "DISARMING", nextState: "disarmed"
+            state "alarming", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
+            state "fire", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
+            state "ready", action:"lock.lock", icon:"st.security.alarm.off", label: "STAY", nextState: "arming"
+            state "notready", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
         }
 
         standardTile("panic", "device.panic_state", inactiveLabel: false, width: 2, height: 2) {
-            state "default", icon:"st.Health & Wellness.health9", label: "PANIC", nextState: "panic1", action: "panic1"
-            state "panic1", icon: "st.Health & Wellness.health9", label: "PANIC", nextState: "panic2", action: "panic2", backgroundColor: "#ffa81e"
-            state "panic2", icon: "st.Health & Wellness.health9", label: "PANIC", nextState: "default", action: "alarm.both", backgroundColor: "#ff4000"
+            state "default", icon:"http://www.alarmdecoder.com/st/ad2-police.png", label: "PANIC", nextState: "panic1", action: "panic1"
+            state "panic1", icon: "http://www.alarmdecoder.com/st/ad2-police.png", label: "PANIC", nextState: "panic2", action: "panic2", backgroundColor: "#ffa81e"
+            state "panic2", icon: "http://www.alarmdecoder.com/st/ad2-police.png", label: "PANIC", nextState: "default", action: "panic", backgroundColor: "#ff4000"
+        }
+
+        standardTile("fire", "device.fire_state", inactiveLabel: false, width: 2, height: 2) {
+            state "default", icon:"http://www.alarmdecoder.com/st/ad2-fire.png", label: "FIRE", nextState: "fire1", action: "fire1"
+            state "fire1", icon: "http://www.alarmdecoder.com/st/ad2-fire.png", label: "FIRE", nextState: "fire2", action: "fire2", backgroundColor: "#ffa81e"
+            state "fire2", icon: "http://www.alarmdecoder.com/st/ad2-fire.png", label: "FIRE", nextState: "default", action: "fire", backgroundColor: "#ff4000"
+        }
+
+        standardTile("aux", "device.aux_state", inactiveLabel: false, width: 2, height: 2) {
+            state "default", icon:"http://www.alarmdecoder.com/st/ad2-aux.png", label: "AUX", nextState: "aux1", action: "aux1"
+            state "aux1", icon: "http://www.alarmdecoder.com/st/ad2-aux.png", label: "AUX", nextState: "aux2", action: "aux2", backgroundColor: "#ffa81e"
+            state "aux2", icon: "http://www.alarmdecoder.com/st/ad2-aux.png", label: "AUX", nextState: "default", action: "aux", backgroundColor: "#ff4000"
         }
 
         valueTile("zoneStatus1", "device.zoneStatus1", inactiveLabel: false, width: 1, height: 1) {
@@ -208,7 +238,7 @@ metadata {
         }
 
         main(["status"])
-        details(["status", "arm_disarm", "stay_disarm", "panic", "zoneStatus1", "zoneStatus2", "zoneStatus3", "zoneStatus4", "zoneStatus5", "zoneStatus6", "zoneStatus7", "zoneStatus8", "zoneStatus9", "zoneStatus10", "zoneStatus11", "zoneStatus12", "refresh", "teststuff"])
+        details(["status", "arm_disarm", "stay_disarm", "panic", "fire", "aux", "zoneStatus1", "zoneStatus2", "zoneStatus3", "zoneStatus4", "zoneStatus5", "zoneStatus6", "zoneStatus7", "zoneStatus8", "zoneStatus9", "zoneStatus10", "zoneStatus11", "zoneStatus12", "refresh", "teststuff"])
     }
 }
 
@@ -225,6 +255,7 @@ def updated() {
     state.faulted_zones = []
 
     // Raw panel state values
+    state.panel_ready = true
     state.panel_armed = false
     state.panel_armed_stay = false
     state.panel_fire_detected = false
@@ -240,6 +271,8 @@ def updated() {
 
     // internal state vars
     state.panic_started = null;
+    state.fire_started = null;
+    state.aux_started = null;
 
     for (def i = 1; i <= 12; i++)
         sendEvent(name: "zoneStatus${i}", value: "", displayed: false)
@@ -355,17 +388,11 @@ def parse(String description) {
 
 def on() {
     log.trace("--- switch.on (arm stay)")
-
-    sendEvent(name: "armed", value: "armed")    // NOTE: Not sure if it's the best way to accomplish it,
-                                                //       but solves the weird tile state issues I was having.
     arm_stay()
 }
 
 def off() {
     log.trace("--- switch.off (disarm)")
-
-    sendEvent(name: "armed", value: "disarmed") // NOTE: Not sure if it's the best way to accomplish it,
-                                                //       but solves the weird tile state issues I was having.
     disarm()
 }
 
@@ -377,28 +404,13 @@ def siren() {
     log.trace("--- alarm.siren, do nothing")
 }
 
-def both() {
-    log.trace("--- alarm.both (panic)")
-
-    state.panic_started = null;
-
-    panic()
-}
-
 def lock() {
     log.trace("--- lock.lock (arm)")
-
-    sendEvent(name: "armed", value: "armed")    // NOTE: Not sure if it's the best way to accomplish it,
-                                                //       but solves the weird tile state issues I was having.
-
     arm_away()
 }
 
 def unlock() {
     log.trace("--- lock.unlock (disarm)")
-
-    sendEvent(name: "armed", value: "disarmed") // NOTE: Not sure if it's the best way to accomplish it,
-                                                //       but solves the weird tile state issues I was having.
     disarm()
 }
 
@@ -461,9 +473,40 @@ def arm_stay() {
     return send_keys(keys)
 }
 
+def fire() {
+    log.trace("--- fire")
+    state.fire_started = null
+    def keys = "<S1>"
+    return send_keys(keys)
+}
+
+def fire1() {
+    state.fire_started = new Date().time
+
+    runIn(10, checkFire);
+
+    log.trace("Fire stage 1: ${state.fire_started}")
+}
+
+def fire2() {
+    state.fire_started = new Date().time
+
+    runIn(10, checkFire);
+
+    log.trace("Fire stage 2: ${state.fire_started}")
+}
+
+def checkFire() {
+    log.trace("checkFire");
+    if (state.fire_started != null && new Date().time - state.fire_started >= 5) {
+        sendEvent(name: "fire_state", value: "default", isStateChange: true);
+        log.trace("clearing fire");
+    }
+}
+
 def panic() {
     log.trace("--- panic")
-
+    state.panic_started = null
     def keys = "<S2>"
     return send_keys(keys)
 }
@@ -486,9 +529,40 @@ def panic2() {
 
 def checkPanic() {
     log.trace("checkPanic");
-    if (state.panic_started != null && new Date().time - state.panic_started >= 10) {
+    if (state.panic_started != null && new Date().time - state.panic_started >= 5) {
         sendEvent(name: "panic_state", value: "default", isStateChange: true);
         log.trace("clearing panic");
+    }
+}
+
+def aux() {
+    log.trace("--- aux")
+    state.aux_started = null
+    def keys = "<S3>"
+    return send_keys(keys)
+}
+
+def aux1() {
+    state.aux_started = new Date().time
+
+    runIn(10, checkAux);
+
+    log.trace("Aux stage 1: ${state.aux_started}")
+}
+
+def aux2() {
+    state.aux_started = new Date().time
+
+    runIn(10, checkAux);
+
+    log.trace("Aux stage 2: ${state.aux_started}")
+}
+
+def checkAux() {
+    log.trace("checkAux");
+    if (state.aux_started != null && new Date().time - state.aux_started >= 5) {
+        sendEvent(name: "aux_state", value: "default", isStateChange: true);
+        log.trace("clearing aux");
     }
 }
 
@@ -502,7 +576,16 @@ def update_state(data) {
     // Get our armed state
     def armed = data.panel_armed || (data.panel_armed_stay != null && data.panel_armed_stay == true)
 
-    def panel_state = armed ? (data.panel_armed_stay ? "armed_stay" : "armed") : "disarmed"
+    def panel_state = "ready"
+
+    if (armed) {
+        panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
+    } else {
+        // Update Panel ready status
+        if (!data.panel_ready) {
+            panel_state = "notready"
+        }
+    }
 
     //FORCE ARMED if ALARMING to be sure SHM gets it as it will not show alarms if not armed :(
     if (data.panel_alarming) {
@@ -571,6 +654,7 @@ def update_state(data) {
     state.alarm_status = alarm_status
     state.panel_powered = data.panel_powered
     state.panel_on_battery = data.panel_on_battery
+    state.panel_ready = data.panel_ready
 
     return events
 }
