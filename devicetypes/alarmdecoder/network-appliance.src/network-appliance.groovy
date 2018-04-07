@@ -49,7 +49,7 @@ metadata {
         capability "Contact Sensor"     // ALARM -> Smart Home Monitor
 
         attribute "panel_state", "enum", ["armed", "armed_stay", "disarmed", "alarming", "fire", "ready", "notready"]
-        attribute "armed", "enum", ["armed", "disarmed", "arming", "disarming"]
+        attribute "armed", "enum", ["armed", "disarmed"]
         attribute "panic_state", "string"
         attribute "zoneStatus1", "number"
         attribute "zoneStatus2", "number"
@@ -91,28 +91,24 @@ metadata {
                 attributeState "alarming", label: 'Alarming!', icon: "st.home.home2", backgroundColor: "#ff4000"
                 attributeState "fire", label: 'Fire!', icon: "st.contact.contact.closed", backgroundColor: "#ff0000"
                 attributeState "ready", label: 'Ready', icon: "st.security.alarm.off", backgroundColor: "#79b821"
-                attributeState "notready", label: 'Not Ready', icon: "st.security.alarm.off", backgroundColor: "#ffa81e"
+                attributeState "notready", label: 'Not Ready', icon: "st.security.alarm.off", backgroundColor: "#e86d13"
             }
         }
 
         standardTile("arm_disarm", "device.panel_state", inactiveLabel: false, width: 1, height: 1) {
-            state "armed", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
-            state "armed_stay", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
-            state "disarmed", action:"lock.lock", icon:"st.security.alarm.on", label: "AWAY", nextState: "arming"
-            state "arming", action:"lock.unlock", icon:"st.security.alarm.off", label: "ARMING", nextState: "armed"
-            state "disarming", action:"lock.lock", icon:"st.security.alarm.on", label: "DISARMING", nextState: "disarmed"
-            state "alarming", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
-            state "fire", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
-            state "ready", action:"lock.lock", icon:"st.security.alarm.off", label: "AWAY", nextState: "arming"
-            state "notready", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM", nextState: "disarming"
+            state "armed", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM"
+            state "armed_stay", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM"
+            state "disarmed", action:"lock.lock", icon:"st.security.alarm.on", label: "AWAY"
+            state "alarming", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM"
+            state "fire", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM"
+            state "ready", action:"lock.lock", icon:"st.security.alarm.off", label: "AWAY"
+            state "notready", action:"lock.unlock", icon:"st.security.alarm.off", label: "DISARM"
         }
 
         standardTile("stay_disarm", "device.panel_state", inactiveLabel: false, width: 1, height: 1) {
             state "armed", action:"switch.off", icon:"st.security.alarm.off", label: "DISARM"
             state "armed_stay", action:"switch.off", icon:"st.security.alarm.off", label: "DISARM"
             state "disarmed", action:"switch.on", icon:"st.Home.home4", label: "STAY"
-            state "arming", action:"switch.on", icon:"st.security.alarm.off", label: "ARMING"
-            state "disarming", action:"switch.off", icon:"st.Home.home4", label: "DISARMING"
             state "alarming", action:"switch.off", icon:"st.security.alarm.off", label: "DISARM"
             state "fire", action:"switch.off", icon:"st.security.alarm.off", label: "DISARM"
             state "ready", action:"switch.on", icon:"st.security.alarm.off", label: "STAY"
@@ -293,7 +289,7 @@ def subscribeNotifications() {
 
 // Parse JSON and new state. Build UI and return UI update events
 def parse_json(String headers, String body) {
-    log.trace("--- parse_json ${body}")
+    log.trace("--- parse_json")
 
     def slurper = new JsonSlurper()
     def result = slurper.parseText(body)
@@ -573,18 +569,24 @@ def update_state(data) {
     def forceguiUpdate = false
     def events = []
 
-    // Get our armed state
+    /*
+     * WARNING: we can get the Ready and Armed state events out of
+     * order thanks to async io and the fact that both events occure
+     * from a single AD2 message.Handle this gracefully to avoid client
+     * update glitches.
+     *
+     * [10000001000100003A0-],008,[f702000f1008005c08020000000000],"****DISARMED****  Ready to Arm  "
+     * [00100301000100003A0-],008,[f702000f100803cc08020000000000],"ARMED ***STAY***You may exit now"
+     * [10000101000100003A0-],008,[f702000f1008015c08020000000000],"****DISARMED****  Ready to Arm  "
+     */
+
+     // Get our armed state from our new state data
     def armed = data.panel_armed || (data.panel_armed_stay != null && data.panel_armed_stay == true)
 
-    def panel_state = "ready"
+    def panel_state = (data.panel_ready ? "ready" : "notready")
 
     if (armed) {
         panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
-    } else {
-        // Update Panel ready status
-        if (!data.panel_ready) {
-            panel_state = "notready"
-        }
     }
 
     //FORCE ARMED if ALARMING to be sure SHM gets it as it will not show alarms if not armed :(
