@@ -362,7 +362,7 @@ private def configureDevices() {
     subscribe(device, "alarmStatus", alarmdecoderAlarmHandler, [filterEvents: false])
 
     // Add virtual zone contact sensors.
-    for (def i = 0; i < 8; i++)
+    for (def i = 0; i < 15; i++)
     {
         def newSwitch = state.devices.find { k, v -> k == "${state.ip}:${state.port}:switch${i+1}" }
         if (!newSwitch)
