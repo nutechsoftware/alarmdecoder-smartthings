@@ -27,7 +27,7 @@ definition(
 
 preferences {
     page name: "main"
-    page(name: "discover_devices", title: "Discovery started..", content: "discover_devices", refreshTimeout: 5)
+    page(name: "discover_devices", title: "Discovery started..", content: "discover_devices")
 }
 
 /**
@@ -67,9 +67,6 @@ mappings {
  * Page discover_devices generator. Called periodically to refresh content of the page.
  */
 def discover_devices() {
-    int refreshInterval = 5
-    int refreshCount = !state.refreshCount ? 0 : state.refreshCount as int
-    state.refreshCount = refreshCount += 1
 
     // send out UPNP discovery messages and watch for responses
     discover_alarmdecoder()
@@ -86,7 +83,7 @@ def discover_devices() {
     def numFound = found_devices.size() ?: 0
 
 
-    return dynamicPage(name: "discover_devices", title: "Setup", nextPage: "", refreshInterval: refreshInterval, install: true, uninstall: true) {
+    return dynamicPage(name: "discover_devices", title: "Setup", nextPage: "", install: true, uninstall: true) {
         section("Devices") {
             input "selectedDevices", "enum", required: true, title: "Select device(s) (${numFound} found)", multiple: true, options: found_devices
             // Allow user to force a new UPNP discovery message
