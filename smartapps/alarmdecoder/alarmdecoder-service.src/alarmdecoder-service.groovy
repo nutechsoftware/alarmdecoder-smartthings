@@ -108,7 +108,7 @@ def installed() {
     log.debug "Installed with settings: ${settings}"
 
     // initialize everything
-    initialize(true)
+    initialize()
 }
 
 /**
@@ -118,7 +118,7 @@ def updated() {
     log.debug "Updated with settings: ${settings}"
 
     // re initialize everything
-    initialize(false)
+    initialize()
 }
 
 /**
@@ -150,8 +150,8 @@ def uninstalled() {
  *   Create our default state
  *
  */
-def initialize(isInstall) {
-    log.trace "initialize Installing: ${isInstall}"
+def initialize() {
+    log.trace "initialize"
 
     // unsubscribe from everything
     unsubscribe()
@@ -166,11 +166,10 @@ def initialize(isInstall) {
     initSubscriptions()
 
     // if a device in the GUI is selected then add it.
-    if (isInstall && selectedDevices)
+    if (selectedDevices) {
         addExistingDevices()
-    else
         configureDevices()
-
+    }
     scheduleRefresh()
 }
 
@@ -559,6 +558,30 @@ def addExistingDevices() {
                                             ]
                                    ])
             }
+            // Add virtual zone contact sensors if they do not exist.
+            for (def i = 0; i < 8; i++)
+            {
+                def newSwitch = state.devices.find { k, v -> k == "${state.ip}:${state.port}:switch${i+1}" }
+                if (!newSwitch)
+                {
+                    def zone_switch = addChildDevice("alarmdecoder", "AlarmDecoder virtual contact sensor", "${state.ip}:${state.port}:switch${i+1}", state.hub, [name: "${state.ip}:${state.port}:switch${i+1}", label: "AlarmDecoder Zone Sensor #${i+1}", completedSetup: true])
+
+                    def sensorValue = "open"
+                    if (settings.defaultSensorToClosed == true)
+                        sensorValue = "closed"
+
+                    // Set default contact state.
+                    zone_switch.sendEvent(name: "contact", value: sensorValue, isStateChange: true, displayed: false)
+                }
+            }
+
+            // Add virtual Smoke Alarm sensors if it does not exist.
+            def newSmoke = state.devices.find { k, v -> k == "${state.ip}:${state.port}:SmokeAlarm" }
+            if (!newSmoke)
+            {
+                def smoke_alarm = addChildDevice("alarmdecoder", "AlarmDecoder virtual smoke alarm", "${state.ip}:${state.port}:SmokeAlarm", state.hub, [name: "${state.ip}:${state.port}:SmokeAlarm", label: "AlarmDecoder Smoke Alarm", completedSetup: true])
+                smoke_alarm.sendEvent(name: "smoke", value: "clear", isStateChange: true, displayed: false)
+            }
         }
     }
 }
@@ -584,30 +607,6 @@ private def configureDevices() {
      */
     subscribe(device, "alarmStatus", alarmdecoderAlarmHandler, [filterEvents: false])
 
-    // Add virtual zone contact sensors if they do not exist.
-    for (def i = 0; i < 8; i++)
-    {
-        def newSwitch = state.devices.find { k, v -> k == "${state.ip}:${state.port}:switch${i+1}" }
-        if (!newSwitch)
-        {
-            def zone_switch = addChildDevice("alarmdecoder", "AlarmDecoder virtual contact sensor", "${state.ip}:${state.port}:switch${i+1}", state.hub, [name: "${state.ip}:${state.port}:switch${i+1}", label: "AlarmDecoder Zone Sensor #${i+1}", completedSetup: true])
-
-            def sensorValue = "open"
-            if (settings.defaultSensorToClosed == true)
-                sensorValue = "closed"
-
-            // Set default contact state.
-            zone_switch.sendEvent(name: "contact", value: sensorValue, isStateChange: true, displayed: false)
-        }
-    }
-
-    // Add virtual Smoke Alarm sensors if it does not exist.
-    def newSmoke = state.devices.find { k, v -> k == "${state.ip}:${state.port}:SmokeAlarm" }
-    if (!newSmoke)
-    {
-        def smoke_alarm = addChildDevice("alarmdecoder", "AlarmDecoder virtual smoke alarm", "${state.ip}:${state.port}:SmokeAlarm", state.hub, [name: "${state.ip}:${state.port}:SmokeAlarm", label: "AlarmDecoder Smoke Alarm", completedSetup: true])
-        smoke_alarm.sendEvent(name: "smoke", value: "clear", isStateChange: true, displayed: false)
-    }
     // subscrib to smoke-set handler for updates
     subscribe(device, "smoke-set", smokeSet, [filterEvents: false])
 
