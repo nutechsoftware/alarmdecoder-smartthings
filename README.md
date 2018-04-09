@@ -2,7 +2,7 @@ This repository provides support for the AlarmDecoder webapp inside of the Smart
 
 ## Requirements
 
-* AlarmDecoder webapp 0.7.6+
+* AlarmDecoder webapp 0.8.1+
 * SmartThings Hub
 
 ## Features
@@ -44,15 +44,10 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
 3. Check box for `alarmdecoder service`
 4. Check **Publish** (bottom of dialog)
 5. Click **Execute Update**
-6. Click **alarmdecoder : alarmdecoder service** in the list of installed apps
-7. Click the **App Settings** button at the top.
-8. Scroll to the bottom of the page and click **OAuth**
-9. Click **Enable OAuth in Smart App**
-10. Click **Update** (bottom of page)
-11 Select your location on the right and press **Set Location**.  (Click the **Simulator** if you don't see these options)
-12. Click the **Discover** button.  You may have to hit refresh to get your device to show up.  If it doesn't show up make sure you're running an up-to-date version of the webapp and that it is on the same netowrk as your SmartThings HUB.
-13. Click **Select Devices** and select your AlarmDecoder.
-14. Click **Install**
+6. Select your location on the right and press **Set Location**.  (Click the **Simulator** if you don't see these options)
+7. Click the **Discover** button.  You may have to hit refresh to get your device to show up.  If it doesn't show up make sure you're running an up-to-date version of the webapp and that it is on the same netowrk as your SmartThings HUB.
+8. Click **Select Devices** and select your AlarmDecoder.
+9. Click **Install**
     * Notes
         1. This will generate new devices under **My Devices**
         2. If you **Uninstall** from **AlarmDecoder service** screen it will attempt to automatically remove all sub devices if they are not in use by SHM or other rules.
@@ -88,9 +83,13 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
 8. Press Save
     * notes
         1. If the AlarmDecoder Web App restarts it will loose subscriptions. It may take 5 minutes to restore PUSH notification.
-        2. Updating the **AlarmDecoder*** device settings on the phone app or web-based IDE will force a new subscription.
+        2. Updating the **AlarmDecoder** device settings on the phone app or web-based IDE will force a new subscription.
 
 ## Known Issues
 
 * DSC: Extra zones will show up in the zone list.
-* ADEMCO: Disarming the panel after an ALARM may be difficult due to requiring a double-disarm and the button states don't quite work that way.  Current workaround is to try to arm, which will let you disarm again.
+* ADEMCO: As with a regular keypad it is necessary to disarm a second time after an alarm to restore to Ready state. The Disarm button stays enabled when the panel is Not Ready.
+* Status is not updating when the panel arms disarms etc.
+    * Subscription may have been lost during restart of web app.
+    * The AlarmDecoder SmartThings device will renew its subscription every 5 minutes.
+    * To force a renwal update the Settings such as the API KEY in the App or Device graph page.
