@@ -108,7 +108,7 @@ def installed() {
     log.debug "Installed with settings: ${settings}"
 
     // initialize everything
-    initialize()
+    initialize(true)
 }
 
 /**
@@ -118,7 +118,7 @@ def updated() {
     log.debug "Updated with settings: ${settings}"
 
     // re initialize everything
-    initialize()
+    initialize(false)
 }
 
 /**
@@ -150,8 +150,8 @@ def uninstalled() {
  *   Create our default state
  *
  */
-def initialize() {
-    log.trace "initialize"
+def initialize(isInstall) {
+    log.trace "initialize Installing: ${isInstall}"
 
     // unsubscribe from everything
     unsubscribe()
@@ -166,10 +166,10 @@ def initialize() {
     initSubscriptions()
 
     // if a device in the GUI is selected then add it.
-    if (selectedDevices) {
+    if (isInstall && selectedDevices)
         addExistingDevices()
+    else
         configureDevices()
-    }
 
     scheduleRefresh()
 }
