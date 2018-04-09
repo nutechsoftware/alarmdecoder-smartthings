@@ -34,7 +34,7 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
 6. Enter `master` as the **branch**
 7. Click **Save**
 8. Click **Update From Repo** (top of page)
-9. Check the boxes `network appliance` and `virtual contact sensor`
+9. Check the boxes `AlarmDecoder network appliance` and `AlarmDecoder virtual contact sensor` and `AlarmDecoder virtual smoke alarm`
 10. Check **Publish** (bottom of dialog)
 11. Click **Execute Update**
   
