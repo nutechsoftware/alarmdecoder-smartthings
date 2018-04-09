@@ -557,6 +557,10 @@ def addExistingDevices() {
                                                 ssdpPath: newDevice.value.ssdpPath
                                             ]
                                    ])
+                                   
+                // Set default device state to notready.
+                d.sendEvent(name: "panel_state", value: "notready", isStateChange: true, displayed: true)
+
             }
             // Add virtual zone contact sensors if they do not exist.
             for (def i = 0; i < 8; i++)
