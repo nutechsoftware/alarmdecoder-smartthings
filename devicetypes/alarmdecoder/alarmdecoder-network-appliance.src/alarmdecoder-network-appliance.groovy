@@ -51,18 +51,18 @@ metadata {
         attribute "panel_state", "enum", ["armed", "armed_stay", "disarmed", "alarming", "fire", "ready", "notready"]
         attribute "armed", "enum", ["armed", "disarmed"]
         attribute "panic_state", "string"
-        attribute "zoneStatus1", "number"
-        attribute "zoneStatus2", "number"
-        attribute "zoneStatus3", "number"
-        attribute "zoneStatus4", "number"
-        attribute "zoneStatus5", "number"
-        attribute "zoneStatus6", "number"
-        attribute "zoneStatus7", "number"
-        attribute "zoneStatus8", "number"
-        attribute "zoneStatus9", "number"
-        attribute "zoneStatus10", "number"
-        attribute "zoneStatus11", "number"
-        attribute "zoneStatus12", "number"
+        attribute "zoneStatus1", "string"
+        attribute "zoneStatus2", "string"
+        attribute "zoneStatus3", "string"
+        attribute "zoneStatus4", "string"
+        attribute "zoneStatus5", "string"
+        attribute "zoneStatus6", "string"
+        attribute "zoneStatus7", "string"
+        attribute "zoneStatus8", "string"
+        attribute "zoneStatus9", "string"
+        attribute "zoneStatus10", "string"
+        attribute "zoneStatus11", "string"
+        attribute "zoneStatus12", "string"
 
         command "disarm"
         command "arm_stay"
@@ -319,9 +319,13 @@ def parse_xml(String headers, String body) {
     resultMap['panel_type'] = xmlResult.property.panelstate.panel_type.text()
 
     // build list of faulted zones unpack xml
-    def zones = []
-    xmlResult.property.panelstate.panel_zones_faulted.z.each { e-> zones << e.toInteger() }
-    resultMap['panel_zones_faulted'] = zones
+    // only update zone list on zone change events
+    // <eventmessage><![CDATA[Zone <unnamed> (9) has been faulted.]]></eventmessage>
+    if (xmlResult.property.eventmessage.text().startsWith('Zone ')) {
+        def zones = []
+        xmlResult.property.panelstate.panel_zones_faulted.z.each { e-> zones << e.toInteger() }
+        resultMap['panel_zones_faulted'] = zones
+    }
 
     // unpack the relay xml
     def relays = []
@@ -672,7 +676,11 @@ private def build_zone_events(data) {
 
     //log.trace("Previous faulted zones: ${state.faulted_zones}")
 
+    // if we have no tag then do nothing.
     def current_faults = data.panel_zones_faulted
+    if (current_faults == null)
+      return
+      
     def number_of_zones_faulted = current_faults.size()
 
     def new_faults = current_faults.minus(state.faulted_zones)
@@ -703,15 +711,12 @@ private def build_zone_events(data) {
     // Fill zone tiles
     for (def i = 1; i <= 12; i++) {
         if (number_of_zones_faulted > 0 && i <= number_of_zones_faulted) {
-            if (device.currentValue("zoneStatus${i}") != current_faults[i-1])
-                events << createEvent(name: "zoneStatus${i}", value: current_faults[i-1], displayed: false)
+            if ((device.currentValue("zoneStatus${i}") ?: "0").toInteger() != current_faults[i-1])
+                events << createEvent(name: "zoneStatus${i}", value: current_faults[i-1], displayed: true)
         }
         else {
             if (device.currentValue("zoneStatus${i}") != null)
-                events << createEvent(name: "zoneStatus${i}", value: "", displayed: false)  // HACK: Setting this to an empty string has less issues
-                                                                                            //       than setting it to null.  Setting it to null
-                                                                                            //       results in a NumberFormatException after installing
-                                                                                            //       a new version of the device type.
+                events << createEvent(name: "zoneStatus${i}", value: "", displayed: true)
         }
     }
 
