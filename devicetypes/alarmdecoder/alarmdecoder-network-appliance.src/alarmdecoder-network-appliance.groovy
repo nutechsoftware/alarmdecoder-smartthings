@@ -320,7 +320,7 @@ def parse_xml(String headers, String body) {
 
     // build list of faulted zones unpack xml
     def zones = []
-    xmlResult.property.panelstate.panel_zones_faulted.z.each { e-> zones << e.text() }
+    xmlResult.property.panelstate.panel_zones_faulted.z.each { e-> zones << e.toInteger() }
     resultMap['panel_zones_faulted'] = zones
 
     // unpack the relay xml
