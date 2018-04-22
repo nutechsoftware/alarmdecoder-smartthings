@@ -359,7 +359,7 @@ def shmAlarmHandler(evt) {
     if (settings.shmIntegration == false)
         return
 
-    log.trace("shmAlarmHandler -- ${evt.value}")
+    log.trace("shmAlarmHandler -- ${evt.value}, lastSHMStatus ${state.lastSHMStatus}, lastAlarmDecoderStatus ${state.lastAlarmDecoderStatus}")
 
     if (state.lastSHMStatus != evt.value && evt.value != state.lastAlarmDecoderStatus)
     {
