@@ -16,20 +16,16 @@
 metadata {
     definition (name: "AlarmDecoder virtual smoke alarm", namespace: "alarmdecoder", author: "sean@nutech.com") {
         capability "smokeDetector"
-        capability "Refresh"
     }
 
     // tile definitions
     tiles {
         standardTile("sensor", "device.smoke", width: 2, height: 2, canChangeIcon: true) {
             state "clear", label: '${name}', icon: "st.alarm.smoke.clear", backgroundColor: "#79b821"
-            state "detected", label: '${name}', icon: "st.alarm.smoke.smoke", backgroundColor: "#ffffff"
-        }
-        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat") {
-            state "default", label:'Refresh', action:"device.refresh", icon: "st.secondary.refresh-icon"
+            state "detected", label: '${name}', icon: "st.alarm.smoke.smoke", backgroundColor: "#e86d13"
         }
 
         main "sensor"
-        details(["sensor", "refresh"])
+        details "sensor"
     }
 }

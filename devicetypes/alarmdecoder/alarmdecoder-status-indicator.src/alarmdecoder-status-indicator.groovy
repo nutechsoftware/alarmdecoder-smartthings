@@ -1,5 +1,5 @@
-/**
- *  Virtual Contact Sensor for alarm panel zones
+ /**
+ *  Virtual status indicator to show a specific alarm status
  *
  *  Copyright 2016-2018 Nu Tech Software Solutions, Inc.
  *
@@ -14,17 +14,21 @@
  *
  */
 metadata {
-    definition (name: "AlarmDecoder virtual contact sensor", namespace: "alarmdecoder", author: "scott@nutech.com") {
+    definition (name: "AlarmDecoder status indicator", namespace: "alarmdecoder", author: "sean@nutech.com") {
         capability "Contact Sensor"
     }
 
-    // tile definitions
     tiles {
-        standardTile("sensor", "device.contact", width: 2, height: 2, canChangeIcon: true) {
+        standardTile("contact", "device.contact", width: 2, height: 2, canChangeIcon: true) {
             state "closed", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#00a0dc"
             state "open", label: '${name}', icon: "st.contact.contact.open", backgroundColor: "#e86d13"
         }
-        main "sensor"
-        details "sensor"
+        main "contact"
+        details "contact"
     }
+}
+
+// parse events into attributes
+def parse(String description) {
+    log.debug "AlarmDecoderStatusIndicator: Parsing '${description}'"
 }
