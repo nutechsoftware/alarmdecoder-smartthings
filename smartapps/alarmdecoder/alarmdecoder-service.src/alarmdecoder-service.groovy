@@ -13,6 +13,11 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
+import groovy.transform.Field
+/*
+ * Turn on verbose debugging
+ */
+@Field debug = false
 
 definition(
     name: "AlarmDecoder service",
@@ -74,7 +79,7 @@ def discover_devices() {
     // build list of currently known AlarmDecoder parent devices
     def found_devices = [:]
     def options = state.devices.each { k, v ->
-        log.trace "discover_devices: ${v}"
+        if (debug) log.debug "discover_devices: ${v}"
         def ip = convertHexToIP(v.ip)
         found_devices["${v.ip}:${v.port}"] = "AlarmDecoder @ ${ip}"
     }
@@ -105,7 +110,8 @@ def discover_devices() {
  *  installed()
  */
 def installed() {
-    log.debug "Installed with settings: ${settings}"
+    log.trace "installed"
+    if (debug) log.debug "Installed with settings: ${settings}"
 
     // initialize everything
     initialize()
@@ -115,7 +121,8 @@ def installed() {
  * updated()
  */
 def updated() {
-    log.debug "Updated with settings: ${settings}"
+    log.trace "updated"
+    if (debug) log.debug "Updated with settings: ${settings}"
 
     // re initialize everything
     initialize()
@@ -134,14 +141,13 @@ def uninstalled() {
     def devices = getChildDevices()
     devices.each {
         try {
-            log.trace "deleting child device: ${it.deviceNetworkId}"
+            if (debug) log.debug "deleting child device: ${it.deviceNetworkId}"
             deleteChildDevice(it.deviceNetworkId)
         }
         catch(Exception e) {
             log.trace("exception while uninstalling: ${e}")
         }
     }
-
 }
 
 /**
@@ -163,16 +169,28 @@ def initialize() {
     state.lastSHMStatus = null
     state.lastAlarmDecoderStatus = null
 
+    // Network and SHM subscriptions
     initSubscriptions()
 
     // if a device in the GUI is selected then add it.
     if (selectedDevices) {
         addExistingDevices()
-        configureDevices()
     }
-    scheduleRefresh()
-}
 
+    // Device handler -> service subscriptions
+    configureDeviceSubscriptions()
+
+    // keep us subscribed to notifications
+    getAllChildDevices().each { device ->
+        // Only refresh the main device that has a panel_state
+        def device_type = device.getTypeName()
+        if (device_type == "AlarmDecoder network appliance")
+        {
+            if (debug) log.debug("initialize: Found device refresh subscription.")
+            device.subscribeNotifications()
+        }
+    }
+}
 
 /*** Handlers ***/
 
@@ -184,23 +202,28 @@ def initialize() {
  *   curl -H "Content-Type: application/json" -X POST -d ‘{"message":"Hi, this is a test from AlarmDecoder network device"}’ http://YOUR.HUB.IP.ADDRESS:39500
  */
 def locationHandler(evt) {
-    log.trace "locationHandler"
+    if (debug) log.debug "locationHandler"
 
     def description = evt.description
     def hub = evt?.hubId
 
-    log.trace "locationHandler: description=${description}"
+    // many events but we only want PUSH notifications and they have all the data in evt.description
+    if (!description)
+     return
+
+    if (debug) 
+      log.debug "locationHandler: description: ${description} name: ${evt.name} value: ${evt.value} data: ${evt.data}"
 
     def parsedEvent = ["hub":hub]
     try {
         parsedEvent << parseEventMessage(description)
     }
     catch(Exception e) {
-        log.trace("exception in parseEventMessage: evt: ${evt}")
+        log.error("exception in parseEventMessage: evt: ${evt.name}: ${evt.value} : ${evt.data}")
         return
     }
 
-    log.info("locationHandler parsedEvent: ${parsedEvent}")
+    if (debug) log.debug("locationHandler parsedEvent: ${parsedEvent}")
 
     // UPNP LAN EVENTS on UDP port 1900 from 'AlarmDecoder:1' devices only
     if (parsedEvent?.ssdpTerm?.contains("urn:schemas-upnp-org:device:AlarmDecoder:1")) {
@@ -210,15 +233,15 @@ def locationHandler(evt) {
 
         // add the device to state.devices if it does not exist yet
         if (!(alarmdecoders."${parsedEvent.ssdpUSN.toString()}")) {
-            log.trace "locationHandler: Adding device: ${parsedEvent.ssdpUSN}"
+            if (debug) log.debug "locationHandler: Adding device: ${parsedEvent.ssdpUSN}"
             alarmdecoders << ["${parsedEvent.ssdpUSN.toString()}": parsedEvent]
         } else
         { // It exists so update if needed
             // grab the device object based upon ur ssdpUSN
-            log.trace "alarmdecoders ${alarmdecoders}"
+            if (debug) log.debug  "alarmdecoders ${alarmdecoders}"
             def d = alarmdecoders."${parsedEvent.ssdpUSN.toString()}"
 
-            log.trace "locationHandler: checking for device changed values on device=${d}"
+            if (debug) log.debug "locationHandler: checking for device changed values on device=${d}"
 
             // Did the DNI change? if so update it.
             if (d.ip != parsedEvent.ip || d.port != parsedEvent.port) {
@@ -226,14 +249,14 @@ def locationHandler(evt) {
                 d.ip = parsedEvent.ip
                 d.port = parsedEvent.port
 
-                log.trace "locationHandler: device DNI changed values!"
+                if (debug) log.debug "locationHandler: device DNI changed values!"
 
                 // Update device by its MAC address if the DNI changes
                 def children = getChildDevices()
                 children.each {
                     if (it.getDeviceDataByName("mac") == parsedEvent.mac) {
                         it.setDeviceNetworkId((parsedEvent.ip + ":" + parsedEvent.port))
-                        log.trace "Set new network id: " + parsedEvent.ip + ":" + parsedEvent.port
+                        if (debug) log.debug "Set new network id: " + parsedEvent.ip + ":" + parsedEvent.port
                     }
                 }
             }
@@ -242,13 +265,12 @@ def locationHandler(evt) {
             if (d.ssdpPath != parsedEvent.ssdpPath) {
                 // update the ssdpPath
                 d.ssdpPath = parsedEvent.ssdpPath
-                log.trace "locationHandler: device ssdpPath changed values. need to fetch new description.xml."
+                if (debug) log.debug "locationHandler: device ssdpPath changed values. need to fetch new description.xml."
 
                 // send out reqeusts for xml description for anyone not verified yet
                 // FIXME: verifyAlarmDecoders()
             }
         }
-
     } else if (parsedEvent?.headers && parsedEvent?.body)
     { // HTTP EVENTS on TCP port 39500 RESPONSES
       // for some reason they hit here and in the parse() in the device?
@@ -256,7 +278,7 @@ def locationHandler(evt) {
         def bodyString = new String(parsedEvent.body.decodeBase64())
         def type = (headerString =~ /Content-Type:.*/) ? (headerString =~ /Content-Type:.*/)[0] : null
 
-        log.trace("locationHandler HTTP event type:${type} body:${bodyString} headers:${headerString}")
+        if (debug) log.debug ("locationHandler HTTP event type:${type} body:${bodyString} headers:${headerString}")
 
         // XML PUSH data
         if (type?.contains("xml"))
@@ -266,28 +288,10 @@ def locationHandler(evt) {
                 def device_type = device.getTypeName()
                 if (device_type == "AlarmDecoder network appliance")
                 {
-                    log.trace("push_update_alarmdecoders: Found device sending pushed data.")
+                    if (debug) log.debug ("push_update_alarmdecoders: Found device sending pushed data.")
                     device.parse_xml(headerString, bodyString).each { e-> device.sendEvent(e) }
                 }
             }
-        }
-    }
-}
-
-/**
- * Handle cron refresh event
- */
-def refreshHandler() {
-    log.trace "refreshHandler"
-
-    // keep us subscribed to notifications
-    getAllChildDevices().each { device ->
-        // Only refresh the main device that has a panel_state
-        def device_type = device.getTypeName()
-        if (device_type == "AlarmDecoder network appliance")
-        {
-            log.trace("refreshHandler: Found device refresh subscription.")
-            device.subscribeNotifications()
         }
     }
 }
@@ -297,30 +301,137 @@ def refreshHandler() {
  */
 def webserviceUpdate()
 {
-    log.trace "webserviceUpdate"
+    if (debug) log.debug "webserviceUpdate"
     return [status: "OK"]
 }
 
 /**
- * Handle Device Command zoneOn()
- * sets Contact attributes of the alarmdecoder device to open/closed
+ * Handle our child device action button events
+ * sets Contact attributes of the alarmdecoder smoke device
  */
-def smokeSet(evt) {
-    log.trace("smokeSet: desc=${evt.value}")
+def actionButton(id) {
+    if (debug) log.debug("actionButton: desc=${id}")
 
-    def d = getChildDevices().find { it.deviceNetworkId.contains(":SmokeAlarm") }
-    if (d)
-    {
-        d.sendEvent(name: "smoke", value: evt.value, isStateChange: true, filtered: true)
+    // grab our primary AlarmDecoder device object
+    def d = getChildDevice("${state.ip}:${state.port}")
+    if(!d) {
+        log.error("actionButton: Could not find primary device '${state.ip}:${state.port}'.")
+        return
+    }
+
+    /* FIXME: Need a pin code or some way to trust the request.
+    if(id.contains(":disarm")) {
+        d.disarm()
+    } */
+
+    if(id.contains(":armAway")) {
+        d.arm_away()
+    }
+    if(id.contains(":armStay")) {
+        d.arm_stay()
+    }
+    if(id.contains(":chimeMode")) {
+        d.chime()
+    }
+    if(id.contains(":alarmPanic")) {
+        d.panic()
+    }
+    if(id.contains(":alarmAUX")) {
+        d.aux()
+    }
+    if(id.contains(":alarmFire")) {
+        d.fire()
     }
 }
+
+/**
+ * send event to SmokeAlarm device to set state
+ */
+def smokeSet(evt) {
+    if (debug) log.debug("smokeSet: desc=${evt.value}")
+
+    def d = getChildDevices().find { it.deviceNetworkId.contains(":SmokeAlarm") }
+    if (!d)
+    {
+        log.error("smokeSet: Could not find 'SmokeAlarm' device.")
+        return
+    }
+    d.sendEvent(name: "smoke", value: evt.value, isStateChange: true, filtered: true)
+}
+
+/**
+ * send event to armAway device to set state
+ */
+def armAwaySet(evt) {
+    if (debug) log.debug("armAwaySet ${evt.value}")
+    def d = getChildDevice("${state.ip}:${state.port}:armAway")
+    if (!d) {
+        log.error("armAwaySet: Could not find 'armAway' device.")
+        return
+    }
+    d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+}
+
+/**
+ * send event to armStay device to set state
+ */
+def armStaySet(evt) {
+    if (debug) log.debug("armStaySet ${evt.value}")
+    def d = getChildDevice("${state.ip}:${state.port}:armStay")
+    if (!d) {
+        log.error("armStaySet: Could not find 'armStay' device.")
+        return
+    }
+    d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+}
+
+/**
+ * send event to alarmbell indicator device to set state
+ */
+def alarmBellSet(evt) {
+    if (debug)
+      log.debug("alarmBellSet ${evt.value}")
+    def d = getChildDevice("${state.ip}:${state.port}:alarmBellIndicator")
+    if (!d) {
+        log.error("alarmBellSet: Could not find 'alarmBell' device.")
+        return
+    }
+    d.sendEvent(name: "contact", value: evt.value, isStateChange: true, filtered: true)
+}
+
+/**
+ * send event to chime indicator device to set state
+ */
+def chimeSet(evt) {
+    if (debug) log.debug("chimeSet ${evt.value}")
+    def d = getChildDevice("${state.ip}:${state.port}:chimeMode")
+    if (!d) {
+        log.error("chimeSet: Could not find device 'chime'")
+        return
+    }
+    d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+}
+
+/**
+ * send event to ready indicator device to set state
+ */
+def readySet(evt) {
+    if (debug) log.debug("readySet ${evt.value}")
+    def d = getChildDevice("${state.ip}:${state.port}:readyIndicator")
+    if (!d) {
+        log.error("readySet: Could not find 'readyIndicator' device.")
+        return
+    }
+    d.sendEvent(name: "contact", value: evt.value, isStateChange: true, filtered: true)
+}
+
 
 /**
  * Handle Device Command zoneOn()
  * sets Contact attributes of the alarmdecoder device to open/closed
  */
 def zoneOn(evt) {
-    log.trace("zoneOn: desc=${evt.value}")
+    if (debug) log.debug("zoneOn: desc=${evt.value}")
 
     def d = getChildDevices().find { it.deviceNetworkId.contains("switch${evt.value}") }
     if (d)
@@ -338,7 +449,7 @@ def zoneOn(evt) {
  * sets Contact attributes of the alarmdecoder device to open/closed
  */
 def zoneOff(evt) {
-    log.trace("zoneOff: desc=${evt.value}")
+    if (debug) log.debug("zoneOff: desc=${evt.value}")
 
     def d = getChildDevices().find { it.deviceNetworkId.contains("switch${evt.value}") }
     if (d)
@@ -359,7 +470,7 @@ def shmAlarmHandler(evt) {
     if (settings.shmIntegration == false)
         return
 
-    log.trace("shmAlarmHandler -- ${evt.value}, lastSHMStatus ${state.lastSHMStatus}, lastAlarmDecoderStatus ${state.lastAlarmDecoderStatus}")
+    if (debug) log.debug("shmAlarmHandler -- ${evt.value}, lastSHMStatus ${state.lastSHMStatus}, lastAlarmDecoderStatus ${state.lastAlarmDecoderStatus}")
 
     if (state.lastSHMStatus != evt.value && evt.value != state.lastAlarmDecoderStatus)
     {
@@ -367,11 +478,11 @@ def shmAlarmHandler(evt) {
             if (!device.deviceNetworkId.contains(":switch"))
             {
                 if (evt.value == "away")
-                    device.lock()
+                    device.arm_away()
                 else if (evt.value == "stay")
-                    device.on()
+                    device.arm_stay()
                 else if (evt.value == "off")
-                    device.off()
+                    device.disarm()
                 else
                     log.debug "Unknown SHM alarm value: ${evt.value}"
             }
@@ -390,10 +501,10 @@ def alarmdecoderAlarmHandler(evt) {
     if (settings.shmIntegration == false || settings.shmChangeSHMStatus == false)
         return
 
-    log.trace("alarmdecoderAlarmHandler: ${evt.value}")
+    if (debug) log.trace("alarmdecoderAlarmHandler: ${evt.value}")
 
     if (state.lastAlarmDecoderStatus != evt.value && evt.value != state.lastSHMStatus) {
-        log.trace("alarmdecoderAlarmHandler: sendLocationEvent")
+        if (debug) log.debug("alarmdecoderAlarmHandler: sendLocationEvent")
         sendLocationEvent(name: "alarmSystemStatus", value: evt.value)
     }
 
@@ -407,31 +518,22 @@ def alarmdecoderAlarmHandler(evt) {
  */
 def initSubscriptions() {
     // subscribe to the Smart Home Manager api for alarm status events
-    log.trace "initialize: subscribe to SHM alarmSystemStatus API messages"
+    if (debug) log.debug("initialize: subscribe to SHM alarmSystemStatus API messages")
     subscribe(location, "alarmSystemStatus", shmAlarmHandler)
 
     /* subscribe to local LAN messages to this HUB on TCP port 39500 and UPNP UDP port 1900 */
-    log.trace "initialize: subscribe to locations local LAN messages"
+    if (debug) log.debug("initialize: subscribe to locations local LAN messages")
     subscribe(location, null, locationHandler, [filterEvents: false])
-
 }
 
 /**
  * Called by discover_devices page periodically
  */
 def discover_alarmdecoder() {
-    log.trace "discover_alarmdecoder"
+    if (debug) log.debug("discover_alarmdecoder")
 
     // Request HUB send out a UpNp broadcast discovery messages on the local network
     sendHubCommand(new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN))
-}
-
-/**
- * create cron schedule and call back handlers
- */
-def scheduleRefresh() {
-    log.trace "scheduleRefresh"
-    runEvery5Minutes(refreshHandler)
 }
 
 /**
@@ -440,7 +542,7 @@ def scheduleRefresh() {
  * and get back the current status of the AlarmDecoder.
  */
 def refresh_alarmdecoders() {
-    log.trace("refresh_alarmdecoders")
+    if (debug) log.debug("refresh_alarmdecoders")
 
     getAllChildDevices().each { device ->
         // Only refresh the main device that has a panel_state
@@ -451,7 +553,7 @@ def refresh_alarmdecoders() {
             if(apikey) {
                 device.refresh()
             } else {
-                log.trace("refresh_alarmdecoders no API KEY for: ${device} @ ${device.getDataValue("urn")}")
+                log.error("refresh_alarmdecoders no API KEY for: ${device} @ ${device.getDataValue("urn")}")
             }
         }
     }
@@ -511,7 +613,7 @@ def getDevices() {
  * Add devices selected in the GUI if new.
  */
 def addExistingDevices() {
-    log.trace "addExistingDevices: ${selectedDevices}"
+    if (debug) log.debug("addExistingDevices: ${selectedDevices}")
 
     def selected_devices = selectedDevices
     if (selected_devices instanceof java.lang.String) {
@@ -520,12 +622,12 @@ def addExistingDevices() {
 
     selected_devices.each { dni ->
         def d = getChildDevice(dni)
-        log.trace("addExistingDevices, getChildDevice(${dni})")
+        if (debug) log.debug("addExistingDevices, getChildDevice(${dni})")
         if (!d) {
 
             // Find the device with a matching dni XXXXXXXX:XXXX
             def newDevice = state.devices.find { /*k, v -> k == dni*/ k, v -> dni == "${v.ip}:${v.port}" }
-            log.trace("addExistingDevices, devices.find=${newDevice}")
+            if (debug) log.debug("addExistingDevices, devices.find=${newDevice}")
 
             if (newDevice) {
                 // Set the device network ID so that hubactions get sent to the device parser.
@@ -535,7 +637,7 @@ def addExistingDevices() {
 
                 // Set URN for the child device
                 state.urn = convertHexToIP(state.ip) + ":" + convertHexToInt(state.port)
-                log.trace("AlarmDecoder webapp api endpoint('${state.urn}')")
+                if (debug) log.debug("AlarmDecoder webapp api endpoint('${state.urn}')")
 
                 // Create device adding the URN to its data object
                 d = addChildDevice("alarmdecoder",
@@ -555,7 +657,7 @@ def addExistingDevices() {
                                                 ssdpPath: newDevice.value.ssdpPath
                                             ]
                                    ])
-                                   
+
                 // Set default device state to notready.
                 d.sendEvent(name: "panel_state", value: "notready", isStateChange: true, displayed: true)
 
@@ -578,23 +680,97 @@ def addExistingDevices() {
             }
 
             // Add virtual Smoke Alarm sensors if it does not exist.
-            def newSmoke = state.devices.find { k, v -> k == "${state.ip}:${state.port}:SmokeAlarm" }
-            if (!newSmoke)
+            def cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:SmokeAlarm" }
+            if (!cd)
             {
-                def smoke_alarm = addChildDevice("alarmdecoder", "AlarmDecoder virtual smoke alarm", "${state.ip}:${state.port}:SmokeAlarm", state.hub, [name: "${state.ip}:${state.port}:SmokeAlarm", label: "AlarmDecoder Smoke Alarm", completedSetup: true])
-                smoke_alarm.sendEvent(name: "smoke", value: "clear", isStateChange: true, displayed: false)
+                def nd = addChildDevice("alarmdecoder", "AlarmDecoder virtual smoke alarm", "${state.ip}:${state.port}:SmokeAlarm", state.hub,
+                [name: "${state.ip}:${state.port}:smokeAlarm", label: "AlarmDecoder Smoke Alarm", completedSetup: true])
+                nd.sendEvent(name: "smoke", value: "clear", isStateChange: true, displayed: false)
+            }
+
+            // Add virtual Arm Stay switch if it does not exist.
+            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:armStay" }
+            if (!cd)
+            {
+                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:armStay", state.hub,
+                [name: "${state.ip}:${state.port}:armStay", label: "AlarmDecoder Stay", completedSetup: true])
+                nd.sendEvent(name: "contact", value: "off", isStateChange: true, displayed: false)
+            }
+
+            // Add virtual Arm Away switch if it does not exist.
+            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:armAway" }
+            if (!cd)
+            {
+                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:armAway", state.hub,
+                [name: "${state.ip}:${state.port}:armAway", label: "AlarmDecoder Away", completedSetup: true])
+                nd.sendEvent(name: "contact", value: "off", isStateChange: true, displayed: false)
+            }
+
+            // Add virtual Chime switch if it does not exist.
+            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:chimeMode" }
+            if (!cd)
+            {
+                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:chimeMode", state.hub,
+                [name: "${state.ip}:${state.port}:chimeMode", label: "AlarmDecoder Chime", completedSetup: true])
+                nd.sendEvent(name: "contact", value: "off", isStateChange: true, displayed: false)
+            }
+
+            // Add virtual Ready contact if it does not exist.
+            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:readyIndicator" }
+            if (!cd)
+            {
+                def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:readyIndicator", state.hub,
+                [name: "${state.ip}:${state.port}:readyIndicator", label: "AlarmDecoder Ready", completedSetup: true])
+                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
+            }
+
+            // Add virtual Alarm Bell contact if it does not exist.
+            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmBell" }
+            if (!cd)
+            {
+                def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:alarmBellIndicator", state.hub,
+                [name: "${state.ip}:${state.port}:alarmBellIndicator", label: "AlarmDecoder Alarm Bell", completedSetup: true])
+                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
+            }
+            
+            // Add FIRE alarm button if it does not exist.
+            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmFire" }
+            if (!cd)
+            {
+                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmFire", state.hub,
+                [name: "${state.ip}:${state.port}:alarmFire", label: "AlarmDecoder Fire Alarm", completedSetup: true])
+                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
+            }
+
+            // Add Panic alarm button if it does not exist.
+            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmPanic" }
+            if (!cd)
+            {
+                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmPanic", state.hub,
+                [name: "${state.ip}:${state.port}:alarmPanic", label: "AlarmDecoder Panic Alarm", completedSetup: true])
+                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
+            }
+
+            // Add AUX alarm button if it does not exist.
+            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmAUX" }
+            if (!cd)
+            {
+                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmAUX", state.hub,
+                [name: "${state.ip}:${state.port}:alarmAUX", label: "AlarmDecoder AUX Alarm", completedSetup: true])
+                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
             }
         }
     }
 }
 
 /**
- * Once the root AlarmDecoder device is added we auto add the our virtual sensors
+ * Configure subscriptions the virtual devices will send too.
  */
-private def configureDevices() {
+private def configureDeviceSubscriptions() {
+    if (debug) log.debug("configureDeviceSubscriptions")
     def device = getChildDevice("${state.ip}:${state.port}")
     if (!device) {
-        log.trace("configureDevices: Could not find primary device.")
+        log.error("configureDeviceSubscriptions: Could not find primary device.")
         return
     }
 
@@ -604,13 +780,27 @@ private def configureDevices() {
     subscribe(device, "zone-on", zoneOn, [filterEvents: false])
     subscribe(device, "zone-off", zoneOff, [filterEvents: false])
 
-
     /* Subscribe to Smart Home Monitor(SHM) alarmStatus events
      */
     subscribe(device, "alarmStatus", alarmdecoderAlarmHandler, [filterEvents: false])
 
     // subscrib to smoke-set handler for updates
     subscribe(device, "smoke-set", smokeSet, [filterEvents: false])
+
+    // subscribe to arm-away handler
+    subscribe(device, "arm-away-set", armAwaySet, [filterEvents: false])
+
+    // subscribe to arm-stay handler
+    subscribe(device, "arm-stay-set", armStaySet, [filterEvents: false])
+
+    // subscribe to chime handler
+    subscribe(device, "chime-set", chimeSet, [filterEvents: false])
+
+    // subscribe to alarm bell handler
+    subscribe(device, "alarmbell-set", alarmBellSet, [filterEvents: false])
+
+    // subscribe to ready handler
+    subscribe(device, "ready-set", readySet, [filterEvents: false])
 
 }
 
@@ -622,9 +812,10 @@ private def configureDevices() {
  *
  */
 private def parseEventMessage(String description) {
+    if (debug)
+      log.debug "parseEventMessage: $description"
     def event = [:]
     def parts = description.split(',')
-
     parts.each { part ->
         part = part.trim()
         if (part.startsWith('devicetype:')) {
@@ -715,7 +906,7 @@ def verifyAlarmDecoders() {
 def verifyAlarmDecoder(String deviceNetworkId, String ssdpPath) {
   String ip = getHostAddressFromDNI(deviceNetworkId)
 
-  log.trace "verifyAlarmDecoder: $deviceNetworkId ssdpPath: ${ssdpPath} ip: ${ip}"
+  if (debug) log.debug("verifyAlarmDecoder: $deviceNetworkId ssdpPath: ${ssdpPath} ip: ${ip}")
 
   def result = new physicalgraph.device.HubAction([
   method: "GET",
