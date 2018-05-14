@@ -66,6 +66,7 @@ metadata {
         command "fire"
         command "panic"
         command "aux"
+        command "chime"
     }
 
     simulator {
@@ -605,7 +606,7 @@ def update_state(data) {
 
     // Update our ready indicator virtual device
     if (forceguiUpdate || data.panel_ready != state.panel_ready)
-        events << createEvent(name: "ready-set", value: data.panel_ready ? "open" : "close", displayed: true, isStateChange: true)
+        events << createEvent(name: "ready-set", value: data.panel_ready ? "close" : "open", displayed: true, isStateChange: true)
 
     if (armed) {
         panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
