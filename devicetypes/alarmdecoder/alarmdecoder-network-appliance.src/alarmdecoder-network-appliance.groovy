@@ -67,6 +67,18 @@ metadata {
         command "panic"
         command "aux"
         command "chime"
+        command "bypass1"
+        command "bypass2"
+        command "bypass3"
+        command "bypass4"
+        command "bypass5"
+        command "bypass6"
+        command "bypass7"
+        command "bypass8"
+        command "bypass9"
+        command "bypass10"
+        command "bypass11"
+        command "bypass12"        
     }
 
     simulator {
@@ -125,7 +137,7 @@ metadata {
         }
 
         valueTile("zoneStatus1", "device.zoneStatus1", inactiveLabel: false, width: 1, height: 1) {
-            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+            state "default", icon:"", label: '${currentValue}', action: "bypass1", nextState: "default", backgroundColors: [
                 [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
@@ -133,7 +145,7 @@ metadata {
         }
 
         valueTile("zoneStatus2", "device.zoneStatus2", inactiveLabel: false, width: 1, height: 1) {
-            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+            state "default", icon:"", label: '${currentValue}', action: "bypass2", nextState: "default", backgroundColors: [
                 [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
@@ -141,7 +153,7 @@ metadata {
         }
 
         valueTile("zoneStatus3", "device.zoneStatus3", inactiveLabel: false, width: 1, height: 1) {
-            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+            state "default", icon:"", label: '${currentValue}', action: "bypass3", nextState: "default", backgroundColors: [
                 [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
@@ -149,7 +161,7 @@ metadata {
         }
 
         valueTile("zoneStatus4", "device.zoneStatus4", inactiveLabel: false, width: 1, height: 1) {
-            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+            state "default", icon:"", label: '${currentValue}', action: "bypass4", nextState: "default", backgroundColors: [
                 [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
@@ -157,7 +169,7 @@ metadata {
         }
 
         valueTile("zoneStatus5", "device.zoneStatus5", inactiveLabel: false, width: 1, height: 1) {
-            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+            state "default", icon:"", label: '${currentValue}', action: "bypass5", nextState: "default", backgroundColors: [
                 [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
@@ -165,7 +177,7 @@ metadata {
         }
 
         valueTile("zoneStatus6", "device.zoneStatus6", inactiveLabel: false, width: 1, height: 1) {
-            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+            state "default", icon:"", label: '${currentValue}', action: "bypass6", nextState: "default", backgroundColors: [
                 [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
@@ -173,7 +185,7 @@ metadata {
         }
 
         valueTile("zoneStatus7", "device.zoneStatus7", inactiveLabel: false, width: 1, height: 1) {
-            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+            state "default", icon:"", label: '${currentValue}', action: "bypass7", nextState: "default", backgroundColors: [
                 [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
@@ -181,7 +193,7 @@ metadata {
         }
 
         valueTile("zoneStatus8", "device.zoneStatus8", inactiveLabel: false, width: 1, height: 1) {
-            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+            state "default", icon:"", label: '${currentValue}', action: "bypass8", nextState: "default", backgroundColors: [
                 [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
@@ -189,7 +201,7 @@ metadata {
         }
 
         valueTile("zoneStatus9", "device.zoneStatus9", inactiveLabel: false, width: 1, height: 1) {
-            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+            state "default", icon:"", label: '${currentValue}', action: "bypass9", nextState: "default", backgroundColors: [
                 [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
@@ -197,7 +209,7 @@ metadata {
         }
 
         valueTile("zoneStatus10", "device.zoneStatus10", inactiveLabel: false, width: 1, height: 1) {
-            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+            state "default", icon:"", label: '${currentValue}', action: "bypass10", nextState: "default", backgroundColors: [
                 [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
@@ -205,7 +217,7 @@ metadata {
         }
 
         valueTile("zoneStatus11", "device.zoneStatus11", inactiveLabel: false, width: 1, height: 1) {
-            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+            state "default", icon:"", label: '${currentValue}', action: "bypass11", nextState: "default", backgroundColors: [
                 [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
@@ -213,7 +225,7 @@ metadata {
         }
 
         valueTile("zoneStatus12", "device.zoneStatus12", inactiveLabel: false, width: 1, height: 1) {
-            state "default", icon:"", label: '${currentValue}', backgroundColors: [
+            state "default", icon:"", label: '${currentValue}', action: "bypass12", nextState: "default", backgroundColors: [
                 [value: 0, color: "#ffffff"],
                 [value: 1, color: "#ff0000"],
                 [value: 99, color: "#ff0000"]
@@ -561,6 +573,68 @@ def checkAux() {
         log.trace("clearing aux");
     }
 }
+
+/**
+ * bypassN()
+ * Bypass the zone indicated on this tile
+ */
+def bypass1() {
+    bypassN(1)
+} 
+def bypass2() {
+    bypassN(2)
+}
+def bypass3() {
+    bypassN(3)
+}
+def bypass4() {
+    bypassN(4)
+}
+def bypass5() {
+    bypassN(5)
+}
+def bypass6() {
+    bypassN(6)
+}
+def bypass7() {
+    bypassN(7)
+}
+def bypass8() {
+    bypassN(8)
+}
+def bypass9() {
+    bypassN(9)
+}
+def bypass10() {
+    bypassN(10)
+}
+def bypass11() {
+    bypassN(10)
+}
+def bypass12() {
+    bypassN(10)
+}
+
+def bypassN(value) {
+    def zone = device.currentValue("zoneStatus${value}")
+    // if no zone then skip
+    if(!zone.toInteger())
+      return;
+
+    log.trace("--- bypass1 ${zone}")
+    def user_code = _get_user_code()
+    def keys = ""
+
+    if (settings.panel_type == "ADEMCO")
+        keys = "${user_code}6" + zone.padLeft(2,"0")
+    else if (settings.panel_type == "DSC")
+        keys = "*1" + zone.padLeft(2,"0")
+    else
+        log.warn("--- bypass1: unknown panel_type.")
+
+    return send_keys(keys)
+}
+
 
 /**
  * chime()
