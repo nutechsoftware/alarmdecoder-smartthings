@@ -12,13 +12,28 @@
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
  *
+ *
+ * Version 1.0.0 - Scott Petersen - Initial design and release
+ * Version 2.0.0 - Sean Mathews <coder@f34r.com> - Changed to use UPNP Push API in AD2 web app
+ * Version 2.0.1 - Sean Mathews <coder@f34r.com> - Adding CID device management support.
+ */
+
+/*
+ * global support
  */
 import groovy.transform.Field
+
 /*
  * Turn on verbose debugging
  */
 @Field debug = false
 
+/*
+ * Device label name settings
+ */
+@Field lname = "AlarmDecoder"
+@Field sname = "AD2"
+ 
 definition(
     name: "AlarmDecoder service",
     namespace: "alarmdecoder",
@@ -31,26 +46,60 @@ definition(
     singleInstance: true) { }
 
 preferences {
-    page name: "main"
-    page(name: "discover_devices", title: "Discovery started..", content: "discover_devices")
+    page(name: "page_main", title: titles("page_main"), install: false, uninstall: false, refreshInterval: 5)
+    page(name: "page_discover_devices", title: titles("page_discover_devices"), content: "page_discover_devices", install: true, uninstall: false)
+    page(name: "page_remove_all", title: titles("page_remove_all"), content: "page_remove_all", install: false, uninstall: false)
+    page(name: "page_cid_management", title: titles("page_cid_management"), content: "page_cid_management", install: false, uninstall: false)
+    page(name: "page_add_new_cid", title: titles("page_add_new_cid"), content: "page_add_new_cid", install: false, uninstall: false)
+    page(name: "page_add_new_cid_confirm", title: titles("page_add_new_cid_confirm"), content: "page_add_new_cid_confirm", install: false, uninstall: false)
+    page(name: "page_remove_selected_cid", title: titles("page_remove_selected_cid"), content: "page_remove_selected_cid", install: false, uninstall: false)
 }
 
-/**
- * our main page dynamicly generated so we can do some code as it is shown.
+/*
+ * Localization strings
  */
-def main() {
+ 
+// string table for titles
+def titles(String name, Object... args) {
+  def page_titles = [
+    "page_main": "${lname} setup and management",
+    "page_discover_devices": "Install ${lname} service",
+    "page_remove_all": "Remove all ${lname} devices",
+    "page_cid_management": "Contact ID device management",
+    "page_add_new_cid": "Add new CID virtual switch",
+    "page_add_new_cid_confirm": "Add new CID virtual switch",
+    "page_remove_selected_cid": "Remove selected virtual switches",
+    "input_cid_devices": "Remove installed CID virutal switches",
+    "input_cid_number": "Select the CID number for this device",
+    "input_cid_number_raw": "Enter raw CID number",
+    "input_selected_devices": "Select device(s) (%s found)",
+    "defaultSensorToClosed": "Default zone sensors to closed?",
+    "shmIntegration": "Integrate with Smart Home Monitor?",
+    "shmChangeSHMStatus": "Automatically change Smart Home Monitor status when armed or disarmed?"
+  ]
+  if (args)
+      return String.format(page_titles[name],args)
+  else
+      return page_titles[name]
+}
 
-    // make sure we are listening to all network subscriptions
-    initSubscriptions()
-
-    // send out a UPNP broadcast discovery
-    discover_alarmdecoder()
-
-    dynamicPage(name: "main", title: "Discover your AlarmDecoder", install: true, uninstall: true) {
-        section("") {
-            href(name: "discover", title: "Discover", required: false, page: "discover_devices", description: "Tap to discover")
-        }
-    }
+// string table for descriptions
+def descriptions(name, Object... args) {
+  def element_descriptions = [
+    "href_discover_devices": "Tap to discover and install your ${lname} Appliance",
+    "href_remove_all": "Tap to remove all ${lname} virtual devices",
+    "href_cid_management": "Tap to manage CID virtual switches",
+    "input_cid_devices": "Tap to select",
+    "input_cid_number": "Tap to select",
+    "href_refresh_devices": "Tap to select",
+    "href_remove_selected_cid": "Tap to remove selected virtual switches",
+    "href_add_new_cid": "Tap to add new CID switch",
+    "href_add_new_cid_confirm": "Tap to add"
+  ]
+  if (args)
+      return String.format(element_descriptions[name],args)
+  else
+      return element_descriptions[name]
 }
 
 /**
@@ -69,9 +118,174 @@ mappings {
 }
 
 /**
- * Page discover_devices generator. Called periodically to refresh content of the page.
+ * Section note on saving and < icons
  */
-def discover_devices() {
+def section_no_save_note() {section("Please note") { paragraph "Do not use the \"<\" or the \"Save\" buttons on this page."}}
+
+/**
+ * our main page dynamicly generated to control page based upon logic.
+ */
+def page_main() {
+
+    // make sure we are listening to all network subscriptions
+    initSubscriptions()
+
+    // send out a UPNP broadcast discovery
+    discover_alarmdecoder()
+
+    // see if we are already installed
+    def foundMsg = ""
+    def mainDevice = getChildDevice("${state.ip}:${state.port}")
+    if (mainDevice) foundMsg = "**** AlarmDecoder already installed ****"
+
+    dynamicPage(name: "page_main") {
+        if (!mainDevice) {
+            section("") {
+                href(name: "href_discover", required: false, page: "page_discover_devices", title: titles("page_discover_devices"), description: descriptions("href_discover_devices"))
+            }
+        } else {
+            section("") {
+                paragraph(foundMsg)
+            }
+            section("") {
+                href(name: "href_remove_all", required: false, page: "page_remove_all", title: titles("page_remove_all"), description: descriptions("href_remove_all"))
+            }        
+            section("") {
+                href(name: "href_cid_management", required: false, page: "page_cid_management", title: titles("page_cid_management"), description: descriptions("href_cid_management"))
+            }
+        }
+    }
+}
+
+/**
+ * Page page_cid_management generator.
+ */
+def page_cid_management() {
+    // TODO: Find a way to clear our current values on loading page
+    return dynamicPage(name: "page_cid_management") {
+        def found_devices = []
+        getAllChildDevices().each { device ->
+            if (device.deviceNetworkId.contains(":CID-"))
+            {
+                found_devices << device.deviceNetworkId.split(":")[2].trim()
+            }
+        }
+        section("") {
+            if (found_devices.size()) {
+                input "input_cid_devices", "enum", required: false, multiple: true, options: found_devices, title: titles("input_cid_devices"), description: descriptions("input_cid_devices"), submitOnChange: true
+                if (input_cid_devices) {
+                    href(name: "href_remove_selected_cid", required: false, page: "page_remove_selected_cid", title: titles("page_remove_selected_cid"), description: descriptions("href_remove_selected_cid"), submitOnChange: true)
+                }
+            }
+        }
+        section("") {
+            href(name: "href_add_new_cid", required: false, page: "page_add_new_cid", title: titles("page_add_new_cid"), description: descriptions("href_add_new_cid"))
+        }
+        section_no_save_note()
+    }
+}
+
+/**
+ * Page page_remove_selected_cid generator
+ */
+def page_remove_selected_cid() {
+    getAllChildDevices().each { device ->
+        if (device.deviceNetworkId.contains(":CID-"))
+        {
+            // Only remove the one that matches our list
+            def device_name = device.deviceNetworkId.split(":")[2].trim()
+            def d = input_cid_devices.find{ it == device_name }
+            if (d)
+            {
+                log.trace("removing CID device ${device.deviceNetworkId}")
+                deleteChildDevice(device.deviceNetworkId)
+                input_cid_devices.remove(device_name)
+            }
+        }
+    }
+    return dynamicPage(name: "page_remove_selected_cid") {
+        section("") {
+            paragraph "Attempted to remove selected devices. This may fail if the device is in use. If it fails review the log and manually remove the usage. Press back to continue."
+        }
+    }
+}
+
+/**
+ * Page page_add_new_cid generator
+ */
+def page_add_new_cid() {
+    // list of some of the CID #'s and descriptions.
+    // 000 will trigger a manual input of the CID number.
+    def cid_numbers = [  0: "000 - Other / Custom",
+                       101: "101 - Pendant Transmitter",
+                       150: "150 - 24 HOUR (AUXILIARY)",
+                       154: "154 - Water Leakage",
+                       158: "158 - High Temp",
+                       162: "162 - Carbon Monoxide Detected"]
+
+    return dynamicPage(name: "page_add_new_cid") {
+        // show pre defined CID number templates to select from
+        section("") {
+            input "input_cid_number", "enum", required: true, submitOnChange: true, multiple: false, title: titles("input_cid_number"), description: descriptions("input_cid_number"), options: cid_numbers 
+        }
+        // if a CID entry is selected then check the value if it is > 0 to show raw input section
+        if (input_cid_number) {
+            if (!input_cid_number.toInteger()) {
+                section {
+                    input(name: "input_cid_number_raw", type: "number", required: true, submitOnChange: true, title: titles("input_cid_number_raw"))
+                }
+            }
+            // If input_cid_number has a value > 0 or input_cid_number_raw is > 0
+            if (input_cid_number.toInteger() || input_cid_number_raw) {
+                section(""){ href(name: "href_add_new_cid_confirm", required: false, page: "page_add_new_cid_confirm", title: titles("page_add_new_cid_confirm"), description: descriptions("href_add_new_cid_confirm"))}
+                section_no_save_note()
+            }
+        }
+    }
+}
+
+/**
+ * Page page_add_new_cid_confirm generator.
+ */
+def page_add_new_cid_confirm() {
+
+    // get the CID value
+    def newcid = input_cid_number.toInteger()
+    if (!newcid)
+        newcid = input_cid_number_raw
+
+    // Add virtual CID switch if it does not exist.
+    def d = getChildDevice("${state.ip}:${state.port}:CID-${newcid}")
+    if (!d)
+    {
+        def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:CID-${newcid}", state.hub,
+                                [name: "${state.ip}:${state.port}:CID-${newcid}", label: "${sname} CID-${newcid}", completedSetup: true])
+        nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
+    }
+
+    return dynamicPage(name: "page_add_new_cid_confirm") {
+        section("") {
+            paragraph "Attempting to add new CID device. This may fail if the device is in use. If it fails review the log. Press back to continue."
+        }
+    }
+}
+
+/**
+ * Page page_remove_all generator.
+ */
+def page_remove_all() {
+    uninstalled()
+    return dynamicPage(name: "page_remove_all") {
+        section("") {
+            paragraph "Attempted to remove all child devices. This may fail if the device is in use. If it fails review the log and manually remove the usage. Press back to continue."
+        }
+    }
+}
+
+/**
+ * Page page_discover_devices generator. Called periodically to refresh content of the page.
+ */
+def page_discover_devices() {
 
     // send out UPNP discovery messages and watch for responses
     discover_alarmdecoder()
@@ -79,7 +293,7 @@ def discover_devices() {
     // build list of currently known AlarmDecoder parent devices
     def found_devices = [:]
     def options = state.devices.each { k, v ->
-        if (debug) log.debug "discover_devices: ${v}"
+        if (debug) log.debug "page_discover_devices: ${v}"
         def ip = convertHexToIP(v.ip)
         found_devices["${v.ip}:${v.port}"] = "AlarmDecoder @ ${ip}"
     }
@@ -87,19 +301,18 @@ def discover_devices() {
     // How many do we have?
     def numFound = found_devices.size() ?: 0
 
-
-    return dynamicPage(name: "discover_devices", title: "Setup", nextPage: "", install: true, uninstall: true) {
+    return dynamicPage(name: "page_discover_devices") {
         section("Devices") {
-            input "selectedDevices", "enum", required: true, title: "Select device(s) (${numFound} found)", multiple: true, options: found_devices
+            input "input_selected_devices", "enum", required: true, title: titles("input_selected_devices",numFound), multiple: true, options: found_devices
             // Allow user to force a new UPNP discovery message
-            href(name: "refreshDevices", title: "Refresh", required: false, page: "discover_devices")
+            href(name: "href_refresh_devices", title: titles("page_discover_devices"), description: descriptions("href_refresh_devices"), required: false, page: "page_discover_devices")
         }
         section("Smart Home Monitor Integration") {
-            input(name: "shmIntegration", type: "bool", defaultValue: true, title: "Integrate with Smart Home Monitor?")
-            input(name: "shmChangeSHMStatus", type: "bool", defaultValue: true, title: "Automatically change Smart Home Monitor status when armed or disarmed?")
+            input(name: "shmIntegration", type: "bool", defaultValue: true, title: titles("shmIntegration"))
+            input(name: "shmChangeSHMStatus", type: "bool", defaultValue: true, title: titles("shmChangeSHMStatus"))
         }
         section("Zone Sensors") {
-            input(name: "defaultSensorToClosed", type: "bool", defaultValue: true, title: "Default zone sensors to closed?")
+            input(name: "defaultSensorToClosed", type: "bool", defaultValue: true, title: titles("defaultSensorToClosed"))
         }
     }
 }
@@ -138,10 +351,10 @@ def uninstalled() {
     unschedule()
 
     // remove all the devices and children
-    def devices = getChildDevices()
+    def devices = getAllChildDevices()
     devices.each {
         try {
-            if (debug) log.debug "deleting child device: ${it.deviceNetworkId}"
+            log.debug "deleting child device: ${it.deviceNetworkId}"
             deleteChildDevice(it.deviceNetworkId)
         }
         catch(Exception e) {
@@ -173,7 +386,7 @@ def initialize() {
     initSubscriptions()
 
     // if a device in the GUI is selected then add it.
-    if (selectedDevices) {
+    if (input_selected_devices) {
         addExistingDevices()
     }
 
@@ -211,7 +424,7 @@ def locationHandler(evt) {
     if (!description)
      return
 
-    if (debug) 
+    if (debug)
       log.debug "locationHandler: description: ${description} name: ${evt.name} value: ${evt.value} data: ${evt.data}"
 
     def parsedEvent = ["hub":hub]
@@ -314,33 +527,41 @@ def actionButton(id) {
 
     // grab our primary AlarmDecoder device object
     def d = getChildDevice("${state.ip}:${state.port}")
-    if(!d) {
+    if (!d) {
         log.error("actionButton: Could not find primary device '${state.ip}:${state.port}'.")
         return
     }
 
     /* FIXME: Need a pin code or some way to trust the request.
-    if(id.contains(":disarm")) {
+    if (id.contains(":disarm")) {
         d.disarm()
     } */
 
-    if(id.contains(":armAway")) {
+    if (id.contains(":armAway")) {
         d.arm_away()
     }
-    if(id.contains(":armStay")) {
+    if (id.contains(":armStay")) {
         d.arm_stay()
     }
-    if(id.contains(":chimeMode")) {
+    if (id.contains(":chimeMode")) {
         d.chime()
     }
-    if(id.contains(":alarmPanic")) {
+    if (id.contains(":alarmPanic")) {
         d.panic()
     }
-    if(id.contains(":alarmAUX")) {
+    if (id.contains(":alarmAUX")) {
         d.aux()
     }
-    if(id.contains(":alarmFire")) {
+    if (id.contains(":alarmFire")) {
         d.fire()
+    }
+    if (id.contains(":CID-")) {
+        def cd = getChildDevice("${id}")
+        if (!cd) {
+            log.error("actionButton: Could not CID device '${id}'.")
+            return
+        }
+        cd.sendEvent(name: "switch", value: "off", isStateChange: true, filtered: true)
     }
 }
 
@@ -425,6 +646,33 @@ def readySet(evt) {
     d.sendEvent(name: "contact", value: evt.value, isStateChange: true, filtered: true)
 }
 
+/**
+ * send CID event to the correct device if one exists
+ * evt.value example !LRR:001,1,CID_1406,ff
+ */
+def cidSet(evt) {
+    if (debug) log.debug("cidSet ${evt.value}")
+
+    // get our CID state and number
+    def parts = evt.value.split(',')
+
+    // 1 digit QUALIFIER 1 = Event or Open, 3 = Restore or Close   
+    def cidstate = parts[2][-4..-4]
+    
+    // 3 digit CID number
+    def cidnum = parts[2][-3..-1]
+    
+    if (debug) log.debug("cidSet state:${cidstate} num:${cidnum}")
+
+    def d = getChildDevice("${state.ip}:${state.port}:CID-${cidnum}")
+    if (!d) {
+        log.error("cidSet: Could not find 'CID-${cidnum}' device.")
+        return
+    }
+    def rawmsg = evt.value
+    def cidValue = cidstate = 1 ? "on" : "off"
+    d.sendEvent(name: "switch", value: cidValue, isStateChange: true, filtered: true)
+}
 
 /**
  * Handle Device Command zoneOn()
@@ -527,7 +775,7 @@ def initSubscriptions() {
 }
 
 /**
- * Called by discover_devices page periodically
+ * Called by page_discover_devices page periodically
  */
 def discover_alarmdecoder() {
     if (debug) log.debug("discover_alarmdecoder")
@@ -550,7 +798,7 @@ def refresh_alarmdecoders() {
         if (device_type == "AlarmDecoder network appliance")
         {
             def apikey = device._get_api_key()
-            if(apikey) {
+            if (apikey) {
                 device.refresh()
             } else {
                 log.error("refresh_alarmdecoders no API KEY for: ${device} @ ${device.getDataValue("urn")}")
@@ -602,20 +850,19 @@ def refresh_alarmdecoders() {
  *
  */
 def getDevices() {
-    if(!state.devices) {
+    if (!state.devices) {
         state.devices = [:]
     }
-
-    state.devices
+    return state.devices
 }
 
 /**
  * Add devices selected in the GUI if new.
  */
 def addExistingDevices() {
-    if (debug) log.debug("addExistingDevices: ${selectedDevices}")
+    if (debug) log.debug("addExistingDevices: ${input_selected_devices}")
 
-    def selected_devices = selectedDevices
+    def selected_devices = input_selected_devices
     if (selected_devices instanceof java.lang.String) {
         selected_devices = [selected_devices]
     }
@@ -646,7 +893,7 @@ def addExistingDevices() {
                                    newDevice?.value.hub,
                                    [
                                        name: "${state.ip}:${state.port}",
-                                       label: "AlarmDecoder",
+                                       label: "${lname}(${sname})",
                                        completedSetup: true,
                                        /* data associated with this AlarmDecoder */
                                        data:[
@@ -668,7 +915,7 @@ def addExistingDevices() {
                 def newSwitch = state.devices.find { k, v -> k == "${state.ip}:${state.port}:switch${i+1}" }
                 if (!newSwitch)
                 {
-                    def zone_switch = addChildDevice("alarmdecoder", "AlarmDecoder virtual contact sensor", "${state.ip}:${state.port}:switch${i+1}", state.hub, [name: "${state.ip}:${state.port}:switch${i+1}", label: "AlarmDecoder Zone Sensor #${i+1}", completedSetup: true])
+                    def zone_switch = addChildDevice("alarmdecoder", "AlarmDecoder virtual contact sensor", "${state.ip}:${state.port}:switch${i+1}", state.hub, [name: "${state.ip}:${state.port}:switch${i+1}", label: "${sname} Zone Sensor #${i+1}", completedSetup: true])
 
                     def sensorValue = "open"
                     if (settings.defaultSensorToClosed == true)
@@ -684,7 +931,7 @@ def addExistingDevices() {
             if (!cd)
             {
                 def nd = addChildDevice("alarmdecoder", "AlarmDecoder virtual smoke alarm", "${state.ip}:${state.port}:SmokeAlarm", state.hub,
-                [name: "${state.ip}:${state.port}:smokeAlarm", label: "AlarmDecoder Smoke Alarm", completedSetup: true])
+                [name: "${state.ip}:${state.port}:smokeAlarm", label: "${sname} Smoke Alarm", completedSetup: true])
                 nd.sendEvent(name: "smoke", value: "clear", isStateChange: true, displayed: false)
             }
 
@@ -693,8 +940,8 @@ def addExistingDevices() {
             if (!cd)
             {
                 def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:armStay", state.hub,
-                [name: "${state.ip}:${state.port}:armStay", label: "AlarmDecoder Stay", completedSetup: true])
-                nd.sendEvent(name: "contact", value: "off", isStateChange: true, displayed: false)
+                [name: "${state.ip}:${state.port}:armStay", label: "${sname} Stay", completedSetup: true])
+                nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
             }
 
             // Add virtual Arm Away switch if it does not exist.
@@ -702,8 +949,8 @@ def addExistingDevices() {
             if (!cd)
             {
                 def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:armAway", state.hub,
-                [name: "${state.ip}:${state.port}:armAway", label: "AlarmDecoder Away", completedSetup: true])
-                nd.sendEvent(name: "contact", value: "off", isStateChange: true, displayed: false)
+                [name: "${state.ip}:${state.port}:armAway", label: "${sname} Away", completedSetup: true])
+                nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
             }
 
             // Add virtual Chime switch if it does not exist.
@@ -711,8 +958,8 @@ def addExistingDevices() {
             if (!cd)
             {
                 def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:chimeMode", state.hub,
-                [name: "${state.ip}:${state.port}:chimeMode", label: "AlarmDecoder Chime", completedSetup: true])
-                nd.sendEvent(name: "contact", value: "off", isStateChange: true, displayed: false)
+                [name: "${state.ip}:${state.port}:chimeMode", label: "${sname} Chime", completedSetup: true])
+                nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
             }
 
             // Add virtual Ready contact if it does not exist.
@@ -720,7 +967,7 @@ def addExistingDevices() {
             if (!cd)
             {
                 def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:readyIndicator", state.hub,
-                [name: "${state.ip}:${state.port}:readyIndicator", label: "AlarmDecoder Ready", completedSetup: true])
+                [name: "${state.ip}:${state.port}:readyIndicator", label: "${sname} Ready", completedSetup: true])
                 nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
             }
 
@@ -729,17 +976,17 @@ def addExistingDevices() {
             if (!cd)
             {
                 def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:alarmBellIndicator", state.hub,
-                [name: "${state.ip}:${state.port}:alarmBellIndicator", label: "AlarmDecoder Alarm Bell", completedSetup: true])
+                [name: "${state.ip}:${state.port}:alarmBellIndicator", label: "${sname} Alarm Bell", completedSetup: true])
                 nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
             }
-            
+
             // Add FIRE alarm button if it does not exist.
             cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmFire" }
             if (!cd)
             {
                 def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmFire", state.hub,
-                [name: "${state.ip}:${state.port}:alarmFire", label: "AlarmDecoder Fire Alarm", completedSetup: true])
-                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
+                [name: "${state.ip}:${state.port}:alarmFire", label: "${sname} Fire Alarm", completedSetup: true])
+                nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
             }
 
             // Add Panic alarm button if it does not exist.
@@ -747,8 +994,8 @@ def addExistingDevices() {
             if (!cd)
             {
                 def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmPanic", state.hub,
-                [name: "${state.ip}:${state.port}:alarmPanic", label: "AlarmDecoder Panic Alarm", completedSetup: true])
-                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
+                [name: "${state.ip}:${state.port}:alarmPanic", label: "${sname} Panic Alarm", completedSetup: true])
+                nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
             }
 
             // Add AUX alarm button if it does not exist.
@@ -756,8 +1003,8 @@ def addExistingDevices() {
             if (!cd)
             {
                 def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmAUX", state.hub,
-                [name: "${state.ip}:${state.port}:alarmAUX", label: "AlarmDecoder AUX Alarm", completedSetup: true])
-                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
+                [name: "${state.ip}:${state.port}:alarmAUX", label: "${sname} AUX Alarm", completedSetup: true])
+                nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
             }
         }
     }
@@ -801,6 +1048,9 @@ private def configureDeviceSubscriptions() {
 
     // subscribe to ready handler
     subscribe(device, "ready-set", readySet, [filterEvents: false])
+
+    // subscribe to CID handler
+    subscribe(device, "cid-set", cidSet, [filterEvents: false])
 
 }
 
@@ -887,7 +1137,7 @@ private def parseEventMessage(String description) {
 def verifyAlarmDecoders() {
     def devices = getDevices().findAll { it?.value?.verified != true }
 
-  if(devices) {
+  if (devices) {
         log.warn "verifyAlarmDecoders: UNVERIFIED Decoders!: $devices"
   }
 
