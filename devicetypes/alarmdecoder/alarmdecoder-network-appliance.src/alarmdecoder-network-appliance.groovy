@@ -67,6 +67,7 @@ metadata {
         command "panic"
         command "aux"
         command "chime"
+        command "bypass", ["number"]
         command "bypass1"
         command "bypass2"
         command "bypass3"
@@ -313,10 +314,14 @@ def parse_json(String headers, String body) {
 // Parse XML and new state. Build UI and return UI update events
 def parse_xml(String headers, String body) {
     log.trace("--- parse_xml")
-
+    if (debug) log.debug(body)
     def xmlResult = new XmlSlurper().parseText(body)
 
     def resultMap = [:]
+    resultMap['eventid'] = xmlResult.property.eventid.toInteger()
+    resultMap['eventdesc'] = xmlResult.property.eventdesc.text()
+    resultMap['eventmessage'] = xmlResult.property.eventmessage.text()
+    resultMap['rawmessage'] = xmlResult.property.rawmessage.text()    
     resultMap['last_message_received'] = xmlResult.property.panelstate.last_message_received.text()
     resultMap['panel_alarming'] = xmlResult.property.panelstate.panel_alarming.toBoolean()
     resultMap['panel_armed'] = xmlResult.property.panelstate.panel_armed.toBoolean()
@@ -615,13 +620,18 @@ def bypass12() {
     bypassN(10)
 }
 
-def bypassN(value) {
-    def zone = device.currentValue("zoneStatus${value}")
+def bypassN(szValue) {
+    def zone = device.currentValue("zoneStatus${szValue}")
+    bypass(zone)
+}
+
+def bypass(zone) {
+   log.trace("--- bypass ${zone}")
+   
     // if no zone then skip
     if(!zone.toInteger())
       return;
 
-    log.trace("--- bypass1 ${zone}")
     def user_code = _get_user_code()
     def keys = ""
 
@@ -630,7 +640,7 @@ def bypassN(value) {
     else if (settings.panel_type == "DSC")
         keys = "*1" + zone.padLeft(2,"0")
     else
-        log.warn("--- bypass1: unknown panel_type.")
+        log.warn("--- bypass: unknown panel_type.")
 
     return send_keys(keys)
 }
@@ -681,6 +691,11 @@ def update_state(data) {
     // Update our ready indicator virtual device
     if (forceguiUpdate || data.panel_ready != state.panel_ready)
         events << createEvent(name: "ready-set", value: data.panel_ready ? "close" : "open", displayed: true, isStateChange: true)
+
+    // Event Type 14 CID send raw data upstream if we find one
+    if (data.eventid == 14) {
+        events << createEvent(name: "cid-set", value: data.rawmessage, displayed: true, isStateChange: true)        
+    }
 
     if (armed) {
         panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")

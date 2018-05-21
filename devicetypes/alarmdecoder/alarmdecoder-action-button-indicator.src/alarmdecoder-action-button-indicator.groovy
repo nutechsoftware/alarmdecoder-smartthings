@@ -16,7 +16,10 @@
 metadata {
     definition (name: "AlarmDecoder action button indicator", namespace: "alarmdecoder", author: "sean@nutech.com") {
         capability "Momentary"
+		capability "Switch"
         command "push"
+        command "on"
+        command "off"
     }
 
     tiles {
@@ -38,4 +41,12 @@ def parse(String description) {
 def push() {
     log.debug "AlarmDecoderActionButtonIndicator: Executing 'actionButton'"
     parent.actionButton(device.getDeviceNetworkId())
+}
+
+def on() {
+	push()
+}
+
+def off() {
+	push()
 }
