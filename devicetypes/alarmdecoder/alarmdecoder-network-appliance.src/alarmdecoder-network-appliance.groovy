@@ -64,8 +64,14 @@ metadata {
         command "arm_stay"
         command "arm_away"
         command "fire"
+        command "fire1"
+        command "fire2"
         command "panic"
+        command "panic1"
+        command "panic2"        
         command "aux"
+        command "aux1"
+        command "aux2"
         command "chime"
         command "bypass", ["number"]
         command "bypass1"
@@ -99,7 +105,7 @@ metadata {
             }
         }
 
-        standardTile("arm_disarm", "device.panel_state", inactiveLabel: false, width: 1, height: 1) {
+        standardTile("arm_disarm", "device.panel_state", inactiveLabel: false, width: 2, height: 2) {
             state "armed", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "armed_stay", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "disarmed", action:"arm_away", icon:"st.security.alarm.on", label: "AWAY"
@@ -109,7 +115,7 @@ metadata {
             state "notready", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
         }
 
-        standardTile("stay_disarm", "device.panel_state", inactiveLabel: false, width: 1, height: 1) {
+        standardTile("stay_disarm", "device.panel_state", inactiveLabel: false, width: 2, height: 2) {
             state "armed", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "armed_stay", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "disarmed", action:"arm_stay", icon:"st.Home.home4", label: "STAY"
@@ -119,19 +125,19 @@ metadata {
             state "notready", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
         }
 
-        standardTile("panic", "device.panic_state", inactiveLabel: false, width: 2, height: 2) {
+        standardTile("panic", "device.panic_state", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"http://www.alarmdecoder.com/st/ad2-police.png", label: "PANIC", nextState: "panic1", action: "panic1"
             state "panic1", icon: "http://www.alarmdecoder.com/st/ad2-police.png", label: "PANIC", nextState: "panic2", action: "panic2", backgroundColor: "#ffa81e"
             state "panic2", icon: "http://www.alarmdecoder.com/st/ad2-police.png", label: "PANIC", nextState: "default", action: "panic", backgroundColor: "#ff4000"
         }
 
-        standardTile("fire", "device.fire_state", inactiveLabel: false, width: 2, height: 2) {
+        standardTile("fire", "device.fire_state", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"http://www.alarmdecoder.com/st/ad2-fire.png", label: "FIRE", nextState: "fire1", action: "fire1"
             state "fire1", icon: "http://www.alarmdecoder.com/st/ad2-fire.png", label: "FIRE", nextState: "fire2", action: "fire2", backgroundColor: "#ffa81e"
             state "fire2", icon: "http://www.alarmdecoder.com/st/ad2-fire.png", label: "FIRE", nextState: "default", action: "fire", backgroundColor: "#ff4000"
         }
 
-        standardTile("aux", "device.aux_state", inactiveLabel: false, width: 2, height: 2) {
+        standardTile("aux", "device.aux_state", inactiveLabel: false, width: 1, height: 1) {
             state "default", icon:"http://www.alarmdecoder.com/st/ad2-aux.png", label: "AUX", nextState: "aux1", action: "aux1"
             state "aux1", icon: "http://www.alarmdecoder.com/st/ad2-aux.png", label: "AUX", nextState: "aux2", action: "aux2", backgroundColor: "#ffa81e"
             state "aux2", icon: "http://www.alarmdecoder.com/st/ad2-aux.png", label: "AUX", nextState: "default", action: "aux", backgroundColor: "#ff4000"
