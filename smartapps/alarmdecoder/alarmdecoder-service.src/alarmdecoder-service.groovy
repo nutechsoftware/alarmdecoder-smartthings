@@ -670,7 +670,7 @@ def cidSet(evt) {
         return
     }
     def rawmsg = evt.value
-    def cidValue = cidstate = 1 ? "on" : "off"
+    def cidValue = ( cidstate == "1" ? "on" : "off" )
     d.sendEvent(name: "switch", value: cidValue, isStateChange: true, filtered: true)
 }
 
