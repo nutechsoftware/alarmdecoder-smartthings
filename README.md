@@ -13,72 +13,73 @@ This repository provides support for the AlarmDecoder webapp inside of the Smart
 * Provide virtual contact sensors for "Ready" and "Alarm Bell" indications on the alarm panel.
 * Provides a virtual "AD2 Smoke Alarm" that can be integrated with SHM or other systems to control state during a fire event such as turning all lights on.
 * Provides the ability to create virtual switches that can be tied to specific Contact ID report codes from the alarm panel. As an example a zone setup as a Carbon Monoxide alarm can be directly tied to a virtual switch that will OPEN in the event it triggers using Contact ID 162.
-* Smart Home Monitor integration.
-One-way - Arm or disarm your panel when the Smart Home Monitor status is changed.
-Two-way - Change Smart Home Monitor's status when your panel is armed or disarmed.
+* Smart Home Monitor integration.  
+One-way - Arm or disarm your panel when the Smart Home Monitor status is changed.  
+Two-way - Change Smart Home Monitor's status when your panel is armed or disarmed.  
 
 ## Virtual devices
 
-* AlarmDecoder(AD2)
-Main service device provides a simple user interface to manage the alarm.
+* AlarmDecoder(AD2)  
+Description: Main service device provides a simple user interface to manage the alarm.  
 
-* AD2 Alarm Bell
-An indicator to show the panel bell state
-close = off, open = sounding
+* AD2 Alarm Bell  
+Capabilities:  Contact sensor  
+Description: An indicator to show the panel bell state  
+States: close = off, open = sounding  
 
-* AD2 Chime
-Capabilities:  Momentary
+* AD2 Chime  
+Capabilities:  Momentary  
 Description: indicator to show the Chime state.
--- Action **'push'** will toggle the chime state.
-States: [on, off]
- -- state is not working and will require a future AD2 Web app update.
+-- Action **'push'** will toggle the chime state.  
+States: [on, off]  
+ -- state is not working and will require a future AD2 Web app update.  
 
-* AD2 Ready
-Capabilities: Contact Sensor
-Description: An indicator to show the panel ready to arm state.
-States: [open, close = Ready]
+* AD2 Ready  
+Capabilities: Contact Sensor  
+Description: An indicator to show the panel ready to arm state.  
+States: [open, close = Ready]  
 
-* AD2 Smoke Alarm
-Capabilities: smokeDetector
-Description: An indicator to show the panel fire state.
-States: [clear, detected]
+* AD2 Smoke Alarm  
+Capabilities: smokeDetector  
+Description: An indicator to show the panel fire state.  
+States: [clear, detected]  
 
-* AD2 Stay
-Capabilities:  Momentary
+* AD2 Stay  
+Capabilities:  Momentary  
 Description: indicator to show the arm Stay state
--- Action **'push'** will send the arm Stay command to the panel
-States: [on, off]
+-- Action **'push'** will send the arm Stay command to the panel  
+States: [on, off]  
 
-* AD2 Away
-Capabilities:  Momentary
+* AD2 Away  
+Capabilities:  Momentary  
 Description: indicator to show the arm Away state
--- Action **'push'** will send the arm Away command to the panel
-States: [on, off]
+-- Action **'push'** will send the arm Away command to the panel  
+States: [on, off]  
 
-* AD2 Panic Alarm
-Capabilities:  Momentary
-Description: Action **'push'** will send the Panic Alarm command to the panel
-States: No indication of alarm type
+* AD2 Panic Alarm  
+Capabilities:  Momentary  
+Description: Action **'push'** will send the Panic Alarm command to the panel  
+States: No indication of alarm type  
 
-* AD2 Aux Alarm
-Capabilities:  Momentary
-Description: Action **'push'** will send the AUX Alarm command to the panel
-States: No indication of alarm type
+* AD2 Aux Alarm  
+Capabilities:  Momentary  
+Description: Action **'push'** will send the AUX Alarm command to the panel  
+States: No indication of alarm type  
 
-* AD2 Fire Alarm
-Capabilities:  Momentary
-Description: Action **'push'** will send the Fire Alarm command to the panel
-States: No indication of alarm type
+* AD2 Fire Alarm  
+Capabilities:  Momentary  
+Description: Action **'push'** will send the Fire Alarm command to the panel  
+States: No indication of alarm type  
 
-* AD2 Zone Sensor #N
-Capabilities: Contact Sensor
-Description: An indicator to show the zone state
-States: [open , close] * reversible in parent device settings
+* AD2 Zone Sensor #N  
+Capabilities: Contact Sensor  
+Description: An indicator to show the zone state  
+States: [open , close] * reversible in parent device settings  
 
-* AD2 CID-NNN
-Capabilities: Momentary
-Description: Indicates the state of the given Contact ID report state. The action **'push'** will restore to closed state
-States: [on, off]
+* AD2 CID-NNN  
+Capabilities: Momentary  
+Description: Indicates the state of the given   Contact ID report state. The action **'push'** will restore to closed state  
+States: [on, off]  
 
 ## Setup
 
