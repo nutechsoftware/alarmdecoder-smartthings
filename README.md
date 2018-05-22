@@ -9,17 +9,76 @@ This repository provides support for the AlarmDecoder webapp inside of the Smart
 
 * Arm, disarm, or panic your alarm system from within SmartThings.
 * Provides virtual sensors that can be married to zones on your panel to allow automation based on zones faulting and restoring.
-* Smart Home Monitor integration
-** One-way - Arm or disarm your panel when the Smart Home Monitor status is changed.
-** Two-way - Change Smart Home Monitor's status when your panel is armed or disarmed.
+* Provides virtual momentary switches with indicators for arming away, stay and toggling chime mode with each switch indicating the current state. Alexa and other systems are able to activate these switches to allow a wide array of alarm panel control possibilities.
+* Provide virtual contact sensors for "Ready" and "Alarm Bell" indications on the alarm panel.
+* Provides a virtual "AD2 Smoke Alarm" that can be integrated with SHM or other systems to control state during a fire event such as turning all lights on.
+* Provides the ability to create virtual switches that can be tied to specific Contact ID report codes from the alarm panel. As an example a zone setup as a Carbon Monoxide alarm can be directly tied to a virtual switch that will OPEN in the event it triggers using Contact ID 162.
+* Smart Home Monitor integration.
+One-way - Arm or disarm your panel when the Smart Home Monitor status is changed.
+Two-way - Change Smart Home Monitor's status when your panel is armed or disarmed.
 
-## DeviceType Capabilities
+## Virtual devices
 
-* Switch - Used to represent the panel in an ARMED STAY state.  Triggering switch.on() will arm the panel using the stored user code.  switch.off() will disarm the panel.  This is input only at the moment.
-* Lock - Used to represent the panel in an ARMED AWAY state.  Triggering lock.lock() will arm the panel and lock.unlock() will disarm the panel.  This is the primary capability for watching for armed/disarmed events.
-* Alarm - Used to indicate an alarming state and also may trigger a panic on the panel with alarm.both().
-* SmokeDetector - Used to indicate if a FIRE was detected on the panel.
-* Virtual Zone Sensors - The service manager smartapp creates 8 virtual contact sensors which are used to provide triggers when configured zones are tripped on the alarm panel.
+* AlarmDecoder(AD2)
+Main service device provides a simple user interface to manage the alarm.
+
+* AD2 Alarm Bell
+An indicator to show the panel bell state
+close = off, open = sounding
+
+* AD2 Chime
+Capabilities:  Momentary
+Description: indicator to show the Chime state.
+-- Action **'push'** will toggle the chime state.
+States: [on, off]
+ -- state is not working and will require a future AD2 Web app update.
+
+* AD2 Ready
+Capabilities: Contact Sensor
+Description: An indicator to show the panel ready to arm state.
+States: [open, close = Ready]
+
+* AD2 Smoke Alarm
+Capabilities: smokeDetector
+Description: An indicator to show the panel fire state.
+States: [clear, detected]
+
+* AD2 Stay
+Capabilities:  Momentary
+Description: indicator to show the arm Stay state
+-- Action **'push'** will send the arm Stay command to the panel
+States: [on, off]
+
+* AD2 Away
+Capabilities:  Momentary
+Description: indicator to show the arm Away state
+-- Action **'push'** will send the arm Away command to the panel
+States: [on, off]
+
+* AD2 Panic Alarm
+Capabilities:  Momentary
+Description: Action **'push'** will send the Panic Alarm command to the panel
+States: No indication of alarm type
+
+* AD2 Aux Alarm
+Capabilities:  Momentary
+Description: Action **'push'** will send the AUX Alarm command to the panel
+States: No indication of alarm type
+
+* AD2 Fire Alarm
+Capabilities:  Momentary
+Description: Action **'push'** will send the Fire Alarm command to the panel
+States: No indication of alarm type
+
+* AD2 Zone Sensor #N
+Capabilities: Contact Sensor
+Description: An indicator to show the zone state
+States: [open , close] * reversible in parent device settings
+
+* AD2 CID-NNN
+Capabilities: Momentary
+Description: Indicates the state of the given Contact ID report state. The action **'push'** will restore to closed state
+States: [on, off]
 
 ## Setup
 
@@ -37,7 +96,7 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
 9. Check the boxes `AlarmDecoder network appliance` and `AlarmDecoder virtual contact sensor` and `AlarmDecoder virtual smoke alarm`
 10. Check **Publish** (bottom of dialog)
 11. Click **Execute Update**
-  
+
 ### Install SmartApp (via github integration)
 1. Click on **My SmartApps**
 2. Click **Update From Repo** (top of page)
@@ -66,11 +125,25 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
 * Using **graph.api.smartthings.com**
     1. Login to your SmartThings graph web-based IDE.
     2. Select **My Devices**
-    3. Select the **AlarmDecoder** device for your HUBs location.
+    3. Select the  **AlarmDecoder(AD2)** device for your HUBs location.
     4. Click Preferences(**edit**) link.
     5. Enter the Rest API key you generated from [https://alarmdecoder.local/api/](https://alarmdecoder.local/api/)
     6. Enter the alarm code you'd like to use to arm/disarm your panel.
     7. In the Panel Type - Type of panel enter **ADEMCO** or **DSC** depending on the panel type.
+
+### Configure Contact ID switches
+* Using the SmartThings app **on your phone**
+    1. Open up the SmartThings app **on your phone**
+    2. Tap **My Home** and select the **Things** tab
+    3. Select the **AlarmDecoder(AD2)** device
+    4. Select the **SmartApps** tab
+    5. Select the **AlarmDecoder service**
+    6. Select **Contact ID device management**
+    7. Select **Add new CID virtual switch**
+    8. Select the CID number or select **000 - Other / Custom**
+    9. select **Add new CID virtual switch**
+    10. The switch will be created and you can see it under **My Devices**
+
 
 ## Enabling SmartThings Integration in the Webapp
 1. Log into your AlarmDecoder webapp.
