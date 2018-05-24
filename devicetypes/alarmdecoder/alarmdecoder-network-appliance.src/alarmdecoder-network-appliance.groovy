@@ -703,6 +703,17 @@ def update_state(data) {
         events << createEvent(name: "cid-set", value: data.rawmessage, displayed: true, isStateChange: true)        
     }
 
+    // Event Type 5 Bypass
+    if (data.eventid == 5) {
+        log.debug("bypass-set: ${data.panel_bypassed}")
+        events << createEvent(name: "bypass-set", value: data.panel_bypassed ? "open" : "close", displayed: true, isStateChange: true)
+    }
+
+    // Event Type 16 Chime
+    if (data.eventid == 16) {
+        events << createEvent(name: "chime-set", value: data.panel_chime ? "on" : "off", displayed: true, isStateChange: true)
+    }
+
     if (armed) {
         panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
     }
