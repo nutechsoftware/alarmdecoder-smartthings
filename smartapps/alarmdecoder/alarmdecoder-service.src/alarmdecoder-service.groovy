@@ -71,6 +71,8 @@ def titles(String name, Object... args) {
     "page_remove_selected_cid": "Remove selected virtual switches",
     "input_cid_devices": "Remove installed CID virutal switches",
     "input_cid_number": "Select the CID number for this device",
+    "input_cid_value": "Enter the value to match or -1 to match all",
+    "input_cid_partition": "Enter the partition or 0 for system",
     "input_cid_number_raw": "Enter raw CID number",
     "input_selected_devices": "Select device(s) (%s found)",
     "defaultSensorToClosed": "Default zone sensors to closed?",
@@ -235,8 +237,14 @@ def page_add_new_cid() {
                     input(name: "input_cid_number_raw", type: "number", required: true, submitOnChange: true, title: titles("input_cid_number_raw"))
                 }
             }
-            // If input_cid_number has a value > 0 or input_cid_number_raw is > 0
-            if (input_cid_number.toInteger() || input_cid_number_raw) {
+            section {
+                input(name: "input_cid_value", type: "number", required: false, defaultValue: -1, submitOnChange: true, title: titles("input_cid_value"))
+            }
+            section {
+                input(name: "input_cid_partition", type: "number", required: false, defaultValue: 0, submitOnChange: true, title: titles("input_cid_partition"))
+            }
+            // If input_cid_number has a value > 0 or input_cid_number_raw is > 0 and we have a cid_value
+            if ((input_cid_number.toInteger() || input_cid_number_raw)) {
                 section(""){ href(name: "href_add_new_cid_confirm", required: false, page: "page_add_new_cid_confirm", title: titles("page_add_new_cid_confirm"), description: descriptions("href_add_new_cid_confirm"))}
                 section_no_save_note()
             }
@@ -254,12 +262,15 @@ def page_add_new_cid_confirm() {
     if (!newcid)
         newcid = input_cid_number_raw
 
+    def cv = (input_cid_value < 0) ? 'XXX' : input_cid_value
+    def pt = input_cid_partition.toInteger()
+    
     // Add virtual CID switch if it does not exist.
-    def d = getChildDevice("${state.ip}:${state.port}:CID-${newcid}")
+    def d = getChildDevice("${state.ip}:${state.port}:CID-${newcid}-${pt}-${cv}")
     if (!d)
     {
-        def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:CID-${newcid}", state.hub,
-                                [name: "${state.ip}:${state.port}:CID-${newcid}", label: "${sname} CID-${newcid}", completedSetup: true])
+        def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:CID-${newcid}-${pt}-${cv}", state.hub,
+                                [name: "${state.ip}:${state.port}:CID-${newcid}-${pt}-${cv}", label: "${sname} CID-${newcid}-${pt}-${cv}", completedSetup: true])
         nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
     }
 
@@ -614,7 +625,7 @@ def alarmBellSet(evt) {
       log.debug("alarmBellSet ${evt.value}")
     def d = getChildDevice("${state.ip}:${state.port}:alarmBellIndicator")
     if (!d) {
-        log.error("alarmBellSet: Could not find 'alarmBell' device.")
+        log.error("alarmBellSet: Could not find 'alarmBellIndicator' device.")
         return
     }
     d.sendEvent(name: "contact", value: evt.value, isStateChange: true, filtered: true)
@@ -627,10 +638,23 @@ def chimeSet(evt) {
     if (debug) log.debug("chimeSet ${evt.value}")
     def d = getChildDevice("${state.ip}:${state.port}:chimeMode")
     if (!d) {
-        log.error("chimeSet: Could not find device 'chime'")
+        log.error("chimeSet: Could not find device 'chimeMode'")
         return
     }
     d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+}
+
+/**
+ * send event to bypass indicator device to set state
+ */
+def bypassSet(evt) {
+    if (debug) log.debug("bypassSet ${evt.value}")
+    def d = getChildDevice("${state.ip}:${state.port}:bypass")
+    if (!d) {
+        log.error("bypassSet: Could not find device 'bypass'")
+        return
+    }
+    d.sendEvent(name: "contact", value: evt.value, isStateChange: true, filtered: true)
 }
 
 /**
@@ -657,21 +681,39 @@ def cidSet(evt) {
     def parts = evt.value.split(',')
 
     // 1 digit QUALIFIER 1 = Event or Open, 3 = Restore or Close   
-    def cidstate = parts[2][-4..-4]
-    
+    def cidstate = (parts[2][-4..-4] == "1") ? "on" : "off"
+
     // 3 digit CID number
     def cidnum = parts[2][-3..-1]
-    
-    if (debug) log.debug("cidSet state:${cidstate} num:${cidnum}")
 
-    def d = getChildDevice("${state.ip}:${state.port}:CID-${cidnum}")
-    if (!d) {
-        log.error("cidSet: Could not find 'CID-${cidnum}' device.")
+    // the CID report value. Zone # or User # or ...
+    def cidvalue = parts[0].split(':')[1].toInteger()
+
+    // the partition # with 0 being system
+    def partition =  parts[1].toInteger()
+
+    if (debug) log.debug("cidSet num:${cidnum} part: ${part} state:${cidstate} val:${cidvalue}")
+
+    def sent = false
+    def rawmsg = evt.value
+
+    // send to our wildcard switch it it exists
+    def d = getChildDevice("${state.ip}:${state.port}:CID-${cidnum}-${partition}-XXX")
+    if (d) {
+        d.sendEvent(name: "switch", value: cidstate, isStateChange: true, filtered: true)
+        sent = true
+    }
+    // send to the specific value for this contact id number such as the zone or user #
+    d = getChildDevice("${state.ip}:${state.port}:CID-${cidnum}-${partition}-${cidvalue}")
+    if (d) {
+        d.sendEvent(name: "switch", value: cidstate, isStateChange: true, filtered: true)
+        sent = true
+    }
+
+    if (!sent) {
+        log.error("cidSet: Could not find 'CID-${cidnum}-${partition}-${cidvalue}|XXX' device.")
         return
     }
-    def rawmsg = evt.value
-    def cidValue = ( cidstate == "1" ? "on" : "off" )
-    d.sendEvent(name: "switch", value: cidValue, isStateChange: true, filtered: true)
 }
 
 /**
@@ -962,6 +1004,15 @@ def addExistingDevices() {
                 nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
             }
 
+            // Add virtual Bypass switch if it does not exist.
+            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:bypass" }
+            if (!cd)
+            {
+                def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:bypass", state.hub,
+                [name: "${state.ip}:${state.port}:bypass", label: "${sname} Bypass", completedSetup: true])
+                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
+            }
+
             // Add virtual Ready contact if it does not exist.
             cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:readyIndicator" }
             if (!cd)
@@ -1042,6 +1093,9 @@ private def configureDeviceSubscriptions() {
 
     // subscribe to chime handler
     subscribe(device, "chime-set", chimeSet, [filterEvents: false])
+
+    // subscribe to bypass handler
+    subscribe(device, "bypass-set", bypassSet, [filterEvents: false])
 
     // subscribe to alarm bell handler
     subscribe(device, "alarmbell-set", alarmBellSet, [filterEvents: false])
