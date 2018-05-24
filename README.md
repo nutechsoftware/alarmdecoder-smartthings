@@ -32,12 +32,16 @@ Capabilities:  Momentary
 Description: indicator to show the Chime state.
 -- Action **'push'** will toggle the chime state.  
 States: [on, off]  
- -- state is not working and will require a future AD2 Web app update.  
 
 * AD2 Ready  
 Capabilities: Contact Sensor  
 Description: An indicator to show the panel ready to arm state.  
 States: [open, close = Ready]  
+
+* AD2 Bypass  
+Capabilities: Contact Sensor  
+Description: An indicator to show if the panel has a bypassed zone.  
+States: [open = Zone(s) Bypassed, close]  
 
 * AD2 Smoke Alarm  
 Capabilities: smokeDetector  
@@ -76,9 +80,9 @@ Capabilities: Contact Sensor
 Description: An indicator to show the zone state  
 States: [open , close] * reversible in parent device settings  
 
-* AD2 CID-NNN  
+* AD2 CID-***AAA***-***B***-***CCC***  
 Capabilities: Momentary  
-Description: Indicates the state of the given   Contact ID report state. The action **'push'** will restore to closed state  
+Description: Indicates the state of the given Contact ID report state. The action **'push'** will restore to closed state. ***AAA*** is the Contact ID number ***B*** is the partition and ***CCC*** is the zone or user code to match with 'XXX' matching all. Ex. CID-401-12 will monitor user 12 arming/disarming.  
 States: [on, off]  
 
 ## Setup
