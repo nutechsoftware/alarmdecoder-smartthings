@@ -642,7 +642,7 @@ def bypass(zone) {
     def keys = ""
 
     if (settings.panel_type == "ADEMCO")
-        keys = "${user_code}6*" + zone.padLeft(2,"0")
+        keys = "${user_code}6" + zone.padLeft(2,"0") + "*"
     else if (settings.panel_type == "DSC")
         keys = "*1" + zone.padLeft(2,"0")
     else
