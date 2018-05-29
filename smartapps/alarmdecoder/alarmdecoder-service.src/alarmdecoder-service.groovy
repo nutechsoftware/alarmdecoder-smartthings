@@ -298,6 +298,7 @@ def refreshHandler() {
 def webserviceUpdate()
 {
     log.trace "webserviceUpdate"
+    refresh_alarmdecoders()
     return [status: "OK"]
 }
 
