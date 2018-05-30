@@ -662,7 +662,7 @@ def chime() {
     def keys = ""
 
     if (settings.panel_type == "ADEMCO")
-        keys = "${user_code}9"
+        keys = "${user_code}9*"
     else if (settings.panel_type == "DSC")
         keys = "<S6>"
     else
@@ -973,8 +973,11 @@ private def parseEventMessage(String description) {
 }
 
 def send_keys(keys) {
-    log.trace("--- send_keys: keys=${keys}")
-
+    if (debug)
+      log.trace("--- send_keys: keys=${keys}")
+    else
+      log.trace("--- send_keys")
+      
     def urn = getDataValue("urn")
     def apikey = _get_api_key()
 
