@@ -768,7 +768,7 @@ def readySet(evt) {
  * evt.value example !LRR:001,1,CID_1406,ff
  */
 def cidSet(evt) {
-    if (debug) log.debug("cidSet ${evt.value}")
+    log.info("cidSet ${evt.value}")
 
     // get our CID state and number
     def parts = evt.value.split(',')
@@ -785,7 +785,7 @@ def cidSet(evt) {
     // the partition # with 0 being system
     def partition =  parts[1].toInteger()
 
-    if (debug) log.debug("cidSet num:${cidnum} part: ${part} state:${cidstate} val:${cidvalue}")
+    if (debug) log.debug("cidSet num:${cidnum} part: ${partition} state:${cidstate} val:${cidvalue}")
 
     def sent = false
     def rawmsg = evt.value
