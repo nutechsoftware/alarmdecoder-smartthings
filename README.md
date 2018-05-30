@@ -2,7 +2,7 @@ This repository provides support for the AlarmDecoder webapp inside of the Smart
 
 ## Requirements
 
-* AlarmDecoder webapp 0.8.1+
+* AlarmDecoder webapp 0.8.2+
 * SmartThings Hub
 
 ## Features
