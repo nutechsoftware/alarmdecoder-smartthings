@@ -618,7 +618,8 @@ def locationHandler(evt) {
  */
 def webserviceUpdate()
 {
-    if (debug) log.debug "webserviceUpdate"
+    log.trace "webserviceUpdate"
+    refresh_alarmdecoders()
     return [status: "OK"]
 }
 
