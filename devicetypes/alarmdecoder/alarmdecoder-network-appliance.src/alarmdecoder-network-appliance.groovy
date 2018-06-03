@@ -37,6 +37,10 @@ preferences {
         input("zonetracker6zone", "number", title: "ZoneTracker Sensor #6", description: "Zone number to associate with this contact sensor.")
         input("zonetracker7zone", "number", title: "ZoneTracker Sensor #7", description: "Zone number to associate with this contact sensor.")
         input("zonetracker8zone", "number", title: "ZoneTracker Sensor #8", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker9zone", "number", title: "ZoneTracker Sensor #9", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker10zone", "number", title: "ZoneTracker Sensor #10", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker11zone", "number", title: "ZoneTracker Sensor #11", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker12zone", "number", title: "ZoneTracker Sensor #12", description: "Zone number to associate with this contact sensor.")
     }
 }
 
@@ -866,7 +870,7 @@ private def update_zone_switches(zone, faulted) {
     // Iterate through the zone tracker settings.  If the zone number matches,
     // trigger an event for the service manager to use to flip the virtual
     // switches.
-    for (def i = 1; i <= 8; i++) {
+    for (def i = 1; i <= 12; i++) {
         if (zone == settings."zonetracker${i}zone") {
             if (faulted)
                 events << createEvent(name: "zone-on", value: i, isStateChange: true, displayed: false)
