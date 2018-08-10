@@ -818,7 +818,7 @@ def cidSet(evt) {
 def zoneOn(evt) {
     if (debug) log.debug("zoneOn: desc=${evt.value}")
 
-    def d = getChildDevices().find { it.deviceNetworkId.contains("switch${evt.value}") }
+    def d = getChildDevices().find { it.deviceNetworkId.endsWith("switch${evt.value}") }
     if (d)
     {
         def sensorValue = "closed"
@@ -836,7 +836,7 @@ def zoneOn(evt) {
 def zoneOff(evt) {
     if (debug) log.debug("zoneOff: desc=${evt.value}")
 
-    def d = getChildDevices().find { it.deviceNetworkId.contains("switch${evt.value}") }
+    def d = getChildDevices().find { it.deviceNetworkId.endsWith("switch${evt.value}") }
     if (d)
     {
         def sensorValue = "open"
@@ -1047,7 +1047,7 @@ def addExistingDevices() {
 
             }
             // Add virtual zone contact sensors if they do not exist.
-            for (def i = 0; i < 8; i++)
+            for (def i = 0; i < 12; i++)
             {
                 def newSwitch = state.devices.find { k, v -> k == "${state.ip}:${state.port}:switch${i+1}" }
                 if (!newSwitch)
