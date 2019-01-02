@@ -99,11 +99,11 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
 7. Click **Save**
 8. Click **Update From Repo** (top of page)
 9. Check the boxes 
-  * `AlarmDecoder network appliance`
-  * `AlarmDecoder virtual contact sensor`
-  * `AlarmDecoder virtual smoke alarm`
-  * `AlarmDecoder action button indicator`
-  * `AlarmDecoder status indicator`
+   * `AlarmDecoder network appliance`
+   * `AlarmDecoder virtual contact sensor`
+   * `AlarmDecoder virtual smoke alarm`
+   * `AlarmDecoder action button indicator`
+   * `AlarmDecoder status indicator`
 10. Check **Publish** (bottom of dialog)
 11. Click **Execute Update**
 
@@ -113,7 +113,7 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
 3. Check box for `alarmdecoder service`
 4. Check **Publish** (bottom of dialog)
 5. Click **Execute Update**
-6. Select your location on the right and press **Set Location**.  (Click the **Simulator** if you don't see these options)
+6. Select the `alarmdecoder: AlarmDecoder service` smart app and then select your location on the right and press **Set Location**.  (Click the **Simulator** if you don't see these options)
 7. Click the **Discover** button.  You may have to hit refresh to get your device to show up.  If it doesn't show up make sure you're running an up-to-date version of the webapp and that it is on the same netowrk as your SmartThings HUB.
 8. Click **Select Devices** and select your AlarmDecoder.
 9. Click **Install**
@@ -122,13 +122,18 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
         2. If you **Uninstall** from **AlarmDecoder service** screen it will attempt to automatically remove all sub devices if they are not in use by SHM or other rules.
         3. You can remove blocking child items from the **My Devices** -> **Show Device** screen by selecting the **In Use By** item and deleting it.
 
+### Obtain an API key from the AlarmDecoder webapp
+1. Navigate to the API section of webapp on your local network: ([https://alarmdecoder.local/api/](https://alarmdecoder.local/api/))
+2. Click **Manage API keys**
+3. Click **Generate** for the desired webapp user (eg. `admin`)
+
 ### Configure AlarmDecoder device
 * Using the SmartThings app **on your phone**
     1. Open up the SmartThings app **on your phone**
     2. Tap **My Home** and select the **Things** tab
     3. Select the **AlarmDecoder** device
-    4. Tap the gear icon and select **Edit Device**
-    5. Enter the API key you generated from [https://alarmdecoder.local/api/](https://alarmdecoder.local/api/)
+    4. Tap the gear icon to edit the device
+    5. Enter the API key you generated from the AlarmDecoder webapp
     6. Enter the alarm code you'd like to use to arm/disarm your panel.
     7. Select your panel type.
     8. Zone sensors may be configured to open and close themselves when a zone is faulted.  For example, specifying zone 7 for Zonetracker Sensor #1 would trip that sensor whenever zone 7 is faulted.
@@ -137,7 +142,7 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
     2. Select **My Devices**
     3. Select the  **AlarmDecoder(AD2)** device for your HUBs location.
     4. Click Preferences(**edit**) link.
-    5. Enter the Rest API key you generated from [https://alarmdecoder.local/api/](https://alarmdecoder.local/api/)
+    5. Enter the Rest API key you generated from the AlarmDecoder webapp
     6. Enter the alarm code you'd like to use to arm/disarm your panel.
     7. In the Panel Type - Type of panel enter **ADEMCO** or **DSC** depending on the panel type.
 
