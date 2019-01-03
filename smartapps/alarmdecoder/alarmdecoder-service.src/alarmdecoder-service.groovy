@@ -16,6 +16,8 @@
  * Version 1.0.0 - Scott Petersen - Initial design and release
  * Version 2.0.0 - Sean Mathews <coder@f34r.com> - Changed to use UPNP Push API in AD2 web app
  * Version 2.0.1 - Sean Mathews <coder@f34r.com> - Adding CID device management support.
+ * Version 2.0.2 - Sean Mathews <coder@f34r.com> - Fixed app 20 second max timeout. AddZone is now async, added more zones.
+ *
  */
 
 /*
@@ -529,7 +531,7 @@ def locationHandler(evt) {
      return
 
     if (debug)
-      log.debug "locationHandler: description: ${description} name: ${evt.name} value: ${evt.value} data: ${evt.data}"
+      log.debug "locationHandler: description: ${evt.description} name: ${evt.name} value: ${evt.value} data: ${evt.data}"
 
     def parsedEvent = ["hub":hub]
     try {
@@ -812,6 +814,26 @@ def cidSet(evt) {
 }
 
 /**
+ * Handle Device Command addZone()
+ * add a zone during post install to keep it async
+ */
+def addZone(evt) {
+
+    def i = evt.value
+    log.info("location Event: addZone ${i}")
+    def zone_switch = addChildDevice("alarmdecoder", "AlarmDecoder virtual contact sensor", "${evt.data}", state.hub, [name: "${evt.data}", label: "${sname} Zone Sensor #${i}", completedSetup: true])
+
+    def sensorValue = "open"
+    if (settings.defaultSensorToClosed == true)
+    sensorValue = "closed"
+
+    // Set default contact state.
+    zone_switch.sendEvent(name: "contact", value: sensorValue, isStateChange: true, displayed: false)
+
+}
+
+
+/**
  * Handle Device Command zoneOn()
  * sets Contact attributes of the alarmdecoder device to open/closed
  */
@@ -909,6 +931,9 @@ def initSubscriptions() {
     /* subscribe to local LAN messages to this HUB on TCP port 39500 and UPNP UDP port 1900 */
     if (debug) log.debug("initialize: subscribe to locations local LAN messages")
     subscribe(location, null, locationHandler, [filterEvents: false])
+    
+    // subscribe to add zone handler
+    subscribe(location, "addZone", addZone, [filterEvents: false])   
 }
 
 /**
@@ -1046,20 +1071,16 @@ def addExistingDevices() {
                 d.sendEvent(name: "panel_state", value: "notready", isStateChange: true, displayed: true)
 
             }
+            
             // Add virtual zone contact sensors if they do not exist.
-            for (def i = 0; i < 12; i++)
+            // asynchronous to avoid timeout. Apps can only run for 20 seconds or it will be killed.
+            for (def i = 0; i < 20; i++)
             {
                 def newSwitch = state.devices.find { k, v -> k == "${state.ip}:${state.port}:switch${i+1}" }
                 if (!newSwitch)
                 {
-                    def zone_switch = addChildDevice("alarmdecoder", "AlarmDecoder virtual contact sensor", "${state.ip}:${state.port}:switch${i+1}", state.hub, [name: "${state.ip}:${state.port}:switch${i+1}", label: "${sname} Zone Sensor #${i+1}", completedSetup: true])
-
-                    def sensorValue = "open"
-                    if (settings.defaultSensorToClosed == true)
-                        sensorValue = "closed"
-
-                    // Set default contact state.
-                    zone_switch.sendEvent(name: "contact", value: sensorValue, isStateChange: true, displayed: false)
+                    // send ourself a create device event
+                    sendLocationEvent(name: "addZone", value: "${i+1}", data: "${state.ip}:${state.port}:switch${i+1}")
                 }
             }
 

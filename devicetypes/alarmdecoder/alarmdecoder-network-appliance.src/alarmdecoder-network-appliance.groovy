@@ -41,6 +41,14 @@ preferences {
         input("zonetracker10zone", "number", title: "ZoneTracker Sensor #10", description: "Zone number to associate with this contact sensor.")
         input("zonetracker11zone", "number", title: "ZoneTracker Sensor #11", description: "Zone number to associate with this contact sensor.")
         input("zonetracker12zone", "number", title: "ZoneTracker Sensor #12", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker13zone", "number", title: "ZoneTracker Sensor #13", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker14zone", "number", title: "ZoneTracker Sensor #14", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker15zone", "number", title: "ZoneTracker Sensor #15", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker16zone", "number", title: "ZoneTracker Sensor #16", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker17zone", "number", title: "ZoneTracker Sensor #17", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker18zone", "number", title: "ZoneTracker Sensor #18", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker19zone", "number", title: "ZoneTracker Sensor #19", description: "Zone number to associate with this contact sensor.")
+        input("zonetracker20zone", "number", title: "ZoneTracker Sensor #20", description: "Zone number to associate with this contact sensor.")
     }
 }
 
@@ -870,7 +878,7 @@ private def update_zone_switches(zone, faulted) {
     // Iterate through the zone tracker settings.  If the zone number matches,
     // trigger an event for the service manager to use to flip the virtual
     // switches.
-    for (def i = 1; i <= 12; i++) {
+    for (def i = 1; i <= 20; i++) {
         if (zone == settings."zonetracker${i}zone") {
             if (faulted)
                 events << createEvent(name: "zone-on", value: i, isStateChange: true, displayed: false)
