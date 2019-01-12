@@ -17,7 +17,7 @@
  * Version 2.0.0 - Sean Mathews <coder@f34r.com> - Changed to use UPNP Push API in AD2 web app
  * Version 2.0.1 - Sean Mathews <coder@f34r.com> - Adding CID device management support.
  * Version 2.0.2 - Sean Mathews <coder@f34r.com> - Fixed app 20 second max timeout. AddZone is now async, added more zones.
- *
+ * Version 2.0.3 - Sean Mathews <coder@f34r.com> - Improved/fixed issues with previous app 20 timeout after more testing.
  */
 
 /*
@@ -151,11 +151,11 @@ def page_main() {
 
     // see if we are already installed
     def foundMsg = ""
-    def mainDevice = getChildDevice("${state.ip}:${state.port}")
-    if (mainDevice) foundMsg = "**** AlarmDecoder already installed ****"
+    def children = getChildDevices()
+    if (children) foundMsg = "**** AlarmDecoder already installed ${children.size()}****"
 
     dynamicPage(name: "page_main") {
-        if (!mainDevice) {
+        if (!children) {
             section("") {
                 href(name: "href_discover", required: false, page: "page_discover_devices", title: titles("page_discover_devices"), description: descriptions("href_discover_devices"))
             }
@@ -820,16 +820,20 @@ def cidSet(evt) {
 def addZone(evt) {
 
     def i = evt.value
-    log.info("location Event: addZone ${i}")
-    def zone_switch = addChildDevice("alarmdecoder", "AlarmDecoder virtual contact sensor", "${evt.data}", state.hub, [name: "${evt.data}", label: "${sname} Zone Sensor #${i}", completedSetup: true])
+    log.info("App Event: addZone ${i}")
+    
+    try {        
+        def zone_switch = addChildDevice("alarmdecoder", "AlarmDecoder virtual contact sensor", "${evt.data}", state.hub, [name: "${evt.data}", label: "${sname} Zone Sensor #${i}", completedSetup: true])    
+        def sensorValue = "open"
+        if (settings.defaultSensorToClosed == true) {
+            sensorValue = "closed"
+        }
 
-    def sensorValue = "open"
-    if (settings.defaultSensorToClosed == true)
-    sensorValue = "closed"
-
-    // Set default contact state.
-    zone_switch.sendEvent(name: "contact", value: sensorValue, isStateChange: true, displayed: false)
-
+        // Set default contact state.
+        zone_switch.sendEvent(name: "contact", value: sensorValue, isStateChange: true, displayed: false)
+    } catch (e) { 
+        log.error "There was an error (${e}) when trying to addZone ${i}"
+    }
 }
 
 
@@ -925,15 +929,14 @@ def alarmdecoderAlarmHandler(evt) {
  */
 def initSubscriptions() {
     // subscribe to the Smart Home Manager api for alarm status events
-    if (debug) log.debug("initialize: subscribe to SHM alarmSystemStatus API messages")
+    if (debug) log.debug("initSubscriptions: Subscribe to handlers")
     subscribe(location, "alarmSystemStatus", shmAlarmHandler)
 
-    /* subscribe to local LAN messages to this HUB on TCP port 39500 and UPNP UDP port 1900 */
-    if (debug) log.debug("initialize: subscribe to locations local LAN messages")
-    subscribe(location, null, locationHandler, [filterEvents: false])
-    
     // subscribe to add zone handler
-    subscribe(location, "addZone", addZone, [filterEvents: false])   
+    subscribe(app, addZone)
+
+    /* subscribe to local LAN messages to this HUB on TCP port 39500 and UPNP UDP port 1900 */
+    subscribe(location, null, locationHandler, [filterEvents: false])
 }
 
 /**
@@ -1076,12 +1079,7 @@ def addExistingDevices() {
             // asynchronous to avoid timeout. Apps can only run for 20 seconds or it will be killed.
             for (def i = 0; i < 20; i++)
             {
-                def newSwitch = state.devices.find { k, v -> k == "${state.ip}:${state.port}:switch${i+1}" }
-                if (!newSwitch)
-                {
-                    // send ourself a create device event
-                    sendLocationEvent(name: "addZone", value: "${i+1}", data: "${state.ip}:${state.port}:switch${i+1}")
-                }
+                sendEvent(name: "addZone", value: "${i+1}", data: "${state.ip}:${state.port}:switch${i+1}")
             }
 
             // Add virtual Smoke Alarm sensors if it does not exist.
