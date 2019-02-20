@@ -18,6 +18,7 @@
  * Version 2.0.1 - Sean Mathews <coder@f34r.com> - Adding CID device management support.
  * Version 2.0.2 - Sean Mathews <coder@f34r.com> - Fixed app 20 second max timeout. AddZone is now async, added more zones.
  * Version 2.0.3 - Sean Mathews <coder@f34r.com> - Improved/fixed issues with previous app 20 timeout after more testing.
+ * Version 2.0.4 - Sean Mathews <coder@f34r.com> - Support multiple instances of service by changing unique ID message filters by MAC.
  */
 
 /*
@@ -29,15 +30,20 @@ import groovy.transform.Field
  * Turn on verbose debugging
  */
 @Field debug = false
+@Field max_sensors = 20
+@Field nocreatedev = false
 
 /*
  * Device label name settings
+ * To run more than once service load this code as a new SmartApp
+ * and change the idname to something unique.
  */
 @Field lname = "AlarmDecoder"
 @Field sname = "AD2"
- 
+@Field idname = ""
+
 definition(
-    name: "AlarmDecoder service",
+    name: "AlarmDecoder service${idname}",
     namespace: "alarmdecoder",
     author: "Nu Tech Software Solutions, Inc.",
     description: "AlarmDecoder (Service Manager)",
@@ -542,7 +548,7 @@ def locationHandler(evt) {
         return
     }
 
-    if (debug) log.debug("locationHandler parsedEvent: ${parsedEvent}")
+    if (debug) log.debug("locationHandler mac: ${parsedEvent.mac} parsedEvent: ${parsedEvent}")
 
     // UPNP LAN EVENTS on UDP port 1900 from 'AlarmDecoder:1' devices only
     if (parsedEvent?.ssdpTerm?.contains("urn:schemas-upnp-org:device:AlarmDecoder:1")) {
@@ -605,7 +611,8 @@ def locationHandler(evt) {
             getAllChildDevices().each { device ->
                 // Only refresh the main device that has a panel_state
                 def device_type = device.getTypeName()
-                if (device_type == "AlarmDecoder network appliance")
+                // only accept messages that are from a network appliance and that match our MAC address
+                if (device_type == "AlarmDecoder network appliance" && device.getDeviceDataByName("mac") == parsedEvent.mac)
                 {
                     if (debug) log.debug ("push_update_alarmdecoders: Found device sending pushed data.")
                     device.parse_xml(headerString, bodyString).each { e-> device.sendEvent(e) }
@@ -1077,7 +1084,7 @@ def addExistingDevices() {
             
             // Add virtual zone contact sensors if they do not exist.
             // asynchronous to avoid timeout. Apps can only run for 20 seconds or it will be killed.
-            for (def i = 0; i < 20; i++)
+            for (def i = 0; i < max_sensors; i++)
             {
                 sendEvent(name: "addZone", value: "${i+1}", data: "${state.ip}:${state.port}:switch${i+1}")
             }
@@ -1090,6 +1097,9 @@ def addExistingDevices() {
                 [name: "${state.ip}:${state.port}:smokeAlarm", label: "${sname} Smoke Alarm", completedSetup: true])
                 nd.sendEvent(name: "smoke", value: "clear", isStateChange: true, displayed: false)
             }
+
+            // do not create devices if testing. Real PITA to delete them every time. ST needs to add a way to delete multiple devices at once.
+            if (!nocreatedev) {
 
             // Add virtual Arm Stay switch if it does not exist.
             cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:armStay" }
@@ -1170,6 +1180,7 @@ def addExistingDevices() {
                 def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmAUX", state.hub,
                 [name: "${state.ip}:${state.port}:alarmAUX", label: "${sname} AUX Alarm", completedSetup: true])
                 nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
+            }
             }
         }
     }
