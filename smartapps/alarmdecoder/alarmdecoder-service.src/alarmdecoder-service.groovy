@@ -1,7 +1,7 @@
 /**
  *  AlarmDecoder Service Manager
  *
- *  Copyright 2016-2018 Nu Tech Software Solutions, Inc.
+ *  Copyright 2016-2019 Nu Tech Software Solutions, Inc.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -19,6 +19,7 @@
  * Version 2.0.2 - Sean Mathews <coder@f34r.com> - Fixed app 20 second max timeout. AddZone is now async, added more zones.
  * Version 2.0.3 - Sean Mathews <coder@f34r.com> - Improved/fixed issues with previous app 20 timeout after more testing.
  * Version 2.0.4 - Sean Mathews <coder@f34r.com> - Support multiple instances of service by changing unique ID message filters by MAC.
+ * Version 2.0.5 - Sean Mathews <coder@f34r.com> - Add switch to create Disarm button.
  */
 
 /*
@@ -32,7 +33,7 @@ import groovy.transform.Field
 @Field debug = false
 @Field max_sensors = 20
 @Field nocreatedev = false
-
+@Field create_disarm = true
 /*
  * Device label name settings
  * To run more than once service load this code as a new SmartApp
@@ -646,10 +647,12 @@ def actionButton(id) {
         return
     }
 
-    /* FIXME: Need a pin code or some way to trust the request.
-    if (id.contains(":disarm")) {
-        d.disarm()
-    } */
+    /* FIXME: Need a pin code or some way to trust the request. */
+    if(create_disarm) {
+        if (id.contains(":disarm")) {
+            d.disarm()
+        }
+    }
 
     if (id.contains(":armAway")) {
         d.arm_away()
@@ -1099,88 +1102,99 @@ def addExistingDevices() {
             }
 
             // do not create devices if testing. Real PITA to delete them every time. ST needs to add a way to delete multiple devices at once.
-            if (!nocreatedev) {
-
-            // Add virtual Arm Stay switch if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:armStay" }
-            if (!cd)
+            if (!nocreatedev) 
             {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:armStay", state.hub,
-                [name: "${state.ip}:${state.port}:armStay", label: "${sname} Stay", completedSetup: true])
-                nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
-            }
+                // Add virtual Arm Stay switch if it does not exist.
+                cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:armStay" }
+                if (!cd)
+                {
+                    def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:armStay", state.hub,
+                    [name: "${state.ip}:${state.port}:armStay", label: "${sname} Stay", completedSetup: true])
+                    nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
+                }
 
-            // Add virtual Arm Away switch if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:armAway" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:armAway", state.hub,
-                [name: "${state.ip}:${state.port}:armAway", label: "${sname} Away", completedSetup: true])
-                nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
-            }
+                // Add virtual Arm Away switch if it does not exist.
+                cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:armAway" }
+                if (!cd)
+                {
+                    def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:armAway", state.hub,
+                    [name: "${state.ip}:${state.port}:armAway", label: "${sname} Away", completedSetup: true])
+                    nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
+                }
 
-            // Add virtual Chime switch if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:chimeMode" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:chimeMode", state.hub,
-                [name: "${state.ip}:${state.port}:chimeMode", label: "${sname} Chime", completedSetup: true])
-                nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
-            }
+                // Add virtual Chime switch if it does not exist.
+                cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:chimeMode" }
+                if (!cd)
+                {
+                    def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:chimeMode", state.hub,
+                    [name: "${state.ip}:${state.port}:chimeMode", label: "${sname} Chime", completedSetup: true])
+                    nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
+                }
 
-            // Add virtual Bypass switch if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:bypass" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:bypass", state.hub,
-                [name: "${state.ip}:${state.port}:bypass", label: "${sname} Bypass", completedSetup: true])
-                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
-            }
+                // Add virtual Bypass switch if it does not exist.
+                cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:bypass" }
+                if (!cd)
+                {
+                    def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:bypass", state.hub,
+                    [name: "${state.ip}:${state.port}:bypass", label: "${sname} Bypass", completedSetup: true])
+                    nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
+                }
 
-            // Add virtual Ready contact if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:readyIndicator" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:readyIndicator", state.hub,
-                [name: "${state.ip}:${state.port}:readyIndicator", label: "${sname} Ready", completedSetup: true])
-                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
-            }
+                // Add virtual Ready contact if it does not exist.
+                cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:readyIndicator" }
+                if (!cd)
+                {
+                    def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:readyIndicator", state.hub,
+                    [name: "${state.ip}:${state.port}:readyIndicator", label: "${sname} Ready", completedSetup: true])
+                    nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
+                }
 
-            // Add virtual Alarm Bell contact if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmBell" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:alarmBellIndicator", state.hub,
-                [name: "${state.ip}:${state.port}:alarmBellIndicator", label: "${sname} Alarm Bell", completedSetup: true])
-                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
-            }
+                // Add virtual Alarm Bell contact if it does not exist.
+                cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmBell" }
+                if (!cd)
+                {
+                    def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:alarmBellIndicator", state.hub,
+                    [name: "${state.ip}:${state.port}:alarmBellIndicator", label: "${sname} Alarm Bell", completedSetup: true])
+                    nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
+                }
 
-            // Add FIRE alarm button if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmFire" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmFire", state.hub,
-                [name: "${state.ip}:${state.port}:alarmFire", label: "${sname} Fire Alarm", completedSetup: true])
-                nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
-            }
+                // Add FIRE alarm button if it does not exist.
+                cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmFire" }
+                if (!cd)
+                {
+                    def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmFire", state.hub,
+                    [name: "${state.ip}:${state.port}:alarmFire", label: "${sname} Fire Alarm", completedSetup: true])
+                    nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
+                }
 
-            // Add Panic alarm button if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmPanic" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmPanic", state.hub,
-                [name: "${state.ip}:${state.port}:alarmPanic", label: "${sname} Panic Alarm", completedSetup: true])
-                nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
-            }
+                // Add Panic alarm button if it does not exist.
+                cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmPanic" }
+                if (!cd)
+                {
+                    def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmPanic", state.hub,
+                    [name: "${state.ip}:${state.port}:alarmPanic", label: "${sname} Panic Alarm", completedSetup: true])
+                    nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
+                }
 
-            // Add AUX alarm button if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmAUX" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmAUX", state.hub,
-                [name: "${state.ip}:${state.port}:alarmAUX", label: "${sname} AUX Alarm", completedSetup: true])
-                nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
-            }
+                // Add AUX alarm button if it does not exist.
+                cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmAUX" }
+                if (!cd)
+                {
+                    def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmAUX", state.hub,
+                    [name: "${state.ip}:${state.port}:alarmAUX", label: "${sname} AUX Alarm", completedSetup: true])
+                    nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
+                }
+
+                // Add Disarm button if it does not exist.
+                if(create_disarm) {
+                    cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:disarm" }
+                    if (!cd)
+                    {
+                        def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:disarm", state.hub,
+                        [name: "${state.ip}:${state.port}:disarm", label: "${sname} Disarm", completedSetup: true])
+                        nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
+                    }
+                }
             }
         }
     }
