@@ -48,6 +48,11 @@ Capabilities: smokeDetector
 Description: An indicator to show the panel fire state.  
 States: [clear, detected]  
 
+* AD2 Disarm  
+Capabilities:  Momentary  
+Description: Action **'push'** will send the DISARM Alarm command to the panel  
+States: No indication of alarm type  
+
 * AD2 Stay  
 Capabilities:  Momentary  
 Description: indicator to show the arm Stay state
@@ -113,10 +118,11 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
 3. Check box for `alarmdecoder service`
 4. Check **Publish** (bottom of dialog)
 5. Click **Execute Update**
-6. Select the `alarmdecoder: AlarmDecoder service` smart app and then select your location on the right and press **Set Location**.  (Click the **Simulator** if you don't see these options)
-7. Click the **Discover** button.  You may have to hit refresh to get your device to show up.  If it doesn't show up make sure you're running an up-to-date version of the webapp and that it is on the same netowrk as your SmartThings HUB.
-8. Click **Select Devices** and select your AlarmDecoder.
-9. Click **Install**
+6. Adjust **@Field** settings as needed at the top of the **AlarmDecoder service** code and **Publish** if changes are made.
+7. Select the `alarmdecoder: AlarmDecoder service` smart app and then select your location on the right and press **Set Location**.  (Click the **Simulator** if you don't see these options)
+8. Click the **Discover** button.  You may have to hit refresh to get your device to show up.  If it doesn't show up make sure you're running an up-to-date version of the webapp and that it is on the same netowrk as your SmartThings HUB.
+9. Click **Select Devices** and select your AlarmDecoder.
+10. Click **Install**
     * Notes
         1. This will generate new devices under **My Devices**
         2. If you **Uninstall** from **AlarmDecoder service** screen it will attempt to automatically remove all sub devices if they are not in use by SHM or other rules.
