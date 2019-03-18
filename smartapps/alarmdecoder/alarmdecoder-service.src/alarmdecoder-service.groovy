@@ -360,7 +360,7 @@ def page_add_new_cid_confirm() {
         nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
         errors << "Success adding ${newcidlabel}"
     } else {
-        errors << "Error adding ${newcidlabel}: Exists" 
+        errors << "Error adding ${newcidlabel}: Exists"
     }
 
     return dynamicPage(name: "page_add_new_cid_confirm") {
