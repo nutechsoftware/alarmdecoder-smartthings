@@ -67,7 +67,7 @@ preferences {
 /*
  * Localization strings
  */
- 
+
 // string table for titles
 def titles(String name, Object... args) {
   def page_titles = [
@@ -85,7 +85,7 @@ def titles(String name, Object... args) {
     "section_cid_names": "Device Name and Label",
     "section_build_cid": "Build CID Number :",
     "input_cid_name": "Enter the new device name or blank for auto",
-    "input_cid_label": "Enter the new device label or blank for auto",    
+    "input_cid_label": "Enter the new device label or blank for auto",
     "info_page_remove_selected_cid": "Attempted to remove selected devices. This may fail if the device is in use. If it fails review the log and manually remove the usage. Press back to continue.",
     "info_add_new_cid_confirm": "Attempted to add new CID device. This may fail if the device is in use. If it fails review the log. Press back to continue.",
     "info_remove_all_a": "Removed all child devices.",
@@ -172,7 +172,7 @@ def page_main() {
             }
             section("") {
                 href(name: "href_remove_all", required: false, page: "page_remove_all", title: titles("page_remove_all"), description: descriptions("href_remove_all"))
-            }        
+            }
             section("") {
                 href(name: "href_cid_management", required: false, page: "page_cid_management", title: titles("page_cid_management"), description: descriptions("href_cid_management"))
             }
@@ -225,9 +225,9 @@ def page_remove_selected_cid() {
                 try {
                     deleteChildDevice(device.deviceNetworkId)
                     input_cid_devices.remove(device_name)
-                    errors << "Success removing " + device_name                    
+                    errors << "Success removing " + device_name
                 }
-                catch (e) { 
+                catch (e) {
                     log.error "There was an error (${e}) when trying to delete the child device"
                     errors << "Error removing " + device_name
                 }
@@ -237,7 +237,7 @@ def page_remove_selected_cid() {
     return dynamicPage(name: "page_remove_selected_cid") {
         section("") {
             paragraph titles("info_page_remove_selected_cid")
-            errors.each { error -> 
+            errors.each { error ->
                 paragraph(error)
             }
         }
@@ -260,12 +260,12 @@ def page_add_new_cid() {
                        "401": "401 - Arm AWAY OPEN/CLOSE",
                        "441": "441 - Arm STAY OPEN/CLOSE",
                        "4[0,4]1": "4[0,4]1 - Arm Stay or Away OPEN/CLOSE"]
-    
+
     return dynamicPage(name: "page_add_new_cid") {
         // show pre defined CID number templates to select from
         section("") {
             paragraph titles("section_build_cid", buildcid())
-            input "input_cid_number", "enum", required: true, submitOnChange: true, multiple: false, title: titles("input_cid_number"), description: descriptions("input_cid_number"), options: cid_numbers 
+            input "input_cid_number", "enum", required: true, submitOnChange: true, multiple: false, title: titles("input_cid_number"), description: descriptions("input_cid_number"), options: cid_numbers
         }
         // if a CID entry is selected then check the value if it is "0" to show raw input section
         if (input_cid_number) {
@@ -350,7 +350,7 @@ def page_add_new_cid_confirm() {
     def newcidnetworkid = buildcidnetworkid()
     def cv = input_cid_value
     def pt = input_cid_partition.toInteger()
-    
+
     // Add virtual CID switch if it does not exist.
     def d = getChildDevice("${state.ip}:${state.port}:${newcidlabel}")
     if (!d)
@@ -366,9 +366,9 @@ def page_add_new_cid_confirm() {
     return dynamicPage(name: "page_add_new_cid_confirm") {
         section("") {
             paragraph titles("info_add_new_cid_confirm")
-            errors.each { error -> 
+            errors.each { error ->
                 paragraph(error)
-            }            
+            }
         }
     }
 }
@@ -786,7 +786,7 @@ def cidSet(evt) {
     // get our CID state and number
     def parts = evt.value.split(',')
 
-    // 1 digit QUALIFIER 1 = Event or Open, 3 = Restore or Close   
+    // 1 digit QUALIFIER 1 = Event or Open, 3 = Restore or Close
     def cidstate = (parts[2][-4..-4] == "1") ? "on" : "off"
 
     // 3 digit CID number
@@ -831,9 +831,9 @@ def addZone(evt) {
 
     def i = evt.value
     log.info("App Event: addZone ${i}")
-    
-    try {        
-        def zone_switch = addChildDevice("alarmdecoder", "AlarmDecoder virtual contact sensor", "${evt.data}", state.hub, [name: "${evt.data}", label: "${sname} Zone Sensor #${i}", completedSetup: true])    
+
+    try {
+        def zone_switch = addChildDevice("alarmdecoder", "AlarmDecoder virtual contact sensor", "${evt.data}", state.hub, [name: "${evt.data}", label: "${sname} Zone Sensor #${i}", completedSetup: true])
         def sensorValue = "open"
         if (settings.defaultSensorToClosed == true) {
             sensorValue = "closed"
@@ -841,7 +841,7 @@ def addZone(evt) {
 
         // Set default contact state.
         zone_switch.sendEvent(name: "contact", value: sensorValue, isStateChange: true, displayed: false)
-    } catch (e) { 
+    } catch (e) {
         log.error "There was an error (${e}) when trying to addZone ${i}"
     }
 }
@@ -1084,7 +1084,7 @@ def addExistingDevices() {
                 d.sendEvent(name: "panel_state", value: "notready", isStateChange: true, displayed: true)
 
             }
-            
+
             // Add virtual zone contact sensors if they do not exist.
             // asynchronous to avoid timeout. Apps can only run for 20 seconds or it will be killed.
             for (def i = 0; i < max_sensors; i++)
