@@ -42,7 +42,7 @@ def sendDiscover() {
     // Request HUB send out a UpNp broadcast discovery messages on the local network
     def haobj
     if(MONTYPE == "SHM") {
-		    haobj = new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN)
+        haobj = new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN)
     }
     if(MONTYPE == "HSM") {
         //haobj = new hubitat.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", hubitat.device.Protocol.LAN)
@@ -926,9 +926,9 @@ def monitorAlarmHandler(evt) {
     if (state.lastMONStatus != evt.value && evt.value != state.lastAlarmDecoderStatus)
     {
         getAllChildDevices().each { device ->
-            // We only want to talk to our AlarmDecoder(AD2) main device
-            // and it will only have its HEX IP address not a :foobar suffix.
-            if (!device.deviceNetworkId.contains(":"))
+            // Only refresh the main device that has a panel_state
+            def device_type = device.getTypeName()
+            if (device_type == "AlarmDecoder network appliance")
             {
                 if (debug) log.debug("monitorAlarmHandler DEBUG-- ${device.deviceNetworkId}")
                 /* SmartThings */
