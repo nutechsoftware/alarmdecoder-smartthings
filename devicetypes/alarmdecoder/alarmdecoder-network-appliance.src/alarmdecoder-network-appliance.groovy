@@ -1,7 +1,7 @@
 /**
  *  AlarmDecoder Network Appliance
  *
- *  Copyright 2016-2018 Nu Tech Software Solutions, Inc.
+ *  Copyright 2016-2019 Nu Tech Software Solutions, Inc.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -80,7 +80,7 @@ metadata {
         command "fire2"
         command "panic"
         command "panic1"
-        command "panic2"        
+        command "panic2"
         command "aux"
         command "aux1"
         command "aux2"
@@ -97,7 +97,7 @@ metadata {
         command "bypass9"
         command "bypass10"
         command "bypass11"
-        command "bypass12"        
+        command "bypass12"
     }
 
     simulator {
@@ -260,6 +260,7 @@ metadata {
     }
 }
 
+
 /*** Handlers ***/
 
 def installed() {
@@ -339,7 +340,7 @@ def parse_xml(String headers, String body) {
     resultMap['eventid'] = xmlResult.property.eventid.toInteger()
     resultMap['eventdesc'] = xmlResult.property.eventdesc.text()
     resultMap['eventmessage'] = xmlResult.property.eventmessage.text()
-    resultMap['rawmessage'] = xmlResult.property.rawmessage.text()    
+    resultMap['rawmessage'] = xmlResult.property.rawmessage.text()
     resultMap['last_message_received'] = xmlResult.property.panelstate.last_message_received.text()
     resultMap['panel_alarming'] = xmlResult.property.panelstate.panel_alarming.toBoolean()
     resultMap['panel_armed'] = xmlResult.property.panelstate.panel_armed.toBoolean()
@@ -351,7 +352,7 @@ def parse_xml(String headers, String body) {
     resultMap['panel_powered'] = xmlResult.property.panelstate.panel_powered.toBoolean()
     resultMap['panel_ready'] = xmlResult.property.panelstate.panel_ready.toBoolean()
     resultMap['panel_type'] = xmlResult.property.panelstate.panel_type.text()
-    resultMap['panel_chime'] = xmlResult.property.panelstate.panel_chime.toBoolean()    
+    resultMap['panel_chime'] = xmlResult.property.panelstate.panel_chime.toBoolean()
 
     // build list of faulted zones unpack xml
     // only update zone list on zone change events
@@ -603,7 +604,7 @@ def checkAux() {
  */
 def bypass1() {
     bypassN(1)
-} 
+}
 def bypass2() {
     bypassN(2)
 }
@@ -645,7 +646,7 @@ def bypassN(szValue) {
 
 def bypass(zone) {
    log.trace("--- bypass ${zone}")
-   
+
     // if no zone then skip
     if(!zone.toInteger())
       return;
@@ -654,9 +655,9 @@ def bypass(zone) {
     def keys = ""
 
     if (settings.panel_type == "ADEMCO")
-        keys = "${user_code}6" + zone.padLeft(2,"0") + "*"
+        keys = "${user_code}6" + zone.toString().padLeft(2,"0") + "*"
     else if (settings.panel_type == "DSC")
-        keys = "*1" + zone.padLeft(2,"0")
+        keys = "*1" + zone.toString().padLeft(2,"0")
     else
         log.warn("--- bypass: unknown panel_type.")
 
@@ -712,7 +713,7 @@ def update_state(data) {
 
     // Event Type 14 CID send raw data upstream if we find one
     if (data.eventid == 14) {
-        events << createEvent(name: "cid-set", value: data.rawmessage, displayed: true, isStateChange: true)        
+        events << createEvent(name: "cid-set", value: data.rawmessage, displayed: true, isStateChange: true)
     }
 
     // Event Type 5 Bypass
@@ -989,7 +990,7 @@ def send_keys(keys) {
       log.trace("--- send_keys: keys=${keys}")
     else
       log.trace("--- send_keys")
-      
+
     def urn = getDataValue("urn")
     def apikey = _get_api_key()
 
