@@ -42,10 +42,10 @@ def sendDiscover() {
     // Request HUB send out a UpNp broadcast discovery messages on the local network
     def haobj
     if(MONTYPE == "SHM") {
-		//haobj = new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN)
+		    haobj = new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN)
     }
     if(MONTYPE == "HSM") {
-        haobj = new hubitat.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", hubitat.device.Protocol.LAN)
+        //haobj = new hubitat.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", hubitat.device.Protocol.LAN)
     }
 	sendHubCommand(haobj)
 }
@@ -55,10 +55,10 @@ def sendVerify(deviceNetworkID, ssdpPath) {
   if (debug) log.debug("verifyAlarmDecoder: $deviceNetworkId ssdpPath: ${ssdpPath} ip: ${ip}")
 
   if(MONTYPE == "SHM") {
-      //def result = new physicalgraph.device.HubAction([method: "GET", path: ssdpPath, headers: [Host: ip, Accept: "*/*"]], deviceNetworkId)
+      def result = new physicalgraph.device.HubAction([method: "GET", path: ssdpPath, headers: [Host: ip, Accept: "*/*"]], deviceNetworkId)
   }
   if(MONTYPE == "HSM") {
-      def result = new hubitat.device.HubAction([method: "GET", path: ssdpPath, headers: [Host: ip, Accept: "*/*"]], deviceNetworkId)
+      //def result = new hubitat.device.HubAction([method: "GET", path: ssdpPath, headers: [Host: ip, Accept: "*/*"]], deviceNetworkId)
   }
   sendHubCommand(result)
 }
