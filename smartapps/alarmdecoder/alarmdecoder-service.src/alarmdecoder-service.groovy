@@ -21,6 +21,7 @@
  * Version 2.0.4 - Sean Mathews <coder@f34r.com> - Support multiple instances of service by changing unique ID message filters by MAC.
  * Version 2.0.5 - Sean Mathews <coder@f34r.com> - Add switch to create Disarm button.
  * Version 2.0.6 - Sean Mathews <coder@f34r.com> - Compatiblity between ST and HT. Still requires some manual code edits but it will be minimal.
+ * Version 2.0.7 - Sean Mathews <coder@f34r.com> - Add RFX virtual device management to track Ademco 5800 wireless or VPLEX sensors directly.
  */
 
 /*
@@ -35,29 +36,43 @@ import groovy.transform.Field
 @Field max_sensors = 20
 @Field nocreatedev = false
 @Field create_disarm = true
+// Set the HA system type SmartThings Hub(SHM) or Hubitat Elevation(HSM)
+// You will also need to comment out and comment code in sendVerfy and sendDiscover below.
 @Field MONTYPE = "SHM" /* ["HSM", "SHM"] */
 
-
+/*
+ * sendDiscover sends a discovery message to the HUB.
+ * Leave comments out for the HUB type being used.
+ */
 def sendDiscover() {
     // Request HUB send out a UpNp broadcast discovery messages on the local network
     def haobj
+    // Comment out the next line if we are using Hubitat
     if(MONTYPE == "SHM") {
+        // Comment out the next line if we are using Hubitat
         haobj = new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN)
     }
     if(MONTYPE == "HSM") {
+        // Comment out the next line if we are using SmartThings
         //haobj = new hubitat.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", hubitat.device.Protocol.LAN)
     }
 	sendHubCommand(haobj)
 }
 
+/*
+ * sendVerify sends a message to the HUB.
+ * Leave comments out for the HUB type being used.
+ */
 def sendVerify(deviceNetworkID, ssdpPath) {
   String ip = getHostAddressFromDNI(deviceNetworkId)
   if (debug) log.debug("verifyAlarmDecoder: $deviceNetworkId ssdpPath: ${ssdpPath} ip: ${ip}")
 
   if(MONTYPE == "SHM") {
+      // Comment out the next line if we are using Hubitat
       def result = new physicalgraph.device.HubAction([method: "GET", path: ssdpPath, headers: [Host: ip, Accept: "*/*"]], deviceNetworkId)
   }
   if(MONTYPE == "HSM") {
+      // Comment out the next line if we are using SmartThings
       //def result = new hubitat.device.HubAction([method: "GET", path: ssdpPath, headers: [Host: ip, Accept: "*/*"]], deviceNetworkId)
   }
   sendHubCommand(result)
@@ -92,6 +107,10 @@ preferences {
     page(name: "page_add_new_cid", title: titles("page_add_new_cid"), content: "page_add_new_cid", install: false, uninstall: false)
     page(name: "page_add_new_cid_confirm", title: titles("page_add_new_cid_confirm", buildcidlabel()), content: "page_add_new_cid_confirm", install: false, uninstall: false)
     page(name: "page_remove_selected_cid", title: titles("page_remove_selected_cid"), content: "page_remove_selected_cid", install: false, uninstall: false)
+    page(name: "page_rfx_management", title: titles("page_rfx_management"), content: "page_rfx_management", install: false, uninstall: false)
+    page(name: "page_add_new_rfx", title: titles("page_add_new_rfx"), content: "page_add_new_rfx", install: false, uninstall: false)
+    page(name: "page_add_new_rfx_confirm", title: titles("page_add_new_rfx_confirm", buildcidlabel()), content: "page_add_new_rfx_confirm", install: false, uninstall: false)
+    page(name: "page_remove_selected_rfx", title: titles("page_remove_selected_rfx"), content: "page_remove_selected_rfx", install: false, uninstall: false)
 }
 
 /*
@@ -101,34 +120,57 @@ preferences {
 // string table for titles
 def titles(String name, Object... args) {
   def page_titles = [
+    /*  Main */
     "page_main": "${lname} setup and management",
+    "info_remove_all_a": "Removed all child devices.",
+    "info_remove_all_b": "This will attempt to remove all child devices. This may fail if the device is in use. If it fails review the log and manually remove the usage. Press back to continue.",
+    
+    /* Discover */
     "page_discover_devices": "Install ${lname} service",
+    "input_selected_devices": "Select device(s) (%s found)",
+    "monIntegration": "Integrate with Smart Home Monitor?",
+    "monChangeStatus": "Automatically change Monitor(SHM|HSM) status when armed or disarmed?",
+    "defaultSensorToClosed": "Default zone sensors to closed?",
+    
+    /* Remove All */
     "page_remove_all": "Remove all ${lname} devices",
     "confirm_remove_all": "Confirm remove all",
+    "href_refresh_devices": "Send UPNP discovery",
+    
+    /* CID Management */
     "page_cid_management": "Contact ID device management",
     "page_add_new_cid": "Add new CID virtual switch",
     "page_add_new_cid_confirm": "Add new CID switch : %s",
     "page_remove_selected_cid": "Remove selected virtual switches",
-    "href_refresh_devices": "Send UPNP discovery",
+    "info_page_remove_selected_cid": "Attempted to remove selected devices. This may fail if the device is in use. If it fails review the log and manually remove the usage. Press back to continue.",
+    "info_add_new_cid_confirm": "Attempted to add new CID device. This may fail if the device is in use. If it fails review the log. Press back to continue.",    
     "section_cid_value": "Build CID Value(USER/ZONE) : %s",
     "section_cid_partition": "Select the CID partition",
     "section_cid_names": "Device Name and Label",
-    "section_build_cid": "Build CID Number :",
+    "section_build_cid": "Build Device Name :",
     "input_cid_name": "Enter the new device name or blank for auto",
     "input_cid_label": "Enter the new device label or blank for auto",
-    "info_page_remove_selected_cid": "Attempted to remove selected devices. This may fail if the device is in use. If it fails review the log and manually remove the usage. Press back to continue.",
-    "info_add_new_cid_confirm": "Attempted to add new CID device. This may fail if the device is in use. If it fails review the log. Press back to continue.",
-    "info_remove_all_a": "Removed all child devices.",
-    "info_remove_all_b": "This will attempt to remove all child devices. This may fail if the device is in use. If it fails review the log and manually remove the usage. Press back to continue.",
     "input_cid_devices": "Remove installed CID virutal switches",
     "input_cid_number": "Select the CID number for this device",
     "input_cid_value": "Zero PAD 3 digit User,Zone or simple regex pattern ex. '001' or '...'",
     "input_cid_partition": "Enter the partition or 0 for system",
     "input_cid_number_raw": "Enter CID # or simple regex pattern",
-    "input_selected_devices": "Select device(s) (%s found)",
-    "defaultSensorToClosed": "Default zone sensors to closed?",
-    "monIntegration": "Integrate with Smart Home Monitor?",
-    "monChangeStatus": "Automatically change Monitor(SHM|HSM) status when armed or disarmed?",
+    
+    /* RFX Management */
+    "page_rfx_management": "RFX device management",
+    "page_add_new_rfx": "Add new RFX virtual switch",
+    "page_add_new_rfx_confirm": "Add new RFX switch : %s",
+    "page_remove_selected_rfx": "Remove selected virtual switches",
+    "section_build_rfx": "Build Device Name :",
+    "input_rfx_name": "Enter the new device name or blank for auto",
+    "input_rfx_label": "Enter the new device label or blank for auto",    
+    "input_rfx_sn": "Enter Serial # or simple regex pattern",
+    "input_rfx_supv": "Enter supvision value or simple regex pattern",
+    "input_rfx_bat": "Enter battery value or simple regex pattern",
+    "input_rfx_loop0": "Enter loop 0 value or simple regex pattern",
+    "input_rfx_loop1": "Enter loop 1 value or simple regex pattern",
+    "input_rfx_loop2": "Enter loop 2 value or simple regex pattern",
+    "input_rfx_loop3": "Enter loop 3 value or simple regex pattern",
   ]
   if (args)
       return String.format(page_titles[name], args)
@@ -139,15 +181,21 @@ def titles(String name, Object... args) {
 // string table for descriptions
 def descriptions(name, Object... args) {
   def element_descriptions = [
+    "href_refresh_devices": "Tap to select",  
     "href_discover_devices": "Tap to discover and install your ${lname} Appliance",
     "href_remove_all": "Tap to remove all ${lname} virtual devices",
     "href_cid_management": "Tap to manage CID virtual switches",
+    "href_remove_selected_cid": "Tap to remove selected virtual switches",    
+    "href_add_new_cid": "Tap to add new CID switch",
+    "href_add_new_cid_confirm": "Tap to confirm and add",
     "input_cid_devices": "Tap to select",
     "input_cid_number": "Tap to select",
-    "href_refresh_devices": "Tap to select",
-    "href_remove_selected_cid": "Tap to remove selected virtual switches",
-    "href_add_new_cid": "Tap to add new CID switch",
-    "href_add_new_cid_confirm": "Tap to confirm and add"
+    "href_rfx_management": "Tap to manage RFX virtual switches",
+    "href_remove_selected_rfx": "Tap to remove selected virtual switches",    
+    "href_add_new_rfx": "Tap to add new RFX switch",
+    "href_add_new_rfx_confirm": "Tap to confirm and add",
+    "input_rfx_devices": "Tap to select",
+    "input_rfx_number": "Tap to select",
   ]
   if (args)
       return String.format(element_descriptions[name],args)
@@ -205,6 +253,9 @@ def page_main() {
             }
             section("") {
                 href(name: "href_cid_management", required: false, page: "page_cid_management", title: titles("page_cid_management"), description: descriptions("href_cid_management"))
+            }
+            section("") {
+                href(name: "href_rfx_management", required: false, page: "page_rfx_management", title: titles("page_rfx_management"), description: descriptions("href_rfx_management"))
             }
         }
     }
@@ -400,6 +451,169 @@ def page_add_new_cid_confirm() {
                 paragraph(error)
             }
         }
+        section_no_save_note()
+    }
+}
+
+/**
+ * Page page_rfx_management generator.
+ */
+def page_rfx_management() {
+    // TODO: Find a way to clear our current values on loading page
+    return dynamicPage(name: "page_rfx_management") {
+        def found_devices = []
+        getAllChildDevices().each { device ->
+            if (device.deviceNetworkId.contains(":RFX-"))
+            {
+                found_devices << device.deviceNetworkId.split(":")[2].trim()
+            }
+        }
+        section("") {
+            if (found_devices.size()) {
+                input "input_rfx_devices", "enum", required: false, multiple: true, options: found_devices, title: titles("input_rfx_devices"), description: descriptions("input_rfx_devices"), submitOnChange: true
+                if (input_rfx_devices) {
+                    href(name: "href_remove_selected_rfx", required: false, page: "page_remove_selected_rfx", title: titles("page_remove_selected_rfx"), description: descriptions("href_remove_selected_rfx"), submitOnChange: true)
+                }
+            }
+        }
+        section("") {
+            href(name: "href_add_new_rfx", required: false, page: "page_add_new_rfx", title: titles("page_add_new_rfx"), description: descriptions("href_add_new_rfx"))
+        }
+        section_no_save_note()
+    }
+}
+
+/**
+ * Page page_remove_selected_rfx generator
+ */
+def page_remove_selected_rfx() {
+    def errors = []
+    getAllChildDevices().each { device ->
+        if (device.deviceNetworkId.contains(":RFX-"))
+        {
+            // Only remove the one that matches our list
+            def device_name = device.deviceNetworkId.split(":")[2].trim()
+            def d = input_rfx_devices.find{ it == device_name }
+            if (d)
+            {
+                log.trace("removing RFX device ${device.deviceNetworkId}")
+                try {
+                    deleteChildDevice(device.deviceNetworkId)
+                    input_rfx_devices.remove(device_name)
+                    errors << "Success removing " + device_name
+                }
+                catch (e) {
+                    log.error "There was an error (${e}) when trying to delete the child device"
+                    errors << "Error removing " + device_name
+                }
+            }
+        }
+    }
+    return dynamicPage(name: "page_remove_selected_rfx") {
+        section("") {
+            paragraph titles("info_page_remove_selected_rfx")
+            errors.each { error ->
+                paragraph(error)
+            }
+        }
+        section_no_save_note()
+    }
+}
+
+/**
+ * Page page_add_new_rfx generator
+ */
+def page_add_new_rfx() {
+
+    return dynamicPage(name: "page_add_new_rfx") {
+        section("") {
+            paragraph titles("section_build_rfx")
+        }
+        section {
+            paragraph titles("section_rfx_names")
+            input(name: "input_rfx_name", type: "text", required: false, submitOnChange: true, title: titles("input_rfx_name"))
+            input(name: "input_rfx_label", type: "text", required: false, submitOnChange: true, title: titles("input_rfx_label"))
+        }            
+        section {
+            input(name: "input_rfx_sn", type: "text", required: true, defaultValue: '000000', submitOnChange: true, title: titles("input_rfx_sn"))
+            input(name: "input_rfx_bat", type: "text", required: true, defaultValue: '0', submitOnChange: true, title: titles("input_rfx_bat"))
+            input(name: "input_rfx_supv", type: "text", required: true, defaultValue: '0', submitOnChange: true, title: titles("input_rfx_supv"))
+            input(name: "input_rfx_loop0", type: "text", required: true, defaultValue: '0', submitOnChange: true, title: titles("input_rfx_loop0"))
+            input(name: "input_rfx_loop1", type: "text", required: true, defaultValue: '0', submitOnChange: true, title: titles("input_rfx_loop1"))
+            input(name: "input_rfx_loop2", type: "text", required: true, defaultValue: '0', submitOnChange: true, title: titles("input_rfx_loop2"))
+            input(name: "input_rfx_loop3", type: "text", required: true, defaultValue: '0', submitOnChange: true, title: titles("input_rfx_loop3"))
+        }
+        section(""){ href(name: "href_add_new_rfx_confirm", required: false, page: "page_add_new_rfx_confirm", title: titles("page_add_new_rfx_confirm", buildrfxlabel()+"("+buildrfxnetworkid()+")"), description: descriptions("href_add_new_rfx_confirm"))}
+        section_no_save_note()
+    }
+}
+
+/**
+ * Helper to build a final RFX value from inputs
+ */
+def buildrfx() {
+    return input_rfx_sn
+}
+def buildrfxname() {
+    if (input_rfx_name) {
+        return "RFX-" + input_rfx_name
+    } else {
+        return buildrfxnetworkid()
+    }
+}
+
+def buildrfxlabel() {
+    if (input_rfx_label) {
+        return "RFX-" + input_rfx_label
+    } else {
+        return buildrfxnetworkid()
+    }
+}
+
+def buildrfxnetworkid() {
+    // get the RFX value
+    def newrfx =  buildrfx()
+
+    def cv = buildrfxvalue()
+    return "RFX-${newrfx}-${cv}"
+}
+
+def buildrfxvalue() {
+    def rfxval = "${input_rfx_bat}-${input_rfx_supv}-${input_rfx_loop0}-${input_rfx_loop1}-${input_rfx_loop2}-${input_rfx_loop3}"
+    return rfxval
+}
+
+/**
+ * Page page_add_new_rfx_confirm generator.
+ */
+def page_add_new_rfx_confirm() {
+    def errors = []
+    // get the RFX value
+    def newrfxlabel =  buildrfxlabel()
+    def newrfxname = buildrfxname()
+    def newrfxnetworkid = buildrfxnetworkid()
+    def cv = input_rfx_value
+
+    // Add virtual RFX switch if it does not exist.
+    def d = getChildDevice("${getDeviceKey()}:${newrfxlabel}")
+    if (!d)
+    {
+        def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${getDeviceKey()}:${newrfxnetworkid}", state.hub,
+                                [name: "${getDeviceKey()}:${newrfxname}", label: "${sname} ${newrfxlabel}", completedSetup: true])
+        nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
+        errors << "Success adding ${newrfxlabel}"
+    } else {
+        errors << "Error adding ${newrfxlabel}: Exists"
+    }
+
+    return dynamicPage(name: "page_add_new_rfx_confirm") {
+        section("") {
+            paragraph titles("info_add_new_rfx_confirm")
+            errors.each { error ->
+                paragraph(error)
+            }
+        }
+        section_no_save_note()
     }
 }
 
@@ -849,6 +1063,74 @@ def cidSet(evt) {
 
     if (!sent) {
         log.error("cidSet: Could not find 'CID-${cidnum}-${partition}-${cidvalue}|XXX' device.")
+        return
+    }
+}
+
+/**
+ * send RFX event to the correct device if one exists
+ * evt.value example raw !RFX:123123,00
+ * eventmessage 0462932:0:0:1:0:0:0
+ * 01020304:1388:RFX-0014374-1-?-1-?-?-?
+ */
+def rfxSet(evt) {
+    log.info("rfxSet ${evt.value}")
+
+    // get our RFX state and number
+    def parts = evt.value.split(':')
+
+    def sn = parts[0]
+    def bat = parts[1]
+    def supv = parts[2]
+    def loop0 = parts[3]
+    def loop1 = parts[4]
+    def loop2 = parts[5]
+    def loop3 = parts[6]
+    
+    if (debug) log.debug("rfxSet sn:${sn} bat: ${bat} sukpv:${supv} loop0:${loop0} loop1:${loop1} loop2:${loop2} loop3:${loop3}")
+
+    def sent = false
+    
+    def device_name = "RFX-${sn}-${bat}-${supv}-${loop0}-${loop1}-${loop2}-${loop3}"
+    
+    def children = getChildDevices()
+    children.each {
+        if (it.deviceNetworkId.contains(":RFX-")) {
+            def sp = it.deviceNetworkId.split(":")[2].trim().split("-")
+            def match = sp[0] + "-" + sp[1] + "-*"
+            if (device_name =~ /${match}/) {
+                def tot = 0
+                if (sp[2] == "1" && bat == "1") {
+                    tot++
+                }
+                if (sp[3] == "1" && supv == "1") {
+                    tot++
+                }
+                if (sp[4] == "1" && loop0 == "1") {
+                    tot++
+                }
+                if (sp[5] == "1" && loop1 == "1") {
+                    tot++
+                }
+                if (sp[6] == "1" && loop2 == "1") {
+                    tot++
+                }
+                if (sp[7] == "1" && loop3 == "1") {
+                    tot++
+                }
+
+                if (debug) log.error("rfxSet device: ${device_name} matches ${match} sendng state ${tot}")
+                it.sendEvent(name: "switch", value: tot, isStateChange: true, filtered: true)
+                sent = true
+                
+            } else {
+                if (debug) log.error("rfxSet device: ${device_name} no match ${match}")
+            }
+        }
+    }
+
+    if (!sent) {
+        log.error("rfxSet: Could not find '${device_name}|XXX' device.")
         return
     }
 }
@@ -1330,6 +1612,9 @@ private def configureDeviceSubscriptions() {
 
     // subscribe to CID handler
     subscribe(device, "cid-set", cidSet, [filterEvents: false])
+
+    // subscribe to RFX handler
+    subscribe(device, "rfx-set", rfxSet, [filterEvents: false])
 
 }
 

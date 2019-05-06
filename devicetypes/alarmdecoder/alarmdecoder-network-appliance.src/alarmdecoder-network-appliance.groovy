@@ -716,6 +716,11 @@ def update_state(data) {
         events << createEvent(name: "cid-set", value: data.rawmessage, displayed: true, isStateChange: true)
     }
 
+    // Event Type 17 RFX send eventmessage upstream if we find one
+    if (data.eventid == 17) {
+        events << createEvent(name: "rfx-set", value: data.eventmessage, displayed: true, isStateChange: true)
+    }
+
     // Event Type 5 Bypass
     if (data.eventid == 5) {
         log.debug("bypass-set: ${data.panel_bypassed}")
