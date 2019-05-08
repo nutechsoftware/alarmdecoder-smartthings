@@ -13,14 +13,77 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
-import groovy.json.JsonSlurper;
-import groovy.util.XmlParser;
 
-import groovy.transform.Field
 /*
- * Turn on verbose debugging
+ * global support
+ */
+import groovy.transform.Field
+
+/*
+ * System Settings
  */
 @Field debug = false
+// Set the HA system type SmartThings Hub(SHM) or Hubitat Elevation(HSM)
+// You will also need to comment out and comment code in sendVerfy and sendDiscover below.
+@Field MONTYPE = "SHM" /* ["HSM", "SHM"] */
+
+
+/*
+ * build hubAction SUBSCRIBE object.
+ * Leave comments out for the HUB type being used.
+ */
+def getHubSubscribeAction(urn, address, callbackPath) {
+	def result
+
+	def obj = [
+		method: "SUBSCRIBE",
+		path: path,
+		headers: [
+			HOST: urn,
+			CALLBACK: "<http://${address}/notify${callbackPath}>",
+			NT: "upnp:event",
+			TIMEOUT: "Second-28800"
+		]
+	]
+
+	if(MONTYPE == "SHM") {
+		// Comment out the next line if we are using Hubitat
+		result = new physicalgraph.device.HubAction(obj)
+		// We get requestId back in parse() so we know what it is.
+		result.requestId = "SUBSCRIBE"
+	}
+
+	if(MONTYPE == "HSM") {
+		// Comment out the next line if we are using SmartThings
+		//result = new hubitat.device.HubAction(obj)
+	}
+
+    return result
+}
+
+/*
+ * build hubAction HTTPRequest  object.
+ * Leave comments out for the HUB type being used.
+ */
+def getHubHttpRequestAction(httpRequest, host) {
+    def result
+    if(MONTYPE == "SHM") {
+       // Comment out the next line if we are using Hubitat
+       result = new physicalgraph.device.HubAction(httpRequest, "${host}")
+    }
+    if(MONTYPE == "HSM") {
+       // Comment out the next line if we are using SmartThings
+       //result = new hubitat.device.HubAction(httpRequest, "${host}")
+    }
+    return result
+}
+
+
+/*
+ * Parsing support
+ */
+import groovy.json.JsonSlurper;
+import groovy.util.XmlParser;
 
 preferences {
     section() {
@@ -333,7 +396,6 @@ def parse_json(String headers, String body) {
 // Parse XML and new state. Build UI and return UI update events
 def parse_xml(String headers, String body) {
     log.trace("--- parse_xml")
-    if (debug) log.debug(body)
     def xmlResult = new XmlSlurper().parseText(body)
 
     def resultMap = [:]
@@ -1011,7 +1073,8 @@ def hub_http_get(host, path) {
         headers:    [ HOST: host ]
     ]
 
-    return new physicalgraph.device.HubAction(httpRequest, "${host}")
+    return getHubHttpRequestAction(httpRequest, "${host}")
+
 }
 
 def hub_http_post(host, path, body) {
@@ -1024,7 +1087,7 @@ def hub_http_post(host, path, body) {
         body:       body
     ]
 
-    return new physicalgraph.device.HubAction(httpRequest, "${host}")
+    return getHubHttpRequestAction(httpRequest, "${host}")
 }
 
 def _get_user_code() {
@@ -1051,19 +1114,7 @@ def subscribeAction(urn, path, callbackPath="") {
     // get our HUBs details so the AlarmDecoder knows how to call us back on events
     def address = getCallBackAddress()
     if (debug) log.trace "our address ${address}"
-    def result = new physicalgraph.device.HubAction(
-        method: "SUBSCRIBE",
-        path: path,
-        headers: [
-            HOST: urn,
-            CALLBACK: "<http://${address}/notify$callbackPath>",
-            NT: "upnp:event",
-            TIMEOUT: "Second-28800"
-        ]
-    )
-
-    // We get requestId back in parse() so we know what it is.
-    result.requestId = "SUBSCRIBE"
+    def result = getHubSubscribeAction(urn, address, callbackPath)
 
     // log.debug "SUBSCRIBE result: ${result}"
     sendHubCommand(result)

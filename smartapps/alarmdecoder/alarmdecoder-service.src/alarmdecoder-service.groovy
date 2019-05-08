@@ -124,26 +124,26 @@ def titles(String name, Object... args) {
     "page_main": "${lname} setup and management",
     "info_remove_all_a": "Removed all child devices.",
     "info_remove_all_b": "This will attempt to remove all child devices. This may fail if the device is in use. If it fails review the log and manually remove the usage. Press back to continue.",
-    
+
     /* Discover */
     "page_discover_devices": "Install ${lname} service",
     "input_selected_devices": "Select device(s) (%s found)",
     "monIntegration": "Integrate with Smart Home Monitor?",
     "monChangeStatus": "Automatically change Monitor(SHM|HSM) status when armed or disarmed?",
     "defaultSensorToClosed": "Default zone sensors to closed?",
-    
+
     /* Remove All */
     "page_remove_all": "Remove all ${lname} devices",
     "confirm_remove_all": "Confirm remove all",
     "href_refresh_devices": "Send UPNP discovery",
-    
+
     /* CID Management */
     "page_cid_management": "Contact ID device management",
     "page_add_new_cid": "Add new CID virtual switch",
     "page_add_new_cid_confirm": "Add new CID switch : %s",
     "page_remove_selected_cid": "Remove selected virtual switches",
     "info_page_remove_selected_cid": "Attempted to remove selected devices. This may fail if the device is in use. If it fails review the log and manually remove the usage. Press back to continue.",
-    "info_add_new_cid_confirm": "Attempted to add new CID device. This may fail if the device is in use. If it fails review the log. Press back to continue.",    
+    "info_add_new_cid_confirm": "Attempted to add new CID device. This may fail if the device is in use. If it fails review the log. Press back to continue.",
     "section_cid_value": "Build CID Value(USER/ZONE) : %s",
     "section_cid_partition": "Select the CID partition",
     "section_cid_names": "Device Name and Label",
@@ -155,7 +155,7 @@ def titles(String name, Object... args) {
     "input_cid_value": "Zero PAD 3 digit User,Zone or simple regex pattern ex. '001' or '...'",
     "input_cid_partition": "Enter the partition or 0 for system",
     "input_cid_number_raw": "Enter CID # or simple regex pattern",
-    
+
     /* RFX Management */
     "page_rfx_management": "RFX device management",
     "page_add_new_rfx": "Add new RFX virtual switch",
@@ -163,7 +163,7 @@ def titles(String name, Object... args) {
     "page_remove_selected_rfx": "Remove selected virtual switches",
     "section_build_rfx": "Build Device Name :",
     "input_rfx_name": "Enter the new device name or blank for auto",
-    "input_rfx_label": "Enter the new device label or blank for auto",    
+    "input_rfx_label": "Enter the new device label or blank for auto",
     "input_rfx_sn": "Enter Serial # or simple regex pattern",
     "input_rfx_supv": "Enter supvision value or simple regex pattern",
     "input_rfx_bat": "Enter battery value or simple regex pattern",
@@ -181,17 +181,17 @@ def titles(String name, Object... args) {
 // string table for descriptions
 def descriptions(name, Object... args) {
   def element_descriptions = [
-    "href_refresh_devices": "Tap to select",  
+    "href_refresh_devices": "Tap to select",
     "href_discover_devices": "Tap to discover and install your ${lname} Appliance",
     "href_remove_all": "Tap to remove all ${lname} virtual devices",
     "href_cid_management": "Tap to manage CID virtual switches",
-    "href_remove_selected_cid": "Tap to remove selected virtual switches",    
+    "href_remove_selected_cid": "Tap to remove selected virtual switches",
     "href_add_new_cid": "Tap to add new CID switch",
     "href_add_new_cid_confirm": "Tap to confirm and add",
     "input_cid_devices": "Tap to select",
     "input_cid_number": "Tap to select",
     "href_rfx_management": "Tap to manage RFX virtual switches",
-    "href_remove_selected_rfx": "Tap to remove selected virtual switches",    
+    "href_remove_selected_rfx": "Tap to remove selected virtual switches",
     "href_add_new_rfx": "Tap to add new RFX switch",
     "href_add_new_rfx_confirm": "Tap to confirm and add",
     "input_rfx_devices": "Tap to select",
@@ -533,7 +533,7 @@ def page_add_new_rfx() {
             paragraph titles("section_rfx_names")
             input(name: "input_rfx_name", type: "text", required: false, submitOnChange: true, title: titles("input_rfx_name"))
             input(name: "input_rfx_label", type: "text", required: false, submitOnChange: true, title: titles("input_rfx_label"))
-        }            
+        }
         section {
             input(name: "input_rfx_sn", type: "text", required: true, defaultValue: '000000', submitOnChange: true, title: titles("input_rfx_sn"))
             input(name: "input_rfx_bat", type: "text", required: true, defaultValue: '0', submitOnChange: true, title: titles("input_rfx_bat"))
@@ -882,10 +882,11 @@ def webserviceUpdate()
  * sets Contact attributes of the alarmdecoder smoke device
  */
 def actionButton(id) {
-    if (debug) log.debug("actionButton: desc=${id}")
 
     // grab our primary AlarmDecoder device object
     def d = getChildDevice("${getDeviceKey()}")
+	if (debug) log.debug("actionButton: desc=${id} dev=${d}")
+
     if (!d) {
         log.error("actionButton: Could not find primary device '${getDeviceKey()}'.")
         return
@@ -1086,17 +1087,24 @@ def rfxSet(evt) {
     def loop1 = parts[4]
     def loop2 = parts[5]
     def loop3 = parts[6]
-    
-    if (debug) log.debug("rfxSet sn:${sn} bat: ${bat} sukpv:${supv} loop0:${loop0} loop1:${loop1} loop2:${loop2} loop3:${loop3}")
+
+    if (debug) log.info("rfxSet sn:${sn} bat: ${bat} sukpv:${supv} loop0:${loop0} loop1:${loop1} loop2:${loop2} loop3:${loop3}")
 
     def sent = false
-    
+
     def device_name = "RFX-${sn}-${bat}-${supv}-${loop0}-${loop1}-${loop2}-${loop3}"
-    
+
     def children = getChildDevices()
     children.each {
         if (it.deviceNetworkId.contains(":RFX-")) {
-            def sp = it.deviceNetworkId.split(":")[2].trim().split("-")
+            // Network mask differes from ST to HT
+            def sp = ""
+            if (MONTYPE == "SHM")
+                sp = it.deviceNetworkId.split(":")[2].trim().split("-")
+            if (MONTYPE == "HSM")
+                sp = it.deviceNetworkId.split(":")[1].trim().split("-")
+
+
             def match = sp[0] + "-" + sp[1] + "-*"
             if (device_name =~ /${match}/) {
                 def tot = 0
@@ -1119,10 +1127,10 @@ def rfxSet(evt) {
                     tot++
                 }
 
-                if (debug) log.error("rfxSet device: ${device_name} matches ${match} sendng state ${tot}")
+                if (debug) log.info("rfxSet device: ${device_name} matches ${match} sendng state ${tot}")
                 it.sendEvent(name: "switch", value: tot, isStateChange: true, filtered: true)
                 sent = true
-                
+
             } else {
                 if (debug) log.error("rfxSet device: ${device_name} no match ${match}")
             }
