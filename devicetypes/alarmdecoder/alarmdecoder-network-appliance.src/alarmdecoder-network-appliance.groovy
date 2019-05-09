@@ -32,7 +32,7 @@ import groovy.transform.Field
  * build hubAction SUBSCRIBE object.
  * Leave comments out for the HUB type being used.
  */
-def getHubSubscribeAction(urn, address, callbackPath) {
+def getHubSubscribeAction(urn, address, path, callbackPath) {
 	def result
 
 	def obj = [
@@ -1114,7 +1114,7 @@ def subscribeAction(urn, path, callbackPath="") {
     // get our HUBs details so the AlarmDecoder knows how to call us back on events
     def address = getCallBackAddress()
     if (debug) log.trace "our address ${address}"
-    def result = getHubSubscribeAction(urn, address, callbackPath)
+    def result = getHubSubscribeAction(urn, address, path, callbackPath)
 
     // log.debug "SUBSCRIBE result: ${result}"
     sendHubCommand(result)
