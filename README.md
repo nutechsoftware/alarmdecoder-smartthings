@@ -19,75 +19,111 @@ Two-way - Change Smart Home Monitor's status when your panel is armed or disarme
 
 ## Virtual devices
 
-* AlarmDecoder(AD2)  
+* AlarmDecoder UI  
 Description: Main service device provides a simple user interface to manage the alarm.  
 
-* AD2 Alarm Bell  
+* Security Alarm Bell  
 Capabilities:  Contact sensor  
 Description: An indicator to show the panel bell state  
-States: close = off, open = sounding  
+States: [open, close = Alarm Bell Sounding]  
 
-* AD2 Chime  
+* Security Chime  
 Capabilities:  Momentary  
 Description: indicator to show the Chime state.
 -- Action **'push'** will toggle the chime state.  
-States: [on, off]  
+States: [on = Chime Mode On, off]  
 
-* AD2 Ready  
+* Security Chime Status  
+Capabilities:  Contact sensor  
+Description: indicator to show the Chime state.
+States: [open, close = Chime Mode On]  
+
+* Security Ready Status  
 Capabilities: Contact Sensor  
 Description: An indicator to show the panel ready to arm state.  
 States: [open, close = Ready]  
 
-* AD2 Bypass  
+* Security Bypass Status  
 Capabilities: Contact Sensor  
 Description: An indicator to show if the panel has a bypassed zone.  
-States: [open = Zone(s) Bypassed, close]  
+States: [open, close = Zone(s) Bypassed]  
 
-* AD2 Smoke Alarm  
+* Security Smoke Alarm  
 Capabilities: smokeDetector  
 Description: An indicator to show the panel fire state.  
 States: [clear, detected]  
 
-* AD2 Disarm  
+* Security Disarm  
 Capabilities:  Momentary  
 Description: Action **'push'** will send the DISARM Alarm command to the panel  
 States: No indication of alarm type  
 
-* AD2 Stay  
+* Security Stay  
 Capabilities:  Momentary  
 Description: indicator to show the arm Stay state
 -- Action **'push'** will send the arm Stay command to the panel  
-States: [on, off]  
+States: [on = Armed Stay, off]  
 
-* AD2 Away  
+* Security Stay Status  
+Capabilities:  Contact Sensor  
+Description: indicator to show the arm Stay state
+States: [open, close = Armed Stay]  
+
+* Security Away  
 Capabilities:  Momentary  
 Description: indicator to show the arm Away state
 -- Action **'push'** will send the arm Away command to the panel  
-States: [on, off]  
+States: [on = Armed Away, off]  
 
-* AD2 Panic Alarm  
+* Security Away Status  
+Capabilities:  Contact Sensor  
+Description: indicator to show the arm Away state
+States: [open, close = Armed Away]  
+
+* Security Exit  
+Capabilities:  Momentary  
+Description: indicator to show the arm Exit state
+-- Action **'push'** will send the exit command to the panel  
+States: [on = You May Exit Now, off]  
+
+* Security Exit Status  
+Capabilities:  Contact Sensor  
+Description: indicator to show the arm Exit state
+States: [open, close = You May Exit Now]  
+
+* Security Panic Alarm  
 Capabilities:  Momentary  
 Description: Action **'push'** will send the Panic Alarm command to the panel  
 States: No indication of alarm type  
 
-* AD2 Aux Alarm  
+* Security Aux Alarm  
 Capabilities:  Momentary  
 Description: Action **'push'** will send the AUX Alarm command to the panel  
 States: No indication of alarm type  
 
-* AD2 Fire Alarm  
+* Security Fire Alarm  
 Capabilities:  Momentary  
 Description: Action **'push'** will send the Fire Alarm command to the panel  
-States: No indication of alarm type  
+States: States: [on = Fire Alarm Active, off]  
 
-* AD2 Zone Sensor #N  
+* Security Fire Alarm Status  
+Capabilities:  Contact Sensor  
+Description: indicator to show the a fire alarm is active. Follows Security Smoke Alarm  
+States: [open, close = Fire Alarm Active]
+
+* Security Zone Sensor #N  
 Capabilities: Contact Sensor  
 Description: An indicator to show the zone state  
 States: [open , close] * reversible in parent device settings  
 
-* AD2 CID-***AAA***-***B***-***CCC***  
+* CID-***AAA***-***B***-***CCC***  
 Capabilities: Momentary  
 Description: Indicates the state of the given Contact ID report state. The action **'push'** will restore to closed state. ***AAA*** is the Contact ID number ***B*** is the partition and ***CCC*** is the zone or user code to match with '...' matching all. Ex. CID-401-012 will monitor user 012 arming/disarming. Supports regex in the deviceNetworkId to allow to create devices that can trigger on multiple CID messages such as ***"CID-4[0,4]]1-1-..."*** will monitor all users for arming/disarming away or stay on partition 1.  
+States: [on, off]  
+
+* RFX-AAAAAA-B-C-D-E-F-G
+Capabilities: Momentary  
+Description: Indicates the state of the given Contact ID report state. The action **'push'** will restore to closed state. AAAAAA is the RF Serial Number B is battery status, C is supervisor event(ignore with ?), D is loop0(ignore with ?), E is loop1(ignore with ?), F is loop2(ignore with ?) and E is loop3(ignore with ?). Ex. RFX-123456-?-?-1-?-?-? will monitor 5800 RF sensor with serial number 123456 and loop1 for changes.
 States: [on, off]  
 
 ## Setup

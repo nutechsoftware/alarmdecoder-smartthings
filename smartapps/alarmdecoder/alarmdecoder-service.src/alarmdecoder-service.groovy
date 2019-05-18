@@ -23,6 +23,8 @@
  * Version 2.0.6 - Sean Mathews <coder@f34r.com> - Compatiblity between ST and HT. Still requires some manual code edits but it will be minimal.
  * Version 2.0.7 - Sean Mathews <coder@f34r.com> - Add RFX virtual device management to track Ademco 5800 wireless or VPLEX sensors directly.
  * Version 2.0.8 - Sean Mathews <coder@f32r.com> - Added Exit button. New flag from AD2 state to detect exit state. Added rebuild devices button.
+ * Version 2.0.9 - Sean Mathews <coder@f32r.com> - Split some devices from a single combined Momentary to a Momentary and a Contact for 
+ *                                                 easy access by other systems.
  */
 
 /*
@@ -980,6 +982,13 @@ def smokeSet(evt) {
         return
     }
     d.sendEvent(name: "smoke", value: evt.value, isStateChange: true, filtered: true)
+
+    d = getChildDevice("${getDeviceKey()}:alarmFireStatus")
+    if (!d) {
+        log.info("armAwaySet: Could not find 'alarmFireStatus' device.")
+    } else {
+        d.sendEvent(name: "contact", value: (evt.value == "on" ? "close" : "open") , isStateChange: true, filtered: true)
+    }
 }
 
 /**
@@ -1584,13 +1593,13 @@ def addExistingDevices() {
             addAD2VirtualDevices("alarmFire", "Fire Alarm", false, true)
 
             // Add Panic Alarm switch/indicator combo if it does not exist.
-            addAD2VirtualDevices("alarmPanic", "Panic Alarm", false, true)
+            addAD2VirtualDevices("alarmPanic", "Panic Alarm", false, false)
 
             // Add AUX Alarm switch/indicator combo if it does not exist.
-            addAD2VirtualDevices("alarmAUX", "AUX Alarm", false, true)
+            addAD2VirtualDevices("alarmAUX", "AUX Alarm", false, false)
 
             // Add Disarm button if it does not exist.
-            addAD2VirtualDevices("disarm", "Disarm", false, true)
+            addAD2VirtualDevices("disarm", "Disarm", false, false)
         }
     }
 }
