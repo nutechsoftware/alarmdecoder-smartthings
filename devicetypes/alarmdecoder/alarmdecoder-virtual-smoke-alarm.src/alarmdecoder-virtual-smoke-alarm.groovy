@@ -13,8 +13,15 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
+
+ /*
+ * global support
+ */
+import groovy.transform.Field
+@Field APPNAMESPACE = "alarmdecoder"
+
 metadata {
-    definition (name: "AlarmDecoder virtual smoke alarm", namespace: "alarmdecoder", author: "sean@nutech.com") {
+    definition (name: "AlarmDecoder virtual smoke alarm", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
         capability "smokeDetector"
     }
 

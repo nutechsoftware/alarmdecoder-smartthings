@@ -18,6 +18,7 @@
  * global support
  */
 import groovy.transform.Field
+@Field APPNAMESPACE = "alarmdecoder"
 
 /*
  * System Settings
@@ -34,7 +35,7 @@ import groovy.transform.Field
  */
 def getHubSubscribeAction(urn, address, path, callbackPath) {
 	def result
-
+	log.trace("--- getHubSubscribeAction")
 	def obj = [
 		method: "SUBSCRIBE",
 		path: path,
@@ -116,10 +117,10 @@ preferences {
 }
 
 metadata {
-    definition (name: "AlarmDecoder network appliance", namespace: "alarmdecoder", author: "Scott Petersen") {
+    definition (name: "AlarmDecoder network appliance", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
         capability "Refresh"
 
-        attribute "panel_state", "enum", ["armed", "armed_stay", "disarmed", "alarming", "fire", "ready", "notready"]
+        attribute "panel_state", "enum", ["armed", "armed_stay", "armed_stay_exit", "disarmed", "alarming", "fire", "ready", "notready"]
         attribute "armed", "enum", ["armed", "disarmed"]
         attribute "panic_state", "string"
         attribute "zoneStatus1", "string"
@@ -137,6 +138,7 @@ metadata {
 
         command "disarm"
         command "arm_stay"
+        command "exit"
         command "arm_away"
         command "fire"
         command "fire1"
@@ -172,6 +174,7 @@ metadata {
             tileAttribute("device.panel_state", key: "PRIMARY_CONTROL") {
                 attributeState "armed", label: 'Armed', icon: "st.security.alarm.on", backgroundColor: "#ffa81e"
                 attributeState "armed_stay", label: 'Armed (stay)', icon: "st.security.alarm.on", backgroundColor: "#ffa81e"
+                attributeState "armed_stay_exit", label: 'Armed (exit-now)', icon: "st.nest.nest-away", backgroundColor: "#ffa81e"
                 attributeState "disarmed", label: 'Disarmed', icon: "st.security.alarm.off", backgroundColor: "#79b821", defaultState: true
                 attributeState "alarming", label: 'Alarming!', icon: "st.home.home2", backgroundColor: "#ff4000"
                 attributeState "fire", label: 'Fire!', icon: "st.contact.contact.closed", backgroundColor: "#ff0000"
@@ -183,20 +186,22 @@ metadata {
         standardTile("arm_disarm", "device.panel_state", inactiveLabel: false, width: 2, height: 2) {
             state "armed", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "armed_stay", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "armed_stay_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "disarmed", action:"arm_away", icon:"st.security.alarm.on", label: "AWAY"
             state "alarming", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "fire", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
-            state "ready", action:"arm_away", icon:"st.security.alarm.off", label: "AWAY"
+            state "ready", action:"arm_away", icon:"st.security.alarm.on", label: "AWAY"
             state "notready", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
         }
 
         standardTile("stay_disarm", "device.panel_state", inactiveLabel: false, width: 2, height: 2) {
             state "armed", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
-            state "armed_stay", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "armed_stay", action:"exit", icon:"st.nest.nest-away", label: "EXIT"
+            state "armed_stay_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "disarmed", action:"arm_stay", icon:"st.Home.home4", label: "STAY"
             state "alarming", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "fire", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
-            state "ready", action:"arm_stay", icon:"st.security.alarm.off", label: "STAY"
+            state "ready", action:"arm_stay", icon:"st.security.alarm.on", label: "STAY"
             state "notready", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
         }
 
@@ -340,6 +345,7 @@ def updated() {
     state.panel_ready = true
     state.panel_armed = false
     state.panel_armed_stay = false
+    state.panel_exit = false
     state.panel_fire_detected = false
     state.panel_alarming = false
     state.panel_panicked = false
@@ -407,6 +413,7 @@ def parse_xml(String headers, String body) {
     resultMap['panel_alarming'] = xmlResult.property.panelstate.panel_alarming.toBoolean()
     resultMap['panel_armed'] = xmlResult.property.panelstate.panel_armed.toBoolean()
     resultMap['panel_armed_stay'] = xmlResult.property.panelstate.panel_armed_stay.toBoolean()
+    resultMap['panel_exit'] = xmlResult.property.panelstate.panel_exit.toBoolean()
     resultMap['panel_bypassed'] = xmlResult.property.panelstate.panel_bypassed.toBoolean()
     resultMap['panel_fire_detected'] = xmlResult.property.panelstate.panel_fire_detected.toBoolean()
     resultMap['panel_on_battery'] = xmlResult.property.panelstate.panel_on_battery.toBoolean()
@@ -511,6 +518,27 @@ def disarm() {
         keys = "${user_code}"
     else
         log.warn("--- disarm: unknown panel_type.")
+
+    return send_keys(keys)
+}
+
+/**
+ * exit()
+ * Sends a exit command to the panel
+ * TODO: Add security
+ */
+def exit() {
+    log.trace("--- exit")
+
+    def user_code = _get_user_code()
+    def keys = ""
+
+    if (settings.panel_type == "ADEMCO")
+        keys = "*"
+    else if (settings.panel_type == "DSC")
+        keys = "S8"
+    else
+        log.warn("--- exit: unknown panel_type.")
 
     return send_keys(keys)
 }
@@ -769,9 +797,9 @@ def update_state(data) {
 
     def panel_state = (data.panel_ready ? "ready" : "notready")
 
-    // Update our ready indicator virtual device
+    // Update our ready status virtual device
     if (forceguiUpdate || data.panel_ready != state.panel_ready)
-        events << createEvent(name: "ready-set", value: data.panel_ready ? "close" : "open", displayed: true, isStateChange: true)
+        events << createEvent(name: "ready-set", value: (data.panel_ready ? "on" : "off"), displayed: true, isStateChange: true)
 
     // Event Type 14 CID send raw data upstream if we find one
     if (data.eventid == 14) {
@@ -786,16 +814,20 @@ def update_state(data) {
     // Event Type 5 Bypass
     if (data.eventid == 5) {
         log.debug("bypass-set: ${data.panel_bypassed}")
-        events << createEvent(name: "bypass-set", value: data.panel_bypassed ? "open" : "close", displayed: true, isStateChange: true)
+        events << createEvent(name: "bypass-set", value: (data.panel_bypassed ? "on" : "off"), displayed: true, isStateChange: true)
     }
 
     // Event Type 16 Chime
     if (data.eventid == 16) {
-        events << createEvent(name: "chime-set", value: data.panel_chime ? "on" : "off", displayed: true, isStateChange: true)
+        events << createEvent(name: "chime-set", value: (data.panel_chime ? "on" : "off"), displayed: true, isStateChange: true)
     }
 
     if (armed) {
-        panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
+        if ( data.panel_exit ) {
+            panel_state = (data.panel_armed_stay ? "armed_stay_exit" : "armed")
+        } else {
+            panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
+        }
     }
 
     //FORCE ARMED if ALARMING to be sure SHM gets it as it will not show alarms if not armed :(
@@ -810,7 +842,7 @@ def update_state(data) {
 
     // Update our Smoke Sensor virtual device that SHM or others the current state.
     if (forceguiUpdate || data.panel_fire_detected != state.panel_fire_detected)
-        events << createEvent(name: "smoke-set", value: data.panel_fire_detected ? "detected" : "clear", displayed: true, isStateChange: true)
+        events << createEvent(name: "smoke-set", value: (data.panel_fire_detected ? "detected" : "clear"), displayed: true, isStateChange: true)
 
     // If armed STAY changes data.panel_armed_stay
     if (forceguiUpdate || data.panel_armed_stay != state.panel_armed_stay) {
@@ -855,7 +887,7 @@ def update_state(data) {
     // Update our alarming switch so SHM or others know we are in an alarm state. In alarm close contact.
     // "enum", ["open", "close"]
     if (forceguiUpdate || data.panel_alarming != state.panel_alarming)
-        events << createEvent(name: "alarmbell-set", value: data.panel_alarming ? "open" : "close", displayed: true, isStateChange: true)
+        events << createEvent(name: "alarmbell-set", value: (data.panel_alarming ? "on" : "off"), displayed: true, isStateChange: true)
 
     // will only add events for zones that change state.
     def zone_events = build_zone_events(data)
@@ -870,6 +902,7 @@ def update_state(data) {
     state.panel_ready = data.panel_ready
     state.panel_armed = data.panel_armed
     state.panel_armed_stay = data.panel_armed_stay
+    state.panel_exit = data.panel_exit
     state.panel_fire_detected = data.panel_fire_detected
     state.panel_alarming = data.panel_alarming
     state.alarm_status = alarm_status
@@ -877,6 +910,8 @@ def update_state(data) {
     state.panel_on_battery = data.panel_on_battery
     state.panel_ready = data.panel_ready
     state.panel_chime = data.chime
+    state.panel_exit = data.panel_exit
+
     return events
 }
 
