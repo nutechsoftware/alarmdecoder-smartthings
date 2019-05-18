@@ -22,7 +22,7 @@ import groovy.transform.Field
 
 metadata {
     definition (name: "AlarmDecoder virtual smoke alarm", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
-        capability "smokeDetector"
+        capability "SmokeDetector"
     }
 
     // tile definitions

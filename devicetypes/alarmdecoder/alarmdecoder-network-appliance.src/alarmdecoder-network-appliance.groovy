@@ -885,7 +885,7 @@ def update_state(data) {
         events << createEvent(name: "alarmStatus", value: alarm_status, displayed: true, isStateChange: true)
 
     // Update our alarming switch so SHM or others know we are in an alarm state. In alarm close contact.
-    // "enum", ["open", "close"]
+    // "enum", ["open", "closed"]
     if (forceguiUpdate || data.panel_alarming != state.panel_alarming)
         events << createEvent(name: "alarmbell-set", value: (data.panel_alarming ? "on" : "off"), displayed: true, isStateChange: true)
 

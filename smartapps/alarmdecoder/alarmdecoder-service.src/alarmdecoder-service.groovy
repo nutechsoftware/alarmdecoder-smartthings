@@ -23,7 +23,7 @@
  * Version 2.0.6 - Sean Mathews <coder@f34r.com> - Compatiblity between ST and HT. Still requires some manual code edits but it will be minimal.
  * Version 2.0.7 - Sean Mathews <coder@f34r.com> - Add RFX virtual device management to track Ademco 5800 wireless or VPLEX sensors directly.
  * Version 2.0.8 - Sean Mathews <coder@f32r.com> - Added Exit button. New flag from AD2 state to detect exit state. Added rebuild devices button.
- * Version 2.0.9 - Sean Mathews <coder@f32r.com> - Split some devices from a single combined Momentary to a Momentary and a Contact for 
+ * Version 2.0.9 - Sean Mathews <coder@f32r.com> - Split some devices from a single combined Momentary to a Momentary and a Contact for
  *                                                 easy access by other systems.
  */
 
@@ -987,7 +987,7 @@ def smokeSet(evt) {
     if (!d) {
         log.info("armAwaySet: Could not find 'alarmFireStatus' device.")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "close" : "open") , isStateChange: true, filtered: true)
+        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open") , isStateChange: true, filtered: true)
     }
 }
 
@@ -1007,7 +1007,7 @@ def armAwaySet(evt) {
     if (!d) {
         log.info("armAwaySet: Could not find 'armAwayStatus' device.")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "close" : "open") , isStateChange: true, filtered: true)
+        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open") , isStateChange: true, filtered: true)
     }
 }
 
@@ -1027,7 +1027,7 @@ def armStaySet(evt) {
     if (!d) {
         log.info("armStaySet: Could not find 'armStayStatus' device.")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "close" : "open"), isStateChange: true, filtered: true)
+        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
     }
 }
 
@@ -1040,7 +1040,7 @@ def alarmBellSet(evt) {
     if (!d) {
         log.info("alarmBellSet: Could not find 'alarmBellStatus' device.")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "close" : "open"), isStateChange: true, filtered: true)
+        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
     }
 }
 
@@ -1060,7 +1060,7 @@ def chimeSet(evt) {
     if (!d) {
         log.info("chimeSet: Could not find device 'chimeModeStatus'")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "close" : "open"), isStateChange: true, filtered: true)
+        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
     }
 }
 
@@ -1080,7 +1080,7 @@ def exitSet(evt) {
     if (!d) {
         log.info("exitSet: Could not find device 'exitStatus'")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "close" : "open"), isStateChange: true, filtered: true)
+        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
     }
 }
 
@@ -1094,7 +1094,7 @@ def bypassSet(evt) {
         log.info("bypassSet: Could not find device 'bypassStatus'")
         return
     }
-    d.sendEvent(name: "contact", value: (evt.value == "on" ? "close" : "open"), isStateChange: true, filtered: true)
+    d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
 }
 
 /**
@@ -1107,8 +1107,7 @@ def readySet(evt) {
         log.info("readySet: Could not find 'readyStatus' device.")
         return
     }
-    if (debug) log.debug("readySet setting contact to ${(evt.value ? "close" : "open")}")
-    d.sendEvent(name: "contact", value: (evt.value == "on" ? "close" : "open"), isStateChange: true, filtered: true)
+    d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
 }
 
 /**
@@ -1572,34 +1571,36 @@ def addExistingDevices() {
         if (!nocreatedev)
         {
             // Add Arm Stay switch/indicator combo if it does not exist.
-            addAD2VirtualDevices("armStay", "Stay", false, true)
+            addAD2VirtualDevices("armStay", "Stay", false, true, true)
 
             // Add Arm Away switch/indicator combo if it does not exist.
-            addAD2VirtualDevices("armAway", "Away", false, true)
+            addAD2VirtualDevices("armAway", "Away", false, true, true)
 
             // Add Chime Mode toggle switch/indicator combo if it does not exist.
-            addAD2VirtualDevices("chimeMode", "Chime", false, true)
+            addAD2VirtualDevices("chimeMode", "Chime", false, true, true)
 
             // Add Bypass status contact if it does not exist.
-            addAD2VirtualDevices("bypass", "Bypass", false, false)
+            addAD2VirtualDevices("bypass", "Bypass", false, false, true)
 
             // Add Ready status contact if it does not exist.
-            addAD2VirtualDevices("ready", "Ready", false, false)
+            addAD2VirtualDevices("ready", "Ready", false, false, true)
 
             // Add virtual Alarm Bell status contact if it does not exist.
-            addAD2VirtualDevices("alarmBell", "Alarm Bell", false, false)
+            addAD2VirtualDevices("alarmBell", "Alarm Bell", false, false, true)
 
             // Add FIRE Alarm switch/indicator combo if it does not exist.
-            addAD2VirtualDevices("alarmFire", "Fire Alarm", false, true)
+            addAD2VirtualDevices("alarmFire", "Fire Alarm", false, true, true)
 
             // Add Panic Alarm switch/indicator combo if it does not exist.
-            addAD2VirtualDevices("alarmPanic", "Panic Alarm", false, false)
+            addAD2VirtualDevices("alarmPanic", "Panic Alarm", false, true, false)
 
             // Add AUX Alarm switch/indicator combo if it does not exist.
-            addAD2VirtualDevices("alarmAUX", "AUX Alarm", false, false)
+            addAD2VirtualDevices("alarmAUX", "AUX Alarm", false, true, false)
 
             // Add Disarm button if it does not exist.
-            addAD2VirtualDevices("disarm", "Disarm", false, false)
+            if(create_disarm) {
+                addAD2VirtualDevices("disarm", "Disarm", false, true, false)
+            }
         }
     }
 }
@@ -1608,7 +1609,7 @@ def addExistingDevices() {
 /**
  * Add Virtual button and contact
  */
-def addAD2VirtualDevices(name, label, initstate, createButton) {
+def addAD2VirtualDevices(name, label, initstate, createButton, createContact) {
 
     if (createButton) {
         // Add switch/indicator combo if it does not exist.
@@ -1625,16 +1626,18 @@ def addAD2VirtualDevices(name, label, initstate, createButton) {
         }
     }
 
-    // Add contact status contact if it does not exit.
-    def cd = state.devices.find { k, v -> k == "${getDeviceKey()}:${name}Status" }
-    if (!cd)
-    {
-        try {
-            def nd = addChildDevice(APPNAMESPACE, "AlarmDecoder status indicator", "${getDeviceKey()}:${name}Status", state.hub,
-                                    [name: "${getDeviceKey()}:${name}Status", label: "${sname} ${label} Status", completedSetup: true])
-            nd.sendEvent(name: "contact", value: (initstate ? "close" : "open"), isStateChange: true, displayed: false)
-        } catch (e) {
-            log.info "Error creating device: ${name}Status"
+    if (createContact) {
+        // Add contact status contact if it does not exit.
+        def cd = state.devices.find { k, v -> k == "${getDeviceKey()}:${name}Status" }
+        if (!cd)
+        {
+            try {
+                def nd = addChildDevice(APPNAMESPACE, "AlarmDecoder status indicator", "${getDeviceKey()}:${name}Status", state.hub,
+                                        [name: "${getDeviceKey()}:${name}Status", label: "${sname} ${label} Status", completedSetup: true])
+                nd.sendEvent(name: "contact", value: (initstate ? "closed" : "open"), isStateChange: true, displayed: false)
+            } catch (e) {
+                log.info "Error creating device: ${name}Status"
+            }
         }
     }
 }
