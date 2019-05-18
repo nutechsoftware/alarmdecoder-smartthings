@@ -22,11 +22,8 @@ import groovy.transform.Field
 
 metadata {
     definition (name: "AlarmDecoder action button indicator", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
-        capability "Momentary"
         capability "Switch"
-        capability "Actuator"
-        capability "Sensor"
-        capability "Contact Sensor"
+        capability "Momentary"
         command "push"
         command "on"
         command "off"
