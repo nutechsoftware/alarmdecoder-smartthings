@@ -1111,6 +1111,19 @@ def readySet(evt) {
 }
 
 /**
+ * send event to disarm status device to set state
+ */
+def disarmSet(evt) {
+    if (debug) log.debug("disarmSet ${evt.value}")
+    def d = getChildDevice("${getDeviceKey()}:disarm")
+    if (!d) {
+      log.info("disarmSet: Could not find 'disarm' device.")
+    } else {
+      d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+    }
+}
+
+/**
  * send CID event to the correct device if one exists
  * evt.value example !LRR:001,1,CID_1406,ff
  */
@@ -1302,7 +1315,7 @@ def monitorAlarmHandler(evt) {
 
     if (debug) log.debug("monitorAlarmHandler -- ${evt.value}, lastMONStatus ${state.lastMONStatus}, lastAlarmDecoderStatus ${state.lastAlarmDecoderStatus}")
 
-    if (state.lastMONStatus != evt.value && evt.value != state.lastAlarmDecoderStatus)
+    if (state.lastMONStatus != evt.value)
     {
         getAllChildDevices().each { device ->
             // Only refresh the main device that has a panel_state
@@ -1312,23 +1325,58 @@ def monitorAlarmHandler(evt) {
                 if (debug) log.debug("monitorAlarmHandler DEBUG-- ${device.deviceNetworkId}")
                 /* SmartThings */
                 if (MONTYPE == "SHM") {
-                    if (evt.value == "away" || evt.value == "armAway")
-                        device.arm_away()
-                    else if (evt.value == "stay" || evt.value == "armHome")
-                        device.arm_stay()
-                    else if (evt.value == "off" || evt.value == "disarm")
-                        device.disarm()
-                    else
+                    if (evt.value == "away" || evt.value == "armAway") {
+                        // do not send if already in that state.
+                        if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay")) {
+                            device.arm_away()
+                        } else {
+                            log.trace "monitorAlarmHandler -- no send arm_away already set"
+                        }
+                    }
+                    else if (evt.value == "stay" || evt.value == "armHome") {
+                        // do not send if already in that state.
+                        if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay")) {
+                            device.arm_stay()
+                        } else {
+                            log.trace "monitorAlarmHandler -- no send arm_stay already set"
+                        }
+                    }
+                    else if (evt.value == "off" || evt.value == "disarm") {
+                        // do not send if already in that state.
+                        if(device.getStateValue("panel_armed") || device.getStateValue("panel_armed_stay")) {
+                            device.disarm()
+                        } else {
+                            log.trace "monitorAlarmHandler -- no send disarm already set"
+                        }
+                    } else
                         log.debug "Unknown SHM alarm value: ${evt.value}"
                 }
                 /* Hubitat */
                 if (MONTYPE == "HSM") {
-                    if (evt.value == "armedAway")
-                        device.arm_away()
-                    else if (evt.value == "armedHome")
-                        device.arm_stay()
-                    else if (evt.value == "disarmed")
-                        device.disarm()
+                    if (evt.value == "armedAway") {
+                        // do not send if already in that state.
+                        if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay")) {
+                            device.arm_away()
+                        } else {
+                            log.trace "monitorAlarmHandler -- no send arm_away already set"
+                        }
+                    }
+                    else if (evt.value == "armedHome") {
+                        // do not send if already in that state.
+                        if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay")) {
+                            device.arm_stay()
+                        } else {
+                            log.trace "monitorAlarmHandler -- no send arm_stay already set"
+                        }
+                    }
+                    else if (evt.value == "disarmed") {
+                        // do not send if already in that state.
+                        if(device.getStateValue("panel_armed") || device.getStateValue("panel_armed_stay")) {
+                            device.disarm()
+                        } else {
+                            log.trace "monitorAlarmHandler -- no send disarm already set ${device.getStateValue('panel_armed')} ${device.getStateValue('panel_armed_stay')}"
+                        }
+                    }
                     else
                         log.debug "Unknown HSM alarm value: ${evt.value}"
                 }
@@ -1350,7 +1398,7 @@ def alarmdecoderAlarmHandler(evt) {
 
     if (debug) log.debug("alarmdecoderAlarmHandler -- ${evt.value}, lastMONStatus ${state.lastMONStatus}, lastAlarmDecoderStatus ${state.lastAlarmDecoderStatus}")
 
-    if (state.lastAlarmDecoderStatus != evt.value && evt.value != state.lastMONStatus) {
+    if (state.lastAlarmDecoderStatus != evt.value) {
         if(MONTYPE == "SHM") {
             /* no traslation needed already [stay,away,off] */
             if (debug) log.debug("alarmdecoderAlarmHandler: alarmSystemStatus ${evt.value}")
@@ -1513,28 +1561,33 @@ def addExistingDevices() {
                 state.urn = convertHexToIP(state.ip) + ":" + convertHexToInt(state.port)
                 if (debug) log.debug("AlarmDecoder webapp api endpoint('${state.urn}')")
 
-                // Create device adding the URN to its data object
-                d = addChildDevice(APPNAMESPACE,
-                                   "AlarmDecoder network appliance",
-                                   "${getDeviceKey()}",
-                                   newDevice?.value.hub,
-                                   [
-                                       name: "${getDeviceKey()}",
-                                       label: "${guiname}",
-                                       completedSetup: true,
-                                       /* data associated with this AlarmDecoder */
-                                       data:[
-                                                // save mac address to update if IP / PORT change
-                                                mac: newDevice.value.mac,
-                                                ssdpUSN: newDevice.value.ssdpUSN,
-                                                urn: state.urn,
-                                                ssdpPath: newDevice.value.ssdpPath
-                                            ]
-                                   ])
+                try {
 
-                // Set default device state to notready.
-                d.sendEvent(name: "panel_state", value: "notready", isStateChange: true, displayed: true)
+                    // Create device adding the URN to its data object
+                    d = addChildDevice(APPNAMESPACE,
+                                       "AlarmDecoder network appliance",
+                                       "${getDeviceKey()}",
+                                       newDevice?.value.hub,
+                                       [
+                                           name: "${getDeviceKey()}",
+                                           label: "${guiname}",
+                                           completedSetup: true,
+                                           /* data associated with this AlarmDecoder */
+                                           data:[
+                                                    // save mac address to update if IP / PORT change
+                                                    mac: newDevice.value.mac,
+                                                    ssdpUSN: newDevice.value.ssdpUSN,
+                                                    urn: state.urn,
+                                                    ssdpPath: newDevice.value.ssdpPath
+                                                ]
+                                       ])
 
+                    // Set default device state to notready.
+
+                    d.sendEvent(name: "panel_state", value: "notready", isStateChange: true, displayed: true)
+                } catch (e) {
+                    log.info "Error creating device root device ${guiname}"
+                }
             }
         }
 
@@ -1575,6 +1628,9 @@ def addExistingDevices() {
 
             // Add Arm Away switch/indicator combo if it does not exist.
             addAD2VirtualDevices("armAway", "Away", false, true, true)
+
+            // Add Exit switch/indicator combo if it does not exist.
+            addAD2VirtualDevices("exit", "Exit", false, true, true)
 
             // Add Chime Mode toggle switch/indicator combo if it does not exist.
             addAD2VirtualDevices("chimeMode", "Chime", false, true, true)
@@ -1659,14 +1715,8 @@ private def configureDeviceSubscriptions() {
     subscribe(device, "zone-on", zoneOn, [filterEvents: false])
     subscribe(device, "zone-off", zoneOff, [filterEvents: false])
 
-    if (MONTYPE == "SHM") {
-        // Subscribe to Smart Home Monitor(SHM) alarmStatus events
-        subscribe(device, "alarmStatus", alarmdecoderAlarmHandler, [filterEvents: false])
-    }
-    if (MONTYPE == "HSM") {
-        // Subscribe to Home Security Monitor(HSM) alarmStatus events
-        subscribe(device, "alarmStatus", alarmdecoderAlarmHandler, [filterEvents: false])
-    }
+    // Subscribe to our own alarm status events from our primary device
+    subscribe(device, "alarmStatus", alarmdecoderAlarmHandler, [filterEvents: false])
 
     // subscrib to smoke-set handler for updates
     subscribe(device, "smoke-set", smokeSet, [filterEvents: false])
@@ -1691,6 +1741,9 @@ private def configureDeviceSubscriptions() {
 
     // subscribe to ready handler
     subscribe(device, "ready-set", readySet, [filterEvents: false])
+
+    // subscribe to disarm handler
+    subscribe(device, "disarm-set", disarmSet, [filterEvents: false])
 
     // subscribe to CID handler
     subscribe(device, "cid-set", cidSet, [filterEvents: false])

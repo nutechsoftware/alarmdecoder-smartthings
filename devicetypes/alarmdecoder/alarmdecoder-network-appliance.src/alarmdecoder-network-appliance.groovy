@@ -822,6 +822,7 @@ def update_state(data) {
         events << createEvent(name: "chime-set", value: (data.panel_chime ? "on" : "off"), displayed: true, isStateChange: true)
     }
 
+    // If armed update internal UI state to exit mode and armed state
     if (armed) {
         if ( data.panel_exit ) {
             panel_state = (data.panel_armed_stay ? "armed_stay_exit" : "armed")
@@ -857,11 +858,17 @@ def update_state(data) {
        if(!armed) {
            events << createEvent(name: "arm-away-set", value: "off", displayed: true, isStateChange: true)
            events << createEvent(name: "arm-stay-set", value: "off", displayed: true, isStateChange: true)
+           events << createEvent(name: "disarm-set", value: "off", displayed: true, isStateChange: true)
        } else {
            // If armed AWAY changes data.panel_armed_away
            if(!data.panel_armed_stay)
                events << createEvent(name: "arm-away-set", value: "on", displayed: true, isStateChange: true)
        }
+    }
+
+    // If Update exit state
+    if (forceguiUpdate || data.panel_exit != state.panel_exit) {
+        events << createEvent(name: "exit-set", value: (data.panel_exit ? "on" : "off"), displayed: true, isStateChange: true)
     }
 
     // set our panel_state
@@ -1162,4 +1169,11 @@ def subscribeAction(urn, path, callbackPath="") {
  */
 def getCallBackAddress() {
     return device.hub.getDataValue("localIP") + ":" + device.hub.getDataValue("localSrvPortTCP")
+}
+
+/**
+ * access to state from parent service
+ */
+def getStateValue(key) {
+    return state[key]
 }
