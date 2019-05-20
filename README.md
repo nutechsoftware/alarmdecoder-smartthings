@@ -1,19 +1,19 @@
-This repository provides support for the AlarmDecoder webapp inside of the SmartThings home automation platform.
+This repository provides support for the AlarmDecoder webapp inside of the SmartThings or Hubitat home automation platforms.
 
 ## Requirements
 
 * AlarmDecoder webapp 0.8.2+
-* SmartThings Hub
+* SmartThings or Hubitat hub
 
 ## Features
 
-* Arm, disarm, or panic your alarm system from within SmartThings.
+* Arm, disarm, or panic your alarm system from within SmartThings/Hubitat.
 * Provides virtual sensors that can be married to zones on your panel to allow automation based on zones faulting and restoring.
 * Provides virtual momentary switches with indicators for arming away, stay and toggling chime mode with each switch indicating the current state. Alexa and other systems are able to activate these switches to allow a wide array of alarm panel control possibilities.
 * Provide virtual contact sensors for "Ready" and "Alarm Bell" indications on the alarm panel.
 * Provides a virtual "AD2 Smoke Alarm" that can be integrated with SHM or other systems to control state during a fire event such as turning all lights on.
 * Provides the ability to create virtual switches that can be tied to specific Contact ID report codes from the alarm panel. As an example a zone setup as a Carbon Monoxide alarm can be directly tied to a virtual switch that will OPEN in the event it triggers using Contact ID 162.
-* Smart Home Monitor integration.  
+* Smart Home Monitor / Home Security Module integration.  
 One-way - Arm or disarm your panel when the Smart Home Monitor status is changed.  
 Two-way - Change Smart Home Monitor's status when your panel is armed or disarmed.  
 
@@ -126,7 +126,7 @@ Capabilities: Momentary
 Description: Indicates the state of the given Contact ID report state. The action **'push'** will restore to closed state. AAAAAA is the RF Serial Number B is battery status, C is supervisor event(ignore with ?), D is loop0(ignore with ?), E is loop1(ignore with ?), F is loop2(ignore with ?) and E is loop3(ignore with ?). Ex. RFX-123456-?-?-1-?-?-? will monitor 5800 RF sensor with serial number 123456 and loop1 for changes.
 States: [on, off]  
 
-## Setup
+## Setup SmartThings
 
 Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.com) in your browser and login to your account.
 
@@ -139,7 +139,7 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
 6. Enter `master` as the **branch**
 7. Click **Save**
 8. Click **Update From Repo** (top of page)
-9. Check the boxes 
+9. Check the boxes
    * `AlarmDecoder network appliance`
    * `AlarmDecoder virtual contact sensor`
    * `AlarmDecoder virtual smoke alarm`
@@ -202,7 +202,7 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
     10. The switch will be created and you can see it under **My Devices**
 
 
-## Enabling SmartThings Integration in the Webapp
+## Enabling SmartThings/Hubitat Integration in the Webapp
 1. Log into your AlarmDecoder webapp.
 2. Click Settings
 3. Click Notifications
