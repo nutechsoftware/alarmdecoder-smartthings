@@ -1,7 +1,7 @@
 /**
  *  AlarmDecoder Service Manager
  *
- *  Copyright 2016-2018 Nu Tech Software Solutions, Inc.
+ *  Copyright 2016-2019 Nu Tech Software Solutions, Inc.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -18,27 +18,85 @@
  * Version 2.0.1 - Sean Mathews <coder@f34r.com> - Adding CID device management support.
  * Version 2.0.2 - Sean Mathews <coder@f34r.com> - Fixed app 20 second max timeout. AddZone is now async, added more zones.
  * Version 2.0.3 - Sean Mathews <coder@f34r.com> - Improved/fixed issues with previous app 20 timeout after more testing.
+ * Version 2.0.4 - Sean Mathews <coder@f34r.com> - Support multiple instances of service by changing unique ID message filters by MAC.
+ * Version 2.0.5 - Sean Mathews <coder@f34r.com> - Add switch to create Disarm button.
+ * Version 2.0.6 - Sean Mathews <coder@f34r.com> - Compatiblity between ST and HT. Still requires some manual code edits but it will be minimal.
+ * Version 2.0.7 - Sean Mathews <coder@f34r.com> - Add RFX virtual device management to track Ademco 5800 wireless or VPLEX sensors directly.
+ * Version 2.0.8 - Sean Mathews <coder@f32r.com> - Added Exit button. New flag from AD2 state to detect exit state. Added rebuild devices button.
+ * Version 2.0.9 - Sean Mathews <coder@f32r.com> - Split some devices from a single combined Momentary to a Momentary and a Contact for
+ *                                                 easy access by other systems.
  */
 
 /*
  * global support
  */
 import groovy.transform.Field
+@Field APPNAMESPACE = "alarmdecoder"
 
 /*
- * Turn on verbose debugging
+ * System Settings
  */
 @Field debug = false
+@Field max_sensors = 20
+@Field nocreatedev = false
+@Field create_disarm = true
+// Set the HA system type SmartThings Hub(SHM) or Hubitat Elevation(HSM)
+// You will also need to comment out and comment code in sendVerfy and sendDiscover below.
+@Field MONTYPE = "SHM" /* ["HSM", "SHM"] */
 
 /*
  * Device label name settings
+ * To run more than once service load this code as a new SmartApp
+ * and change the idname to something unique. For easy use with Echo
+ * you can set the '''sname''' to something easy to say such as 'Security'
+ * then you can say 'Computer - Security Arm Stay On'
  */
 @Field lname = "AlarmDecoder"
-@Field sname = "AD2"
- 
+@Field sname = "Security"
+@Field guiname = "${lname} UI"
+@Field idname = ""
+
+/*
+ * sendDiscover sends a discovery message to the HUB.
+ * Leave comments out for the HUB type being used.
+ */
+def sendDiscover() {
+    // Request HUB send out a UpNp broadcast discovery messages on the local network
+    def haobj
+    // Comment out the next line if we are using Hubitat
+    if(MONTYPE == "SHM") {
+        // Comment out the next line if we are using Hubitat
+        haobj = new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN)
+    }
+    if(MONTYPE == "HSM") {
+        // Comment out the next line if we are using SmartThings
+        //haobj = new hubitat.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", hubitat.device.Protocol.LAN)
+    }
+	sendHubCommand(haobj)
+}
+
+/*
+ * sendVerify sends a message to the HUB.
+ * Leave comments out for the HUB type being used.
+ */
+def sendVerify(deviceNetworkID, ssdpPath) {
+  String ip = getHostAddressFromDNI(deviceNetworkId)
+  if (debug) log.debug("verifyAlarmDecoder: $deviceNetworkId ssdpPath: ${ssdpPath} ip: ${ip}")
+
+  if(MONTYPE == "SHM") {
+      // Comment out the next line if we are using Hubitat
+      def result = new physicalgraph.device.HubAction([method: "GET", path: ssdpPath, headers: [Host: ip, Accept: "*/*"]], deviceNetworkId)
+  }
+  if(MONTYPE == "HSM") {
+      // Comment out the next line if we are using SmartThings
+      //def result = new hubitat.device.HubAction([method: "GET", path: ssdpPath, headers: [Host: ip, Accept: "*/*"]], deviceNetworkId)
+  }
+  sendHubCommand(result)
+}
+
 definition(
-    name: "AlarmDecoder service",
-    namespace: "alarmdecoder",
+    name: "AlarmDecoder service${idname}",
+    namespace: APPNAMESPACE,
     author: "Nu Tech Software Solutions, Inc.",
     description: "AlarmDecoder (Service Manager)",
     category: "My Apps",
@@ -51,47 +109,82 @@ preferences {
     page(name: "page_main", title: titles("page_main"), install: false, uninstall: false, refreshInterval: 5)
     page(name: "page_discover_devices", title: titles("page_discover_devices"), content: "page_discover_devices", install: true, uninstall: false)
     page(name: "page_remove_all", title: titles("page_remove_all"), content: "page_remove_all", install: false, uninstall: false)
+    page(name: "page_rebuild_all", title: titles("page_rebuild_all"), content: "page_rebuild_all", install: false, uninstall: false)
     page(name: "page_cid_management", title: titles("page_cid_management"), content: "page_cid_management", install: false, uninstall: false)
     page(name: "page_add_new_cid", title: titles("page_add_new_cid"), content: "page_add_new_cid", install: false, uninstall: false)
     page(name: "page_add_new_cid_confirm", title: titles("page_add_new_cid_confirm", buildcidlabel()), content: "page_add_new_cid_confirm", install: false, uninstall: false)
     page(name: "page_remove_selected_cid", title: titles("page_remove_selected_cid"), content: "page_remove_selected_cid", install: false, uninstall: false)
+    page(name: "page_rfx_management", title: titles("page_rfx_management"), content: "page_rfx_management", install: false, uninstall: false)
+    page(name: "page_add_new_rfx", title: titles("page_add_new_rfx"), content: "page_add_new_rfx", install: false, uninstall: false)
+    page(name: "page_add_new_rfx_confirm", title: titles("page_add_new_rfx_confirm", buildcidlabel()), content: "page_add_new_rfx_confirm", install: false, uninstall: false)
+    page(name: "page_remove_selected_rfx", title: titles("page_remove_selected_rfx"), content: "page_remove_selected_rfx", install: false, uninstall: false)
 }
 
 /*
  * Localization strings
  */
- 
+
 // string table for titles
 def titles(String name, Object... args) {
   def page_titles = [
+    /*  Main */
     "page_main": "${lname} setup and management",
+
+    /* Discover */
     "page_discover_devices": "Install ${lname} service",
+    "input_selected_devices": "Select device(s) (%s found)",
+    "monIntegration": "Integrate with Smart Home Monitor?",
+    "monChangeStatus": "Automatically change Monitor(SHM|HSM) status when armed or disarmed?",
+    "defaultSensorToClosed": "Default zone sensors to closed?",
+
+    /* Remove All */
     "page_remove_all": "Remove all ${lname} devices",
     "confirm_remove_all": "Confirm remove all",
+    "href_refresh_devices": "Send UPNP discovery",
+    "info_remove_all_a": "Removed all child devices.",
+    "info_remove_all_b": "This will attempt to remove all child devices. This may fail if the device is in use. If it fails review the log and manually remove the usage. Press back to continue.",
+
+    /* Virtual Device Management */
+    "page_vid_management": "AD2 Virtual device management",
+    "page_rebuild_all": "Rebuild virtual devices",
+    "confirm_rebuild_all": "Confirm rebuild all",
+    "info_rebuild_all_a": "Rebuilt all child devices.",
+    "info_rebuild_all_b": "This will attempt to rebuild all child devices. Review the log and manually remove the usage. Press back to continue.",
+
+    /* CID Management */
     "page_cid_management": "Contact ID device management",
     "page_add_new_cid": "Add new CID virtual switch",
     "page_add_new_cid_confirm": "Add new CID switch : %s",
     "page_remove_selected_cid": "Remove selected virtual switches",
-    "href_refresh_devices": "Send UPNP discovery",
+    "info_page_remove_selected_cid": "Attempted to remove selected devices. This may fail if the device is in use. If it fails review the log and manually remove the usage. Press back to continue.",
+    "info_add_new_cid_confirm": "Attempted to add new CID device. This may fail if the device is in use. If it fails review the log. Press back to continue.",
     "section_cid_value": "Build CID Value(USER/ZONE) : %s",
     "section_cid_partition": "Select the CID partition",
     "section_cid_names": "Device Name and Label",
-    "section_build_cid": "Build CID Number :",
+    "section_build_cid": "Build Device Name :",
     "input_cid_name": "Enter the new device name or blank for auto",
-    "input_cid_label": "Enter the new device label or blank for auto",    
-    "info_page_remove_selected_cid": "Attempted to remove selected devices. This may fail if the device is in use. If it fails review the log and manually remove the usage. Press back to continue.",
-    "info_add_new_cid_confirm": "Attempted to add new CID device. This may fail if the device is in use. If it fails review the log. Press back to continue.",
-    "info_remove_all_a": "Removed all child devices.",
-    "info_remove_all_b": "This will attempt to remove all child devices. This may fail if the device is in use. If it fails review the log and manually remove the usage. Press back to continue.",
+    "input_cid_label": "Enter the new device label or blank for auto",
     "input_cid_devices": "Remove installed CID virutal switches",
     "input_cid_number": "Select the CID number for this device",
     "input_cid_value": "Zero PAD 3 digit User,Zone or simple regex pattern ex. '001' or '...'",
     "input_cid_partition": "Enter the partition or 0 for system",
     "input_cid_number_raw": "Enter CID # or simple regex pattern",
-    "input_selected_devices": "Select device(s) (%s found)",
-    "defaultSensorToClosed": "Default zone sensors to closed?",
-    "shmIntegration": "Integrate with Smart Home Monitor?",
-    "shmChangeSHMStatus": "Automatically change Smart Home Monitor status when armed or disarmed?",
+
+    /* RFX Management */
+    "page_rfx_management": "RFX device management",
+    "page_add_new_rfx": "Add new RFX virtual switch",
+    "page_add_new_rfx_confirm": "Add new RFX switch : %s",
+    "page_remove_selected_rfx": "Remove selected virtual switches",
+    "section_build_rfx": "Build Device Name :",
+    "input_rfx_name": "Enter the new device name or blank for auto",
+    "input_rfx_label": "Enter the new device label or blank for auto",
+    "input_rfx_sn": "Enter Serial # or simple regex pattern",
+    "input_rfx_supv": "Supervision bit: Enter 1 to watch or ? to ignore",
+    "input_rfx_bat": "Battery: Enter 1 to monitor or ? to ignore",
+    "input_rfx_loop0": "Loop 0: Enter 1 to monitor or ? to ignore",
+    "input_rfx_loop1": "Loop 1: Enter 1 to monitor or ? to ignore",
+    "input_rfx_loop2": "Loop 2: Enter 1 to monitor or ? to ignore",
+    "input_rfx_loop3": "Loop 3: Enter 1 to monitor or ? to ignore",
   ]
   if (args)
       return String.format(page_titles[name], args)
@@ -102,15 +195,22 @@ def titles(String name, Object... args) {
 // string table for descriptions
 def descriptions(name, Object... args) {
   def element_descriptions = [
+    "href_refresh_devices": "Tap to select",
     "href_discover_devices": "Tap to discover and install your ${lname} Appliance",
+    "href_rebuild_all": "Tap to rebuild all ${lname} virtual devices",
     "href_remove_all": "Tap to remove all ${lname} virtual devices",
     "href_cid_management": "Tap to manage CID virtual switches",
-    "input_cid_devices": "Tap to select",
-    "input_cid_number": "Tap to select",
-    "href_refresh_devices": "Tap to select",
     "href_remove_selected_cid": "Tap to remove selected virtual switches",
     "href_add_new_cid": "Tap to add new CID switch",
-    "href_add_new_cid_confirm": "Tap to confirm and add"
+    "href_add_new_cid_confirm": "Tap to confirm and add",
+    "input_cid_devices": "Tap to select",
+    "input_cid_number": "Tap to select",
+    "href_rfx_management": "Tap to manage RFX virtual switches",
+    "href_remove_selected_rfx": "Tap to remove selected virtual switches",
+    "href_add_new_rfx": "Tap to add new RFX switch",
+    "href_add_new_rfx_confirm": "Tap to confirm and add",
+    "input_rfx_devices": "Tap to select",
+    "input_rfx_number": "Tap to select",
   ]
   if (args)
       return String.format(element_descriptions[name],args)
@@ -164,10 +264,16 @@ def page_main() {
                 paragraph(foundMsg)
             }
             section("") {
+                href(name: "href_rebuild_all", required: false, page: "page_rebuild_all", title: titles("page_rebuild_all"), description: descriptions("href_rebuild_all"))
+            }
+            section("") {
                 href(name: "href_remove_all", required: false, page: "page_remove_all", title: titles("page_remove_all"), description: descriptions("href_remove_all"))
-            }        
+            }
             section("") {
                 href(name: "href_cid_management", required: false, page: "page_cid_management", title: titles("page_cid_management"), description: descriptions("href_cid_management"))
+            }
+            section("") {
+                href(name: "href_rfx_management", required: false, page: "page_rfx_management", title: titles("page_rfx_management"), description: descriptions("href_rfx_management"))
             }
         }
     }
@@ -218,9 +324,9 @@ def page_remove_selected_cid() {
                 try {
                     deleteChildDevice(device.deviceNetworkId)
                     input_cid_devices.remove(device_name)
-                    errors << "Success removing " + device_name                    
+                    errors << "Success removing " + device_name
                 }
-                catch (e) { 
+                catch (e) {
                     log.error "There was an error (${e}) when trying to delete the child device"
                     errors << "Error removing " + device_name
                 }
@@ -230,7 +336,7 @@ def page_remove_selected_cid() {
     return dynamicPage(name: "page_remove_selected_cid") {
         section("") {
             paragraph titles("info_page_remove_selected_cid")
-            errors.each { error -> 
+            errors.each { error ->
                 paragraph(error)
             }
         }
@@ -253,12 +359,12 @@ def page_add_new_cid() {
                        "401": "401 - Arm AWAY OPEN/CLOSE",
                        "441": "441 - Arm STAY OPEN/CLOSE",
                        "4[0,4]1": "4[0,4]1 - Arm Stay or Away OPEN/CLOSE"]
-    
+
     return dynamicPage(name: "page_add_new_cid") {
         // show pre defined CID number templates to select from
         section("") {
             paragraph titles("section_build_cid", buildcid())
-            input "input_cid_number", "enum", required: true, submitOnChange: true, multiple: false, title: titles("input_cid_number"), description: descriptions("input_cid_number"), options: cid_numbers 
+            input "input_cid_number", "enum", required: true, submitOnChange: true, multiple: false, title: titles("input_cid_number"), description: descriptions("input_cid_number"), options: cid_numbers
         }
         // if a CID entry is selected then check the value if it is "0" to show raw input section
         if (input_cid_number) {
@@ -343,25 +449,211 @@ def page_add_new_cid_confirm() {
     def newcidnetworkid = buildcidnetworkid()
     def cv = input_cid_value
     def pt = input_cid_partition.toInteger()
-    
+
     // Add virtual CID switch if it does not exist.
-    def d = getChildDevice("${state.ip}:${state.port}:${newcidlabel}")
+    def d = getChildDevice("${getDeviceKey()}:${newcidlabel}")
     if (!d)
     {
-        def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:${newcidnetworkid}", state.hub,
-                                [name: "${state.ip}:${state.port}:${newcidname}", label: "${sname} ${newcidlabel}", completedSetup: true])
+        def nd = addChildDevice(APPNAMESPACE, "AlarmDecoder action button indicator", "${getDeviceKey()}:${newcidnetworkid}", state.hub,
+                                [name: "${getDeviceKey()}:${newcidname}", label: "${sname} ${newcidlabel}", completedSetup: true])
         nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
         errors << "Success adding ${newcidlabel}"
     } else {
-        errors << "Error adding ${newcidlabel}: Exists" 
+        errors << "Error adding ${newcidlabel}: Exists"
     }
 
     return dynamicPage(name: "page_add_new_cid_confirm") {
         section("") {
             paragraph titles("info_add_new_cid_confirm")
-            errors.each { error -> 
+            errors.each { error ->
                 paragraph(error)
-            }            
+            }
+        }
+        section_no_save_note()
+    }
+}
+
+/**
+ * Page page_rfx_management generator.
+ */
+def page_rfx_management() {
+    // TODO: Find a way to clear our current values on loading page
+    return dynamicPage(name: "page_rfx_management") {
+        def found_devices = []
+        getAllChildDevices().each { device ->
+            if (device.deviceNetworkId.contains(":RFX-"))
+            {
+                found_devices << device.deviceNetworkId.split(":")[2].trim()
+            }
+        }
+        section("") {
+            if (found_devices.size()) {
+                input "input_rfx_devices", "enum", required: false, multiple: true, options: found_devices, title: titles("input_rfx_devices"), description: descriptions("input_rfx_devices"), submitOnChange: true
+                if (input_rfx_devices) {
+                    href(name: "href_remove_selected_rfx", required: false, page: "page_remove_selected_rfx", title: titles("page_remove_selected_rfx"), description: descriptions("href_remove_selected_rfx"), submitOnChange: true)
+                }
+            }
+        }
+        section("") {
+            href(name: "href_add_new_rfx", required: false, page: "page_add_new_rfx", title: titles("page_add_new_rfx"), description: descriptions("href_add_new_rfx"))
+        }
+        section_no_save_note()
+    }
+}
+
+/**
+ * Page page_remove_selected_rfx generator
+ */
+def page_remove_selected_rfx() {
+    def errors = []
+    getAllChildDevices().each { device ->
+        if (device.deviceNetworkId.contains(":RFX-"))
+        {
+            // Only remove the one that matches our list
+            def device_name = device.deviceNetworkId.split(":")[2].trim()
+            def d = input_rfx_devices.find{ it == device_name }
+            if (d)
+            {
+                log.trace("removing RFX device ${device.deviceNetworkId}")
+                try {
+                    deleteChildDevice(device.deviceNetworkId)
+                    input_rfx_devices.remove(device_name)
+                    errors << "Success removing " + device_name
+                }
+                catch (e) {
+                    log.error "There was an error (${e}) when trying to delete the child device"
+                    errors << "Error removing " + device_name
+                }
+            }
+        }
+    }
+    return dynamicPage(name: "page_remove_selected_rfx") {
+        section("") {
+            paragraph titles("info_page_remove_selected_rfx")
+            errors.each { error ->
+                paragraph(error)
+            }
+        }
+        section_no_save_note()
+    }
+}
+
+/**
+ * Page page_add_new_rfx generator
+ */
+def page_add_new_rfx() {
+
+    return dynamicPage(name: "page_add_new_rfx") {
+        section("") {
+            paragraph titles("section_build_rfx")
+        }
+        section {
+            paragraph titles("section_rfx_names")
+            input(name: "input_rfx_name", type: "text", required: false, submitOnChange: true, title: titles("input_rfx_name"))
+            input(name: "input_rfx_label", type: "text", required: false, submitOnChange: true, title: titles("input_rfx_label"))
+        }
+        section {
+            input(name: "input_rfx_sn", type: "text", required: true, defaultValue: '000000', submitOnChange: true, title: titles("input_rfx_sn"))
+            input(name: "input_rfx_bat", type: "text", required: true, defaultValue: '?', submitOnChange: true, title: titles("input_rfx_bat"))
+            input(name: "input_rfx_supv", type: "text", required: true, defaultValue: '?', submitOnChange: true, title: titles("input_rfx_supv"))
+            input(name: "input_rfx_loop0", type: "text", required: true, defaultValue: '1', submitOnChange: true, title: titles("input_rfx_loop0"))
+            input(name: "input_rfx_loop1", type: "text", required: true, defaultValue: '?', submitOnChange: true, title: titles("input_rfx_loop1"))
+            input(name: "input_rfx_loop2", type: "text", required: true, defaultValue: '?', submitOnChange: true, title: titles("input_rfx_loop2"))
+            input(name: "input_rfx_loop3", type: "text", required: true, defaultValue: '?', submitOnChange: true, title: titles("input_rfx_loop3"))
+        }
+        section(""){ href(name: "href_add_new_rfx_confirm", required: false, page: "page_add_new_rfx_confirm", title: titles("page_add_new_rfx_confirm", buildrfxlabel()+"("+buildrfxnetworkid()+")"), description: descriptions("href_add_new_rfx_confirm"))}
+        section_no_save_note()
+    }
+}
+
+/**
+ * Helper to build a final RFX value from inputs
+ */
+def buildrfx() {
+    return input_rfx_sn
+}
+def buildrfxname() {
+    if (input_rfx_name) {
+        return "RFX-" + input_rfx_name
+    } else {
+        return buildrfxnetworkid()
+    }
+}
+
+def buildrfxlabel() {
+    if (input_rfx_label) {
+        return "RFX-" + input_rfx_label
+    } else {
+        return buildrfxnetworkid()
+    }
+}
+
+def buildrfxnetworkid() {
+    // get the RFX value
+    def newrfx =  buildrfx()
+
+    def cv = buildrfxvalue()
+    return "RFX-${newrfx}-${cv}"
+}
+
+def buildrfxvalue() {
+    def rfxval = "${input_rfx_bat}-${input_rfx_supv}-${input_rfx_loop0}-${input_rfx_loop1}-${input_rfx_loop2}-${input_rfx_loop3}"
+    return rfxval
+}
+
+/**
+ * Page page_add_new_rfx_confirm generator.
+ */
+def page_add_new_rfx_confirm() {
+    def errors = []
+    // get the RFX value
+    def newrfxlabel =  buildrfxlabel()
+    def newrfxname = buildrfxname()
+    def newrfxnetworkid = buildrfxnetworkid()
+    def cv = input_rfx_value
+
+    // Add virtual RFX switch if it does not exist.
+    def d = getChildDevice("${getDeviceKey()}:${newrfxlabel}")
+    if (!d)
+    {
+        def nd = addChildDevice(APPNAMESPACE, "AlarmDecoder action button indicator", "${getDeviceKey()}:${newrfxnetworkid}", state.hub,
+                                [name: "${getDeviceKey()}:${newrfxname}", label: "${sname} ${newrfxlabel}", completedSetup: true])
+        nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
+        errors << "Success adding ${newrfxlabel}"
+    } else {
+        errors << "Error adding ${newrfxlabel}: Exists"
+    }
+
+    return dynamicPage(name: "page_add_new_rfx_confirm") {
+        section("") {
+            paragraph titles("info_add_new_rfx_confirm")
+            errors.each { error ->
+                paragraph(error)
+            }
+        }
+        section_no_save_note()
+    }
+}
+
+/**
+ * Page page_rebuild_all generator.
+ */
+def page_rebuild_all(params) {
+    def message = ""
+
+    return dynamicPage(name: "page_rebuild_all") {
+        if (params?.confirm) {
+            // Call rebuild device function here
+            addExistingDevices()
+            message = titles("info_rebuild_all_a")
+        } else {
+            section("") {
+                href(name: "href_confirm_rebuild_all_devices", title: titles("confirm_rebuild_all"), description: descriptions("href_rebuild_devices"), required: false, page: "page_rebuild_all", params: [confirm: true])
+            }
+            message = titles("info_rebuild_all_b")
+        }
+        section("") {
+            paragraph message
         }
     }
 }
@@ -414,8 +706,8 @@ def page_discover_devices() {
             href(name: "href_refresh_devices", title: titles("href_refresh_devices"), description: descriptions("href_refresh_devices"), required: false, page: "page_discover_devices")
         }
         section("Smart Home Monitor Integration") {
-            input(name: "shmIntegration", type: "bool", defaultValue: true, title: titles("shmIntegration"))
-            input(name: "shmChangeSHMStatus", type: "bool", defaultValue: true, title: titles("shmChangeSHMStatus"))
+            input(name: "monIntegration", type: "bool", defaultValue: true, title: titles("monIntegration"))
+            input(name: "monChangeStatus", type: "bool", defaultValue: true, title: titles("monChangeStatus"))
         }
         section("Zone Sensors") {
             input(name: "defaultSensorToClosed", type: "bool", defaultValue: true, title: titles("defaultSensorToClosed"))
@@ -485,10 +777,10 @@ def initialize() {
     unschedule()
 
     // Create our default state values
-    state.lastSHMStatus = null
+    state.lastMONStatus = null
     state.lastAlarmDecoderStatus = null
 
-    // Network and SHM subscriptions
+    // Network and Monitor subscriptions
     initSubscriptions()
 
     // if a device in the GUI is selected then add it.
@@ -521,7 +813,7 @@ def initialize() {
  *   curl -H "Content-Type: application/json" -X POST -d ‘{"message":"Hi, this is a test from AlarmDecoder network device"}’ http://YOUR.HUB.IP.ADDRESS:39500
  */
 def locationHandler(evt) {
-    if (debug) log.debug "locationHandler"
+    if (debug) log.debug "locationHandler ${evt.name}: ${evt.value}"
 
     def description = evt.description
     def hub = evt?.hubId
@@ -530,8 +822,7 @@ def locationHandler(evt) {
     if (!description)
      return
 
-    if (debug)
-      log.debug "locationHandler: description: ${evt.description} name: ${evt.name} value: ${evt.value} data: ${evt.data}"
+    if (debug) log.debug "locationHandler: description: ${evt.description} name: ${evt.name} value: ${evt.value} data: ${evt.data}"
 
     def parsedEvent = ["hub":hub]
     try {
@@ -542,7 +833,7 @@ def locationHandler(evt) {
         return
     }
 
-    if (debug) log.debug("locationHandler parsedEvent: ${parsedEvent}")
+    if (debug) log.debug("locationHandler mac: ${parsedEvent.mac} parsedEvent: ${parsedEvent}")
 
     // UPNP LAN EVENTS on UDP port 1900 from 'AlarmDecoder:1' devices only
     if (parsedEvent?.ssdpTerm?.contains("urn:schemas-upnp-org:device:AlarmDecoder:1")) {
@@ -605,7 +896,8 @@ def locationHandler(evt) {
             getAllChildDevices().each { device ->
                 // Only refresh the main device that has a panel_state
                 def device_type = device.getTypeName()
-                if (device_type == "AlarmDecoder network appliance")
+                // only accept messages that are from a network appliance and that match our MAC address
+                if (device_type == "AlarmDecoder network appliance" && device.getDeviceDataByName("mac") == parsedEvent.mac)
                 {
                     if (debug) log.debug ("push_update_alarmdecoders: Found device sending pushed data.")
                     device.parse_xml(headerString, bodyString).each { e-> device.sendEvent(e) }
@@ -630,20 +922,25 @@ def webserviceUpdate()
  * sets Contact attributes of the alarmdecoder smoke device
  */
 def actionButton(id) {
-    if (debug) log.debug("actionButton: desc=${id}")
 
     // grab our primary AlarmDecoder device object
-    def d = getChildDevice("${state.ip}:${state.port}")
+    def d = getChildDevice("${getDeviceKey()}")
+	if (debug) log.debug("actionButton: desc=${id} dev=${d}")
+
     if (!d) {
-        log.error("actionButton: Could not find primary device '${state.ip}:${state.port}'.")
+        log.error("actionButton: Could not find primary device '${getDeviceKey()}'.")
         return
     }
 
-    /* FIXME: Need a pin code or some way to trust the request.
-    if (id.contains(":disarm")) {
-        d.disarm()
-    } */
-
+    /* FIXME: Need a pin code or some way to trust the request. */
+    if(create_disarm) {
+        if (id.contains(":disarm")) {
+            d.disarm()
+        }
+    }
+    if (id.contains(":exit")) {
+        d.exit()
+    }
     if (id.contains(":armAway")) {
         d.arm_away()
     }
@@ -665,7 +962,7 @@ def actionButton(id) {
     if (id.contains(":CID-")) {
         def cd = getChildDevice("${id}")
         if (!cd) {
-            log.error("actionButton: Could not CID device '${id}'.")
+            log.info("actionButton: Could not CID device '${id}'.")
             return
         }
         cd.sendEvent(name: "switch", value: "off", isStateChange: true, filtered: true)
@@ -673,18 +970,25 @@ def actionButton(id) {
 }
 
 /**
- * send event to SmokeAlarm device to set state
+ * send event to smokeAlarm device to set state
  */
 def smokeSet(evt) {
     if (debug) log.debug("smokeSet: desc=${evt.value}")
 
-    def d = getChildDevices().find { it.deviceNetworkId.contains(":SmokeAlarm") }
+    def d = getChildDevices().find { it.deviceNetworkId.contains(":smokeAlarm") }
     if (!d)
     {
-        log.error("smokeSet: Could not find 'SmokeAlarm' device.")
+        log.info("smokeSet: Could not find 'SmokeAlarm' device.")
         return
     }
     d.sendEvent(name: "smoke", value: evt.value, isStateChange: true, filtered: true)
+
+    d = getChildDevice("${getDeviceKey()}:alarmFireStatus")
+    if (!d) {
+        log.info("armAwaySet: Could not find 'alarmFireStatus' device.")
+    } else {
+        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open") , isStateChange: true, filtered: true)
+    }
 }
 
 /**
@@ -692,12 +996,19 @@ def smokeSet(evt) {
  */
 def armAwaySet(evt) {
     if (debug) log.debug("armAwaySet ${evt.value}")
-    def d = getChildDevice("${state.ip}:${state.port}:armAway")
+    def d = getChildDevice("${getDeviceKey()}:armAway")
     if (!d) {
-        log.error("armAwaySet: Could not find 'armAway' device.")
-        return
+        log.info("armAwaySet: Could not find 'armAway' device.")
+    } else {
+        d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
     }
-    d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+
+    d = getChildDevice("${getDeviceKey()}:armAwayStatus")
+    if (!d) {
+        log.info("armAwaySet: Could not find 'armAwayStatus' device.")
+    } else {
+        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open") , isStateChange: true, filtered: true)
+    }
 }
 
 /**
@@ -705,26 +1016,32 @@ def armAwaySet(evt) {
  */
 def armStaySet(evt) {
     if (debug) log.debug("armStaySet ${evt.value}")
-    def d = getChildDevice("${state.ip}:${state.port}:armStay")
+    def d = getChildDevice("${getDeviceKey()}:armStay")
     if (!d) {
-        log.error("armStaySet: Could not find 'armStay' device.")
-        return
+        log.info("armStaySet: Could not find 'armStay' device.")
+    } else {
+        d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
     }
-    d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+
+    d = getChildDevice("${getDeviceKey()}:armStayStatus")
+    if (!d) {
+        log.info("armStaySet: Could not find 'armStayStatus' device.")
+    } else {
+        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+    }
 }
 
 /**
  * send event to alarmbell indicator device to set state
  */
 def alarmBellSet(evt) {
-    if (debug)
-      log.debug("alarmBellSet ${evt.value}")
-    def d = getChildDevice("${state.ip}:${state.port}:alarmBellIndicator")
+    if (debug) log.debug("alarmBellSet ${evt.value}")
+    def d = getChildDevice("${getDeviceKey()}:alarmBellStatus")
     if (!d) {
-        log.error("alarmBellSet: Could not find 'alarmBellIndicator' device.")
-        return
+        log.info("alarmBellSet: Could not find 'alarmBellStatus' device.")
+    } else {
+        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
     }
-    d.sendEvent(name: "contact", value: evt.value, isStateChange: true, filtered: true)
 }
 
 /**
@@ -732,38 +1049,78 @@ def alarmBellSet(evt) {
  */
 def chimeSet(evt) {
     if (debug) log.debug("chimeSet ${evt.value}")
-    def d = getChildDevice("${state.ip}:${state.port}:chimeMode")
+    def d = getChildDevice("${getDeviceKey()}:chimeMode")
     if (!d) {
-        log.error("chimeSet: Could not find device 'chimeMode'")
-        return
+        log.info("chimeSet: Could not find device 'chimeMode'")
+    } else {
+        d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
     }
-    d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+
+    d = getChildDevice("${getDeviceKey()}:chimeModeStatus")
+    if (!d) {
+        log.info("chimeSet: Could not find device 'chimeModeStatus'")
+    } else {
+        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+    }
 }
 
 /**
- * send event to bypass indicator device to set state
+ * send event to chime indicator device to set state
+ */
+def exitSet(evt) {
+    if (debug) log.debug("exitSet ${evt.value}")
+    def d = getChildDevice("${getDeviceKey()}:exit")
+    if (!d) {
+        log.info("exitSet: Could not find device 'exit'")
+    } else {
+        d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+    }
+
+    d = getChildDevice("${getDeviceKey()}:exitStatus")
+    if (!d) {
+        log.info("exitSet: Could not find device 'exitStatus'")
+    } else {
+        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+    }
+}
+
+/**
+ * send event to bypass status device to set state
  */
 def bypassSet(evt) {
     if (debug) log.debug("bypassSet ${evt.value}")
-    def d = getChildDevice("${state.ip}:${state.port}:bypass")
+    def d = getChildDevice("${getDeviceKey()}:bypassStatus")
     if (!d) {
-        log.error("bypassSet: Could not find device 'bypass'")
+        log.info("bypassSet: Could not find device 'bypassStatus'")
         return
     }
-    d.sendEvent(name: "contact", value: evt.value, isStateChange: true, filtered: true)
+    d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
 }
 
 /**
- * send event to ready indicator device to set state
+ * send event to ready status device to set state
  */
 def readySet(evt) {
     if (debug) log.debug("readySet ${evt.value}")
-    def d = getChildDevice("${state.ip}:${state.port}:readyIndicator")
+    def d = getChildDevice("${getDeviceKey()}:readyStatus")
     if (!d) {
-        log.error("readySet: Could not find 'readyIndicator' device.")
+        log.info("readySet: Could not find 'readyStatus' device.")
         return
     }
-    d.sendEvent(name: "contact", value: evt.value, isStateChange: true, filtered: true)
+    d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+}
+
+/**
+ * send event to disarm status device to set state
+ */
+def disarmSet(evt) {
+    if (debug) log.debug("disarmSet ${evt.value}")
+    def d = getChildDevice("${getDeviceKey()}:disarm")
+    if (!d) {
+      log.info("disarmSet: Could not find 'disarm' device.")
+    } else {
+      d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+    }
 }
 
 /**
@@ -776,7 +1133,7 @@ def cidSet(evt) {
     // get our CID state and number
     def parts = evt.value.split(',')
 
-    // 1 digit QUALIFIER 1 = Event or Open, 3 = Restore or Close   
+    // 1 digit QUALIFIER 1 = Event or Open, 3 = Restore or Close
     def cidstate = (parts[2][-4..-4] == "1") ? "on" : "off"
 
     // 3 digit CID number
@@ -814,6 +1171,81 @@ def cidSet(evt) {
 }
 
 /**
+ * send RFX event to the correct device if one exists
+ * evt.value example raw !RFX:123123,00
+ * eventmessage 0462932:0:0:1:0:0:0
+ * 01020304:1388:RFX-0014374-1-?-1-?-?-?
+ */
+def rfxSet(evt) {
+    log.info("rfxSet ${evt.value}")
+
+    // get our RFX state and number
+    def parts = evt.value.split(':')
+
+    def sn = parts[0]
+    def bat = parts[1]
+    def supv = parts[2]
+    def loop0 = parts[3]
+    def loop1 = parts[4]
+    def loop2 = parts[5]
+    def loop3 = parts[6]
+
+    if (debug) log.info("rfxSet sn:${sn} bat: ${bat} sukpv:${supv} loop0:${loop0} loop1:${loop1} loop2:${loop2} loop3:${loop3}")
+
+    def sent = false
+
+    def device_name = "RFX-${sn}-${bat}-${supv}-${loop0}-${loop1}-${loop2}-${loop3}"
+
+    def children = getChildDevices()
+    children.each {
+        if (it.deviceNetworkId.contains(":RFX-")) {
+            // Network mask differes from ST to HT
+            def sp = ""
+            if (MONTYPE == "SHM")
+                sp = it.deviceNetworkId.split(":")[2].trim().split("-")
+            if (MONTYPE == "HSM")
+                sp = it.deviceNetworkId.split(":")[1].trim().split("-")
+
+
+            def match = sp[0] + "-" + sp[1] + "-*"
+            if (device_name =~ /${match}/) {
+                def tot = 0
+                if (sp[2] == "1" && bat == "1") {
+                    tot++
+                }
+                if (sp[3] == "1" && supv == "1") {
+                    tot++
+                }
+                if (sp[4] == "1" && loop0 == "1") {
+                    tot++
+                }
+                if (sp[5] == "1" && loop1 == "1") {
+                    tot++
+                }
+                if (sp[6] == "1" && loop2 == "1") {
+                    tot++
+                }
+                if (sp[7] == "1" && loop3 == "1") {
+                    tot++
+                }
+
+                if (debug) log.info("rfxSet device: ${device_name} matches ${match} sendng state ${tot}")
+                it.sendEvent(name: "switch", value: tot, isStateChange: true, filtered: true)
+                sent = true
+
+            } else {
+                if (debug) log.error("rfxSet device: ${device_name} no match ${match}")
+            }
+        }
+    }
+
+    if (!sent) {
+        log.error("rfxSet: Could not find '${device_name}|XXX' device.")
+        return
+    }
+}
+
+/**
  * Handle Device Command addZone()
  * add a zone during post install to keep it async
  */
@@ -821,9 +1253,9 @@ def addZone(evt) {
 
     def i = evt.value
     log.info("App Event: addZone ${i}")
-    
-    try {        
-        def zone_switch = addChildDevice("alarmdecoder", "AlarmDecoder virtual contact sensor", "${evt.data}", state.hub, [name: "${evt.data}", label: "${sname} Zone Sensor #${i}", completedSetup: true])    
+
+    try {
+        def zone_switch = addChildDevice(APPNAMESPACE, "AlarmDecoder virtual contact sensor", "${evt.data}", state.hub, [name: "${evt.data}", label: "${sname} Zone Sensor #${i}", completedSetup: true])
         def sensorValue = "open"
         if (settings.defaultSensorToClosed == true) {
             sensorValue = "closed"
@@ -831,7 +1263,7 @@ def addZone(evt) {
 
         // Set default contact state.
         zone_switch.sendEvent(name: "contact", value: sensorValue, isStateChange: true, displayed: false)
-    } catch (e) { 
+    } catch (e) {
         log.error "There was an error (${e}) when trying to addZone ${i}"
     }
 }
@@ -874,49 +1306,123 @@ def zoneOff(evt) {
 }
 
 /**
- * Handle Smart Home Monitor App alarmSystemStatus events and update the UI of the App.
+ * Handle SmartThings Smart Home Monitor(SHM) or Hubitat Safety Monitor (HSM)  events and update the UI of the App.
  *
  */
-def shmAlarmHandler(evt) {
-    if (settings.shmIntegration == false)
+def monitorAlarmHandler(evt) {
+    if (settings.monIntegration == false)
         return
 
-    if (debug) log.debug("shmAlarmHandler -- ${evt.value}, lastSHMStatus ${state.lastSHMStatus}, lastAlarmDecoderStatus ${state.lastAlarmDecoderStatus}")
+    if (debug) log.debug("monitorAlarmHandler -- ${evt.value}, lastMONStatus ${state.lastMONStatus}, lastAlarmDecoderStatus ${state.lastAlarmDecoderStatus}")
 
-    if (state.lastSHMStatus != evt.value && evt.value != state.lastAlarmDecoderStatus)
+    if (state.lastMONStatus != evt.value)
     {
         getAllChildDevices().each { device ->
-            if (!device.deviceNetworkId.contains(":switch"))
+            // Only refresh the main device that has a panel_state
+            def device_type = device.getTypeName()
+            if (device_type == "AlarmDecoder network appliance")
             {
-                if (evt.value == "away")
-                    device.arm_away()
-                else if (evt.value == "stay")
-                    device.arm_stay()
-                else if (evt.value == "off")
-                    device.disarm()
-                else
-                    log.debug "Unknown SHM alarm value: ${evt.value}"
+                if (debug) log.debug("monitorAlarmHandler DEBUG-- ${device.deviceNetworkId}")
+                /* SmartThings */
+                if (MONTYPE == "SHM") {
+                    if (evt.value == "away" || evt.value == "armAway") {
+                        // do not send if already in that state.
+                        if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay")) {
+                            device.arm_away()
+                        } else {
+                            log.trace "monitorAlarmHandler -- no send arm_away already set"
+                        }
+                    }
+                    else if (evt.value == "stay" || evt.value == "armHome") {
+                        // do not send if already in that state.
+                        if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay")) {
+                            device.arm_stay()
+                        } else {
+                            log.trace "monitorAlarmHandler -- no send arm_stay already set"
+                        }
+                    }
+                    else if (evt.value == "off" || evt.value == "disarm") {
+                        // do not send if already in that state.
+                        if(device.getStateValue("panel_armed") || device.getStateValue("panel_armed_stay")) {
+                            device.disarm()
+                        } else {
+                            log.trace "monitorAlarmHandler -- no send disarm already set"
+                        }
+                    } else
+                        log.debug "Unknown SHM alarm value: ${evt.value}"
+                }
+                /* Hubitat */
+                if (MONTYPE == "HSM") {
+                    if (evt.value == "armedAway") {
+                        // do not send if already in that state.
+                        if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay")) {
+                            device.arm_away()
+                        } else {
+                            log.trace "monitorAlarmHandler -- no send arm_away already set"
+                        }
+                    }
+                    else if (evt.value == "armedHome") {
+                        // do not send if already in that state.
+                        if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay")) {
+                            device.arm_stay()
+                        } else {
+                            log.trace "monitorAlarmHandler -- no send arm_stay already set"
+                        }
+                    }
+                    else if (evt.value == "disarmed") {
+                        // do not send if already in that state.
+                        if(device.getStateValue("panel_armed") || device.getStateValue("panel_armed_stay")) {
+                            device.disarm()
+                        } else {
+                            log.trace "monitorAlarmHandler -- no send disarm already set ${device.getStateValue('panel_armed')} ${device.getStateValue('panel_armed_stay')}"
+                        }
+                    }
+                    else
+                        log.debug "Unknown HSM alarm value: ${evt.value}"
+                }
             }
         }
     }
-
-    state.lastSHMStatus = evt.value
+    // Track for async processing
+    state.lastMONStatus = evt.value
 }
 
 /**
  * Handle Alarm events from the AlarmDecoder and
- * send them back to the Smart Home Monitor API to update the
+ * send them back to the the Monitor API to update the
  * status of the alarm panel
  */
 def alarmdecoderAlarmHandler(evt) {
-    if (settings.shmIntegration == false || settings.shmChangeSHMStatus == false)
+    if (settings.monIntegration == false || settings.monChangeStatus == false)
         return
 
-    if (debug) log.trace("alarmdecoderAlarmHandler: ${evt.value}")
+    if (debug) log.debug("alarmdecoderAlarmHandler -- ${evt.value}, lastMONStatus ${state.lastMONStatus}, lastAlarmDecoderStatus ${state.lastAlarmDecoderStatus}")
 
-    if (state.lastAlarmDecoderStatus != evt.value && evt.value != state.lastSHMStatus) {
-        if (debug) log.debug("alarmdecoderAlarmHandler: sendLocationEvent")
-        sendLocationEvent(name: "alarmSystemStatus", value: evt.value)
+    if (state.lastAlarmDecoderStatus != evt.value) {
+        if(MONTYPE == "SHM") {
+            /* no traslation needed already [stay,away,off] */
+            if (debug) log.debug("alarmdecoderAlarmHandler: alarmSystemStatus ${evt.value}")
+            sendLocationEvent(name: "alarmSystemStatus", value: evt.value)
+        }
+        if(MONTYPE == "HSM") {
+            /* translate to HSM */
+            msg = ""
+            if (evt.value == "stay") {
+                msg = "armHome"
+                state.lastMONStatus = "armedHome" // prevent loop
+            }
+            if (evt.value == "away") {
+                msg = "armAway"
+                state.lastMONStatus = "armedAway" // prevent loop
+            }
+            if (evt.value == "off") {
+                msg = "disarm"
+                state.lastMONStatus = "disarmed" // prevent loop
+            }
+            if (debug) log.debug("alarmdecoderAlarmHandler: hsmSetArm ${msg}")
+            // Notify external MON of the change
+            sendLocationEvent(name: "hsmSetArm", value: msg)
+        }
     }
 
     state.lastAlarmDecoderStatus = evt.value
@@ -930,7 +1436,13 @@ def alarmdecoderAlarmHandler(evt) {
 def initSubscriptions() {
     // subscribe to the Smart Home Manager api for alarm status events
     if (debug) log.debug("initSubscriptions: Subscribe to handlers")
-    subscribe(location, "alarmSystemStatus", shmAlarmHandler)
+
+    if (MONTYPE == "SHM") {
+        subscribe(location, "alarmSystemStatus", monitorAlarmHandler)
+    }
+    if (MONTYPE == "HSM") {
+        subscribe(location, "hsmStatus", monitorAlarmHandler)
+    }
 
     // subscribe to add zone handler
     subscribe(app, addZone)
@@ -944,9 +1456,7 @@ def initSubscriptions() {
  */
 def discover_alarmdecoder() {
     if (debug) log.debug("discover_alarmdecoder")
-
-    // Request HUB send out a UpNp broadcast discovery messages on the local network
-    sendHubCommand(new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN))
+    sendDiscover()
 }
 
 /**
@@ -1051,125 +1561,138 @@ def addExistingDevices() {
                 state.urn = convertHexToIP(state.ip) + ":" + convertHexToInt(state.port)
                 if (debug) log.debug("AlarmDecoder webapp api endpoint('${state.urn}')")
 
-                // Create device adding the URN to its data object
-                d = addChildDevice("alarmdecoder",
-                                   "AlarmDecoder network appliance",
-                                   "${state.ip}:${state.port}",
-                                   newDevice?.value.hub,
-                                   [
-                                       name: "${state.ip}:${state.port}",
-                                       label: "${lname}(${sname})",
-                                       completedSetup: true,
-                                       /* data associated with this AlarmDecoder */
-                                       data:[
-                                                // save mac address to update if IP / PORT change
-                                                mac: newDevice.value.mac,
-                                                ssdpUSN: newDevice.value.ssdpUSN,
-                                                urn: state.urn,
-                                                ssdpPath: newDevice.value.ssdpPath
-                                            ]
-                                   ])
+                try {
 
-                // Set default device state to notready.
-                d.sendEvent(name: "panel_state", value: "notready", isStateChange: true, displayed: true)
+                    // Create device adding the URN to its data object
+                    d = addChildDevice(APPNAMESPACE,
+                                       "AlarmDecoder network appliance",
+                                       "${getDeviceKey()}",
+                                       newDevice?.value.hub,
+                                       [
+                                           name: "${getDeviceKey()}",
+                                           label: "${guiname}",
+                                           completedSetup: true,
+                                           /* data associated with this AlarmDecoder */
+                                           data:[
+                                                    // save mac address to update if IP / PORT change
+                                                    mac: newDevice.value.mac,
+                                                    ssdpUSN: newDevice.value.ssdpUSN,
+                                                    urn: state.urn,
+                                                    ssdpPath: newDevice.value.ssdpPath
+                                                ]
+                                       ])
 
+                    // Set default device state to notready.
+
+                    d.sendEvent(name: "panel_state", value: "notready", isStateChange: true, displayed: true)
+                } catch (e) {
+                    log.info "Error creating device root device ${guiname}"
+                }
             }
-            
-            // Add virtual zone contact sensors if they do not exist.
-            // asynchronous to avoid timeout. Apps can only run for 20 seconds or it will be killed.
-            for (def i = 0; i < 20; i++)
-            {
-                sendEvent(name: "addZone", value: "${i+1}", data: "${state.ip}:${state.port}:switch${i+1}")
-            }
+        }
 
-            // Add virtual Smoke Alarm sensors if it does not exist.
-            def cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:SmokeAlarm" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder virtual smoke alarm", "${state.ip}:${state.port}:SmokeAlarm", state.hub,
-                [name: "${state.ip}:${state.port}:smokeAlarm", label: "${sname} Smoke Alarm", completedSetup: true])
+        // Add zone contact sensors if they do not exist.
+        // asynchronous to avoid timeout. Apps can only run for 20 seconds or it will be killed.
+        for (def i = 0; i < max_sensors; i++)
+        {
+            if (debug) log.debug("Adding virtual zone sensor ${i}")
+            // SmartThings we do out of band with callback
+            if (MONTYPE == "SHM") {
+                sendEvent(name: "addZone", value: "${i+1}", data: "${getDeviceKey()}:switch${i+1}")
+            }
+            // Callbacks to local events seem to not work on HT
+            if (MONTYPE == "HSM") {
+                def evt = [value: "${i+1}", data: "${state.ip}:switch${i+1}"]
+                addZone(evt)
+            }
+        }
+
+        // Add Smoke Alarm sensors if it does not exist.
+        def cd = state.devices.find { k, v -> k == "${getDeviceKey()}:smokeAlarm" }
+        if (!cd)
+        {
+            try {
+                def nd = addChildDevice(APPNAMESPACE, "AlarmDecoder virtual smoke alarm", "${getDeviceKey()}:smokeAlarm", state.hub,
+                                        [name: "${getDeviceKey()}:smokeAlarm", label: "${sname} Smoke Alarm", completedSetup: true])
                 nd.sendEvent(name: "smoke", value: "clear", isStateChange: true, displayed: false)
+            } catch (e) {
+                log.info "Error creating device: smokeAlarm"
             }
+        }
 
-            // Add virtual Arm Stay switch if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:armStay" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:armStay", state.hub,
-                [name: "${state.ip}:${state.port}:armStay", label: "${sname} Stay", completedSetup: true])
-                nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
+        // do not create devices if testing. Real PITA to delete them every time. ST needs to add a way to delete multiple devices at once.
+        if (!nocreatedev)
+        {
+            // Add Arm Stay switch/indicator combo if it does not exist.
+            addAD2VirtualDevices("armStay", "Stay", false, true, true)
+
+            // Add Arm Away switch/indicator combo if it does not exist.
+            addAD2VirtualDevices("armAway", "Away", false, true, true)
+
+            // Add Exit switch/indicator combo if it does not exist.
+            addAD2VirtualDevices("exit", "Exit", false, true, true)
+
+            // Add Chime Mode toggle switch/indicator combo if it does not exist.
+            addAD2VirtualDevices("chimeMode", "Chime", false, true, true)
+
+            // Add Bypass status contact if it does not exist.
+            addAD2VirtualDevices("bypass", "Bypass", false, false, true)
+
+            // Add Ready status contact if it does not exist.
+            addAD2VirtualDevices("ready", "Ready", false, false, true)
+
+            // Add virtual Alarm Bell status contact if it does not exist.
+            addAD2VirtualDevices("alarmBell", "Alarm Bell", false, false, true)
+
+            // Add FIRE Alarm switch/indicator combo if it does not exist.
+            addAD2VirtualDevices("alarmFire", "Fire Alarm", false, true, true)
+
+            // Add Panic Alarm switch/indicator combo if it does not exist.
+            addAD2VirtualDevices("alarmPanic", "Panic Alarm", false, true, false)
+
+            // Add AUX Alarm switch/indicator combo if it does not exist.
+            addAD2VirtualDevices("alarmAUX", "AUX Alarm", false, true, false)
+
+            // Add Disarm button if it does not exist.
+            if(create_disarm) {
+                addAD2VirtualDevices("disarm", "Disarm", false, true, false)
             }
+        }
+    }
+}
 
-            // Add virtual Arm Away switch if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:armAway" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:armAway", state.hub,
-                [name: "${state.ip}:${state.port}:armAway", label: "${sname} Away", completedSetup: true])
-                nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
+
+/**
+ * Add Virtual button and contact
+ */
+def addAD2VirtualDevices(name, label, initstate, createButton, createContact) {
+
+    if (createButton) {
+        // Add switch/indicator combo if it does not exist.
+        def cd = state.devices.find { k, v -> k == "${getDeviceKey()}:${name}" }
+        if (!cd)
+        {
+            try {
+                def nd = addChildDevice(APPNAMESPACE, "AlarmDecoder action button indicator", "${getDeviceKey()}:${name}", state.hub,
+                                        [name: "${getDeviceKey()}:${name}", label: "${sname} ${label}", completedSetup: true])
+                nd.sendEvent(name: "switch", value: (initstate ? "on" : "off") , isStateChange: true, displayed: false)
+            } catch (e) {
+                log.info "Error creating device: ${name}"
             }
+        }
+    }
 
-            // Add virtual Chime switch if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:chimeMode" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:chimeMode", state.hub,
-                [name: "${state.ip}:${state.port}:chimeMode", label: "${sname} Chime", completedSetup: true])
-                nd.sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
-            }
-
-            // Add virtual Bypass switch if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:bypass" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:bypass", state.hub,
-                [name: "${state.ip}:${state.port}:bypass", label: "${sname} Bypass", completedSetup: true])
-                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
-            }
-
-            // Add virtual Ready contact if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:readyIndicator" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:readyIndicator", state.hub,
-                [name: "${state.ip}:${state.port}:readyIndicator", label: "${sname} Ready", completedSetup: true])
-                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
-            }
-
-            // Add virtual Alarm Bell contact if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmBell" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder status indicator", "${state.ip}:${state.port}:alarmBellIndicator", state.hub,
-                [name: "${state.ip}:${state.port}:alarmBellIndicator", label: "${sname} Alarm Bell", completedSetup: true])
-                nd.sendEvent(name: "contact", value: "close", isStateChange: true, displayed: false)
-            }
-
-            // Add FIRE alarm button if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmFire" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmFire", state.hub,
-                [name: "${state.ip}:${state.port}:alarmFire", label: "${sname} Fire Alarm", completedSetup: true])
-                nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
-            }
-
-            // Add Panic alarm button if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmPanic" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmPanic", state.hub,
-                [name: "${state.ip}:${state.port}:alarmPanic", label: "${sname} Panic Alarm", completedSetup: true])
-                nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
-            }
-
-            // Add AUX alarm button if it does not exist.
-            cd = state.devices.find { k, v -> k == "${state.ip}:${state.port}:alarmAUX" }
-            if (!cd)
-            {
-                def nd = addChildDevice("alarmdecoder", "AlarmDecoder action button indicator", "${state.ip}:${state.port}:alarmAUX", state.hub,
-                [name: "${state.ip}:${state.port}:alarmAUX", label: "${sname} AUX Alarm", completedSetup: true])
-                nd.sendEvent(name: "switch", value: "close", isStateChange: true, displayed: false)
+    if (createContact) {
+        // Add contact status contact if it does not exit.
+        def cd = state.devices.find { k, v -> k == "${getDeviceKey()}:${name}Status" }
+        if (!cd)
+        {
+            try {
+                def nd = addChildDevice(APPNAMESPACE, "AlarmDecoder status indicator", "${getDeviceKey()}:${name}Status", state.hub,
+                                        [name: "${getDeviceKey()}:${name}Status", label: "${sname} ${label} Status", completedSetup: true])
+                nd.sendEvent(name: "contact", value: (initstate ? "closed" : "open"), isStateChange: true, displayed: false)
+            } catch (e) {
+                log.info "Error creating device: ${name}Status"
             }
         }
     }
@@ -1180,7 +1703,7 @@ def addExistingDevices() {
  */
 private def configureDeviceSubscriptions() {
     if (debug) log.debug("configureDeviceSubscriptions")
-    def device = getChildDevice("${state.ip}:${state.port}")
+    def device = getChildDevice("${getDeviceKey()}")
     if (!device) {
         log.error("configureDeviceSubscriptions: Could not find primary device.")
         return
@@ -1192,8 +1715,7 @@ private def configureDeviceSubscriptions() {
     subscribe(device, "zone-on", zoneOn, [filterEvents: false])
     subscribe(device, "zone-off", zoneOff, [filterEvents: false])
 
-    /* Subscribe to Smart Home Monitor(SHM) alarmStatus events
-     */
+    // Subscribe to our own alarm status events from our primary device
     subscribe(device, "alarmStatus", alarmdecoderAlarmHandler, [filterEvents: false])
 
     // subscrib to smoke-set handler for updates
@@ -1208,6 +1730,9 @@ private def configureDeviceSubscriptions() {
     // subscribe to chime handler
     subscribe(device, "chime-set", chimeSet, [filterEvents: false])
 
+    // subscribe to exit handler
+    subscribe(device, "exit-set", exitSet, [filterEvents: false])
+
     // subscribe to bypass handler
     subscribe(device, "bypass-set", bypassSet, [filterEvents: false])
 
@@ -1217,8 +1742,14 @@ private def configureDeviceSubscriptions() {
     // subscribe to ready handler
     subscribe(device, "ready-set", readySet, [filterEvents: false])
 
+    // subscribe to disarm handler
+    subscribe(device, "disarm-set", disarmSet, [filterEvents: false])
+
     // subscribe to CID handler
     subscribe(device, "cid-set", cidSet, [filterEvents: false])
+
+    // subscribe to RFX handler
+    subscribe(device, "rfx-set", rfxSet, [filterEvents: false])
 
 }
 
@@ -1322,17 +1853,7 @@ def verifyAlarmDecoders() {
  * Send a GET request from the HUB to the AlarmDecoder for its descrption.xml file
  */
 def verifyAlarmDecoder(String deviceNetworkId, String ssdpPath) {
-  String ip = getHostAddressFromDNI(deviceNetworkId)
-
-  if (debug) log.debug("verifyAlarmDecoder: $deviceNetworkId ssdpPath: ${ssdpPath} ip: ${ip}")
-
-  def result = new physicalgraph.device.HubAction([
-  method: "GET",
-        path: ssdpPath,
-        headers: [Host: ip, Accept: "*/*"]],
-        deviceNetworkId
-  )
-  sendHubCommand(result)
+  sendVerify(deviceNetworkID, ssdpPath)
 }
 
 /**
@@ -1347,6 +1868,19 @@ private String convertHexToIP(hex) {
  */
 private Integer convertHexToInt(hex) {
     Integer.parseInt(hex,16)
+}
+
+/**
+ *
+ */
+private String getDeviceKey() {
+    def key = ""
+    if (MONTYPE == "SHM")
+        key = "${state.ip}:${state.port}"
+    if (MONTYPE == "HSM")
+        key = "${state.ip}"
+
+    return key
 }
 
 /**

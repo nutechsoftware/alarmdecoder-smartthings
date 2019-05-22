@@ -1,4 +1,4 @@
- /**
+/**
  *  Virtual Momentary Switch to trigger actions with indicator in the AlarmDecoder service
  *
  *  Copyright 2016-2018 Nu Tech Software Solutions, Inc.
@@ -13,10 +13,17 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
+
+ /*
+ * global support
+ */
+import groovy.transform.Field
+@Field APPNAMESPACE = "alarmdecoder"
+
 metadata {
-    definition (name: "AlarmDecoder action button indicator", namespace: "alarmdecoder", author: "sean@nutech.com") {
+    definition (name: "AlarmDecoder action button indicator", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
+        capability "Switch"
         capability "Momentary"
-		capability "Switch"
         command "push"
         command "on"
         command "off"
@@ -44,9 +51,9 @@ def push() {
 }
 
 def on() {
-	push()
+    push()
 }
 
 def off() {
-	push()
+    push()
 }

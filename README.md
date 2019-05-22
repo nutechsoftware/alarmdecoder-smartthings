@@ -1,91 +1,132 @@
-This repository provides support for the AlarmDecoder webapp inside of the SmartThings home automation platform.
+This repository provides support for the AlarmDecoder webapp inside of the SmartThings or Hubitat home automation platforms.
 
 ## Requirements
 
 * AlarmDecoder webapp 0.8.2+
-* SmartThings Hub
+* SmartThings or Hubitat hub
 
 ## Features
 
-* Arm, disarm, or panic your alarm system from within SmartThings.
+* Arm, disarm, or panic your alarm system from within SmartThings/Hubitat.
 * Provides virtual sensors that can be married to zones on your panel to allow automation based on zones faulting and restoring.
 * Provides virtual momentary switches with indicators for arming away, stay and toggling chime mode with each switch indicating the current state. Alexa and other systems are able to activate these switches to allow a wide array of alarm panel control possibilities.
 * Provide virtual contact sensors for "Ready" and "Alarm Bell" indications on the alarm panel.
 * Provides a virtual "AD2 Smoke Alarm" that can be integrated with SHM or other systems to control state during a fire event such as turning all lights on.
 * Provides the ability to create virtual switches that can be tied to specific Contact ID report codes from the alarm panel. As an example a zone setup as a Carbon Monoxide alarm can be directly tied to a virtual switch that will OPEN in the event it triggers using Contact ID 162.
-* Smart Home Monitor integration.  
+* Smart Home Monitor / Home Security Module integration.  
 One-way - Arm or disarm your panel when the Smart Home Monitor status is changed.  
 Two-way - Change Smart Home Monitor's status when your panel is armed or disarmed.  
 
 ## Virtual devices
 
-* AlarmDecoder(AD2)  
+* AlarmDecoder UI  
 Description: Main service device provides a simple user interface to manage the alarm.  
 
-* AD2 Alarm Bell  
+* Security Alarm Bell  
 Capabilities:  Contact sensor  
 Description: An indicator to show the panel bell state  
-States: close = off, open = sounding  
+States: [open, close = Alarm Bell Sounding]  
 
-* AD2 Chime  
+* Security Chime  
 Capabilities:  Momentary  
 Description: indicator to show the Chime state.
 -- Action **'push'** will toggle the chime state.  
-States: [on, off]  
+States: [on = Chime Mode On, off]  
 
-* AD2 Ready  
+* Security Chime Status  
+Capabilities:  Contact sensor  
+Description: indicator to show the Chime state.
+States: [open, close = Chime Mode On]  
+
+* Security Ready Status  
 Capabilities: Contact Sensor  
 Description: An indicator to show the panel ready to arm state.  
 States: [open, close = Ready]  
 
-* AD2 Bypass  
+* Security Bypass Status  
 Capabilities: Contact Sensor  
 Description: An indicator to show if the panel has a bypassed zone.  
-States: [open = Zone(s) Bypassed, close]  
+States: [open, close = Zone(s) Bypassed]  
 
-* AD2 Smoke Alarm  
+* Security Smoke Alarm  
 Capabilities: smokeDetector  
 Description: An indicator to show the panel fire state.  
 States: [clear, detected]  
 
-* AD2 Stay  
+* Security Disarm  
+Capabilities:  Momentary  
+Description: Action **'push'** will send the DISARM Alarm command to the panel  
+States: No indication of alarm type  
+
+* Security Stay  
 Capabilities:  Momentary  
 Description: indicator to show the arm Stay state
 -- Action **'push'** will send the arm Stay command to the panel  
-States: [on, off]  
+States: [on = Armed Stay, off]  
 
-* AD2 Away  
+* Security Stay Status  
+Capabilities:  Contact Sensor  
+Description: indicator to show the arm Stay state
+States: [open, close = Armed Stay]  
+
+* Security Away  
 Capabilities:  Momentary  
 Description: indicator to show the arm Away state
 -- Action **'push'** will send the arm Away command to the panel  
-States: [on, off]  
+States: [on = Armed Away, off]  
 
-* AD2 Panic Alarm  
+* Security Away Status  
+Capabilities:  Contact Sensor  
+Description: indicator to show the arm Away state
+States: [open, close = Armed Away]  
+
+* Security Exit  
+Capabilities:  Momentary  
+Description: indicator to show the arm Exit state
+-- Action **'push'** will send the exit command to the panel  
+States: [on = You May Exit Now, off]  
+
+* Security Exit Status  
+Capabilities:  Contact Sensor  
+Description: indicator to show the arm Exit state
+States: [open, close = You May Exit Now]  
+
+* Security Panic Alarm  
 Capabilities:  Momentary  
 Description: Action **'push'** will send the Panic Alarm command to the panel  
 States: No indication of alarm type  
 
-* AD2 Aux Alarm  
+* Security Aux Alarm  
 Capabilities:  Momentary  
 Description: Action **'push'** will send the AUX Alarm command to the panel  
 States: No indication of alarm type  
 
-* AD2 Fire Alarm  
+* Security Fire Alarm  
 Capabilities:  Momentary  
 Description: Action **'push'** will send the Fire Alarm command to the panel  
-States: No indication of alarm type  
+States: States: [on = Fire Alarm Active, off]  
 
-* AD2 Zone Sensor #N  
+* Security Fire Alarm Status  
+Capabilities:  Contact Sensor  
+Description: indicator to show the a fire alarm is active. Follows Security Smoke Alarm  
+States: [open, close = Fire Alarm Active]
+
+* Security Zone Sensor #N  
 Capabilities: Contact Sensor  
 Description: An indicator to show the zone state  
 States: [open , close] * reversible in parent device settings  
 
-* AD2 CID-***AAA***-***B***-***CCC***  
+* CID-***AAA***-***B***-***CCC***  
 Capabilities: Momentary  
 Description: Indicates the state of the given Contact ID report state. The action **'push'** will restore to closed state. ***AAA*** is the Contact ID number ***B*** is the partition and ***CCC*** is the zone or user code to match with '...' matching all. Ex. CID-401-012 will monitor user 012 arming/disarming. Supports regex in the deviceNetworkId to allow to create devices that can trigger on multiple CID messages such as ***"CID-4[0,4]]1-1-..."*** will monitor all users for arming/disarming away or stay on partition 1.  
 States: [on, off]  
 
-## Setup
+* RFX-AAAAAA-B-C-D-E-F-G
+Capabilities: Momentary  
+Description: Indicates the state of the given Contact ID report state. The action **'push'** will restore to closed state. AAAAAA is the RF Serial Number B is battery status, C is supervisor event(ignore with ?), D is loop0(ignore with ?), E is loop1(ignore with ?), F is loop2(ignore with ?) and E is loop3(ignore with ?). Ex. RFX-123456-?-?-1-?-?-? will monitor 5800 RF sensor with serial number 123456 and loop1 for changes.
+States: [on, off]  
+
+## Setup SmartThings
 
 Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.com) in your browser and login to your account.
 
@@ -98,7 +139,7 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
 6. Enter `master` as the **branch**
 7. Click **Save**
 8. Click **Update From Repo** (top of page)
-9. Check the boxes 
+9. Check the boxes
    * `AlarmDecoder network appliance`
    * `AlarmDecoder virtual contact sensor`
    * `AlarmDecoder virtual smoke alarm`
@@ -113,10 +154,11 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
 3. Check box for `alarmdecoder service`
 4. Check **Publish** (bottom of dialog)
 5. Click **Execute Update**
-6. Select the `alarmdecoder: AlarmDecoder service` smart app and then select your location on the right and press **Set Location**.  (Click the **Simulator** if you don't see these options)
-7. Click the **Discover** button.  You may have to hit refresh to get your device to show up.  If it doesn't show up make sure you're running an up-to-date version of the webapp and that it is on the same netowrk as your SmartThings HUB.
-8. Click **Select Devices** and select your AlarmDecoder.
-9. Click **Install**
+6. Adjust **@Field** settings as needed at the top of the **AlarmDecoder service** code and **Publish** if changes are made.
+7. Select the `alarmdecoder: AlarmDecoder service` smart app and then select your location on the right and press **Set Location**.  (Click the **Simulator** if you don't see these options)
+8. Click the **Discover** button.  You may have to hit refresh to get your device to show up.  If it doesn't show up make sure you're running an up-to-date version of the webapp and that it is on the same netowrk as your SmartThings HUB.
+9. Click **Select Devices** and select your AlarmDecoder.
+10. Click **Install**
     * Notes
         1. This will generate new devices under **My Devices**
         2. If you **Uninstall** from **AlarmDecoder service** screen it will attempt to automatically remove all sub devices if they are not in use by SHM or other rules.
@@ -160,7 +202,7 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
     10. The switch will be created and you can see it under **My Devices**
 
 
-## Enabling SmartThings Integration in the Webapp
+## Enabling SmartThings/Hubitat Integration in the Webapp
 1. Log into your AlarmDecoder webapp.
 2. Click Settings
 3. Click Notifications
