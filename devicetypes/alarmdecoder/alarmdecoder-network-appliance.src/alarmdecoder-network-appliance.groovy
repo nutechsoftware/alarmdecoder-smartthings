@@ -747,7 +747,7 @@ def bypass(zone) {
     if (settings.panel_type == "ADEMCO")
         keys = "${user_code}6" + zone.toString().padLeft(2,"0") + "*"
     else if (settings.panel_type == "DSC")
-        keys = "*1" + zone.toString().padLeft(2,"0")
+        keys = "*1" + zone.toString().padLeft(2,"0") + "#"
     else
         log.warn("--- bypass: unknown panel_type.")
 
