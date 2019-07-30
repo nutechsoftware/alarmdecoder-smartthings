@@ -173,6 +173,7 @@ metadata {
         multiAttributeTile(name: "status", type: "generic", width: 6, height: 4) {
             tileAttribute("device.panel_state", key: "PRIMARY_CONTROL") {
                 attributeState "armed", label: 'Armed', icon: "st.security.alarm.on", backgroundColor: "#ffa81e"
+                attributeState "armed_exit", label: 'Armed (exit-now)', icon: "st.nest.nest-away", backgroundColor: "#ffa81e"
                 attributeState "armed_stay", label: 'Armed (stay)', icon: "st.security.alarm.on", backgroundColor: "#ffa81e"
                 attributeState "armed_stay_exit", label: 'Armed (exit-now)', icon: "st.nest.nest-away", backgroundColor: "#ffa81e"
                 attributeState "disarmed", label: 'Disarmed', icon: "st.security.alarm.off", backgroundColor: "#79b821", defaultState: true
@@ -185,6 +186,7 @@ metadata {
 
         standardTile("arm_disarm", "device.panel_state", inactiveLabel: false, width: 2, height: 2) {
             state "armed", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "armed_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "armed_stay", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "armed_stay_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "disarmed", action:"arm_away", icon:"st.security.alarm.on", label: "AWAY"
@@ -196,6 +198,7 @@ metadata {
 
         standardTile("stay_disarm", "device.panel_state", inactiveLabel: false, width: 2, height: 2) {
             state "armed", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "armed_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "armed_stay", action:"exit", icon:"st.nest.nest-away", label: "EXIT"
             state "armed_stay_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "disarmed", action:"arm_stay", icon:"st.Home.home4", label: "STAY"
@@ -747,7 +750,7 @@ def bypass(zone) {
     if (settings.panel_type == "ADEMCO")
         keys = "${user_code}6" + zone.toString().padLeft(2,"0") + "*"
     else if (settings.panel_type == "DSC")
-        keys = "*1" + zone.toString().padLeft(2,"0")
+        keys = "*1" + zone.toString().padLeft(2,"0") + "#"
     else
         log.warn("--- bypass: unknown panel_type.")
 
@@ -825,7 +828,11 @@ def update_state(data) {
     // If armed update internal UI state to exit mode and armed state
     if (armed) {
         if ( data.panel_exit ) {
-            panel_state = (data.panel_armed_stay ? "armed_stay_exit" : "armed")
+            if ( data.panel_armed_stay ) {
+                panel_state = "armed_stay_exit"
+            } else {
+                panel_state = "armed_exit"
+            }
         } else {
             panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
         }
@@ -917,7 +924,6 @@ def update_state(data) {
     state.panel_on_battery = data.panel_on_battery
     state.panel_ready = data.panel_ready
     state.panel_chime = data.chime
-    state.panel_exit = data.panel_exit
 
     return events
 }
