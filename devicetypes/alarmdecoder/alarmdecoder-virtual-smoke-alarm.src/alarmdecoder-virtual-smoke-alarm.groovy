@@ -14,7 +14,7 @@
  *
  */
 
- /*
+/*
  * global support
  */
 import groovy.transform.Field
@@ -22,7 +22,7 @@ import groovy.transform.Field
 
 metadata {
     definition (name: "AlarmDecoder virtual smoke alarm", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
-        capability "SmokeDetector"
+        capability "Smoke Detector"
     }
 
     // tile definitions
@@ -31,8 +31,12 @@ metadata {
             state "clear", label: '${name}', icon: "st.alarm.smoke.clear", backgroundColor: "#79b821"
             state "detected", label: '${name}', icon: "st.alarm.smoke.smoke", backgroundColor: "#e86d13"
         }
-
         main "sensor"
         details "sensor"
+    }
+
+    // preferences
+    preferences {
+        input name: "invert", type: "bool", title: "Invert", description: "Invert signal ON is OFF/OPEN is CLOSE/DETECTED is CLEAR", required: false
     }
 }

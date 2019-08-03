@@ -14,7 +14,7 @@
  *
  */
 
- /*
+/*
  * global support
  */
 import groovy.transform.Field
@@ -29,6 +29,7 @@ metadata {
         command "off"
     }
 
+    // tile definitions
     tiles {
         standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
             state "off", label: 'Push', action: "momentary.push", backgroundColor: "#ffffff"
@@ -37,6 +38,12 @@ metadata {
         main "switch"
         details "switch"
     }
+
+    // preferences
+    preferences {
+        input name: "invert", type: "bool", title: "Invert", description: "Invert signal ON is OFF/OPEN is CLOSE/DETECTED is CLEAR", required: false
+    }
+
 }
 
 // parse events into attributes

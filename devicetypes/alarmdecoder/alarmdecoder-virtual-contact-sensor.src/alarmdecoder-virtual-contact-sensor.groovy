@@ -14,7 +14,7 @@
  *
  */
 
- /*
+/*
  * global support
  */
 import groovy.transform.Field
@@ -33,5 +33,10 @@ metadata {
         }
         main "sensor"
         details "sensor"
+    }
+
+    // preferences
+    preferences {
+        input name: "invert", type: "bool", title: "Invert", description: "Invert signal ON is OFF/OPEN is CLOSE/DETECTED is CLEAR", required: false
     }
 }

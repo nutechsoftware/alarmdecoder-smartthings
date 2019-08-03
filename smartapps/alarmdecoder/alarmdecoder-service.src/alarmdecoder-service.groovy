@@ -22,9 +22,11 @@
  * Version 2.0.5 - Sean Mathews <coder@f34r.com> - Add switch to create Disarm button.
  * Version 2.0.6 - Sean Mathews <coder@f34r.com> - Compatiblity between ST and HT. Still requires some manual code edits but it will be minimal.
  * Version 2.0.7 - Sean Mathews <coder@f34r.com> - Add RFX virtual device management to track Ademco 5800 wireless or VPLEX sensors directly.
- * Version 2.0.8 - Sean Mathews <coder@f32r.com> - Added Exit button. New flag from AD2 state to detect exit state. Added rebuild devices button.
- * Version 2.0.9 - Sean Mathews <coder@f32r.com> - Split some devices from a single combined Momentary to a Momentary and a Contact for
+ * Version 2.0.8 - Sean Mathews <coder@f34r.com> - Added Exit button. New flag from AD2 state to detect exit state. Added rebuild devices button.
+ * Version 2.0.9 - Sean Mathews <coder@f34r.com> - Split some devices from a single combined Momentary to a Momentary and a Contact for
  *                                                 easy access by other systems.
+ * Version 2.1.0 - Sean Mathews <coder@f34r.com> - Modified virtual RFX devices to allow inverting signal and capabilities detection.
+                                                   Set the RFX device type to AlarmDecoder virtual smoke and it will report as a smoke detector.
  */
 
 /*
@@ -1199,6 +1201,7 @@ def rfxSet(evt) {
     def children = getChildDevices()
     children.each {
         if (it.deviceNetworkId.contains(":RFX-")) {
+
             // Network mask differes from ST to HT
             def sp = ""
             if (MONTYPE == "SHM")
@@ -1229,8 +1232,44 @@ def rfxSet(evt) {
                     tot++
                 }
 
+                def invert = (it.device.preferences.invert == "true" ? true : false)
+
+                // send a switch event if its a switch
+                if (it.hasCapability("Switch")) {
+                    // convert: Any matches is ON(true) no match is OFF(false)
+                    def sval = ((tot>0) ? true : false)
+
+                    // invert: If device has invert attribute then invert signal
+                    sval = (invert ? !sval : sval)
+
+                    // send switch event
+                    it.sendEvent(name: "switch", value: (sval ? "on" : "off"), isStateChange: true, filtered: true)
+                }
+
+                if (it.hasCapability("Contact Sensor")) {
+                    // convert: Any matches is ON(true) no match is OFF(false)
+                    def sval = ((tot>0) ? true : false)
+
+                    // invert: If device has invert attribute then invert signal
+                    sval = (invert ? !sval : sval)
+
+                    // send switch event
+                    it.sendEvent(name: "contact", value: (sval ? "open" : "close") , isStateChange: true, filtered: true)
+                }
+
+                if (it.hasCapability("Smoke Detector")) {
+                    // convert: Any matches is ON(true) no match is OFF(false)
+                    def sval = ((tot>0) ? true : false)
+
+                    // invert: If device has invert attribute then invert signal
+                    sval = (invert ? !sval : sval)
+
+                    // send switch event
+                    it.sendEvent(name: "smoke", value: (sval ? "clear" : "detected") , isStateChange: true, filtered: true)
+                }
+
                 if (debug) log.info("rfxSet device: ${device_name} matches ${match} sendng state ${tot}")
-                it.sendEvent(name: "switch", value: tot, isStateChange: true, filtered: true)
+
                 sent = true
 
             } else {
