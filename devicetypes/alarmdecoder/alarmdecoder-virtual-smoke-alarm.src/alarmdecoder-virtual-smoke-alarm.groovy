@@ -40,3 +40,11 @@ metadata {
         input name: "invert", type: "bool", title: "Invert", description: "Invert signal ON is OFF/OPEN is CLOSE/DETECTED is CLEAR", required: false
     }
 }
+
+def installed() {
+    updateDataValue("invert", invert.toString())
+}
+
+def updated() {
+    updateDataValue("invert", invert.toString())
+}

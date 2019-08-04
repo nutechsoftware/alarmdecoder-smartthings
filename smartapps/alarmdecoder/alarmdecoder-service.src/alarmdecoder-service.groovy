@@ -44,9 +44,7 @@ import groovy.transform.Field
 @Field max_sensors = 20
 @Field nocreatedev = false
 @Field create_disarm = true
-// Set the HA system type SmartThings Hub(SHM) or Hubitat Elevation(HSM)
 // You will also need to comment out and comment code in sendVerfy and sendDiscover below.
-@Field MONTYPE = "SHM" /* ["HSM", "SHM"] */
 
 /*
  * Device label name settings
@@ -61,6 +59,20 @@ import groovy.transform.Field
 @Field idname = ""
 
 /*
+ * determines if the app is running under SmartThings
+ */
+def isSmartThings() {
+    return physicalgraph?.device?.HubAction;
+}
+
+/* 
+ * determines if the app is running under Hubitat
+ */
+def isHubitat() {
+    return hubitat?.device?.HubAction;
+}
+
+/*
  * sendDiscover sends a discovery message to the HUB.
  * Leave comments out for the HUB type being used.
  */
@@ -68,11 +80,11 @@ def sendDiscover() {
     // Request HUB send out a UpNp broadcast discovery messages on the local network
     def haobj
     // Comment out the next line if we are using Hubitat
-    if(MONTYPE == "SHM") {
+    if (isSmartThings()) {
         // Comment out the next line if we are using Hubitat
         haobj = new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN)
     }
-    if(MONTYPE == "HSM") {
+    else if (isHubitat()) {
         // Comment out the next line if we are using SmartThings
         //haobj = new hubitat.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", hubitat.device.Protocol.LAN)
     }
@@ -87,11 +99,11 @@ def sendVerify(deviceNetworkID, ssdpPath) {
   String ip = getHostAddressFromDNI(deviceNetworkId)
   if (debug) log.debug("verifyAlarmDecoder: $deviceNetworkId ssdpPath: ${ssdpPath} ip: ${ip}")
 
-  if(MONTYPE == "SHM") {
+  if(isSmartThings()) {
       // Comment out the next line if we are using Hubitat
       def result = new physicalgraph.device.HubAction([method: "GET", path: ssdpPath, headers: [Host: ip, Accept: "*/*"]], deviceNetworkId)
   }
-  if(MONTYPE == "HSM") {
+  else if (isHubitat()) {
       // Comment out the next line if we are using SmartThings
       //def result = new hubitat.device.HubAction([method: "GET", path: ssdpPath, headers: [Host: ip, Accept: "*/*"]], deviceNetworkId)
   }
@@ -1222,9 +1234,9 @@ def rfxSet(evt) {
 
             // Network mask differes from ST to HT
             def sp = ""
-            if (MONTYPE == "SHM")
+            if (isSmartThings())
                 sp = it.deviceNetworkId.split(":")[2].trim().split("-")
-            if (MONTYPE == "HSM")
+            else if (isHubitat())
                 sp = it.deviceNetworkId.split(":")[1].trim().split("-")
 
 
@@ -1262,7 +1274,7 @@ def rfxSet(evt) {
         }
     }
 
-    if (!sent) {
+    if (!sent && debug) {
         log.error("rfxSet: Could not find '${device_name}|XXX' device.")
         return
     }
@@ -1347,7 +1359,7 @@ def monitorAlarmHandler(evt) {
             {
                 if (debug) log.debug("monitorAlarmHandler DEBUG-- ${device.deviceNetworkId}")
                 /* SmartThings */
-                if (MONTYPE == "SHM") {
+                if (isSmartThings()) {
                     if (evt.value == "away" || evt.value == "armAway") {
                         // do not send if already in that state.
                         if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay")) {
@@ -1375,7 +1387,7 @@ def monitorAlarmHandler(evt) {
                         log.debug "Unknown SHM alarm value: ${evt.value}"
                 }
                 /* Hubitat */
-                if (MONTYPE == "HSM") {
+                else if (isHubitat()) {
                     if (evt.value == "armedAway") {
                         // do not send if already in that state.
                         if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay")) {
@@ -1422,12 +1434,12 @@ def alarmdecoderAlarmHandler(evt) {
     if (debug) log.debug("alarmdecoderAlarmHandler -- ${evt.value}, lastMONStatus ${state.lastMONStatus}, lastAlarmDecoderStatus ${state.lastAlarmDecoderStatus}")
 
     if (state.lastAlarmDecoderStatus != evt.value) {
-        if(MONTYPE == "SHM") {
+        if(isSmartThings()) {
             /* no traslation needed already [stay,away,off] */
             if (debug) log.debug("alarmdecoderAlarmHandler: alarmSystemStatus ${evt.value}")
             sendLocationEvent(name: "alarmSystemStatus", value: evt.value)
         }
-        if(MONTYPE == "HSM") {
+        else if (isHubitat()) {
             /* translate to HSM */
             msg = ""
             if (evt.value == "stay") {
@@ -1460,10 +1472,10 @@ def initSubscriptions() {
     // subscribe to the Smart Home Manager api for alarm status events
     if (debug) log.debug("initSubscriptions: Subscribe to handlers")
 
-    if (MONTYPE == "SHM") {
+    if (isSmartThings()) {
         subscribe(location, "alarmSystemStatus", monitorAlarmHandler)
     }
-    if (MONTYPE == "HSM") {
+    else if (isHubitat()) {
         subscribe(location, "hsmStatus", monitorAlarmHandler)
     }
 
@@ -1620,11 +1632,11 @@ def addExistingDevices() {
         {
             if (debug) log.debug("Adding virtual zone sensor ${i}")
             // SmartThings we do out of band with callback
-            if (MONTYPE == "SHM") {
+            if (isSmartThings()) {
                 sendEvent(name: "addZone", value: "${i+1}", data: "${getDeviceKey()}:switch${i+1}")
             }
             // Callbacks to local events seem to not work on HT
-            if (MONTYPE == "HSM") {
+            else if (isHubitat()) {
                 def evt = [value: "${i+1}", data: "${state.ip}:switch${i+1}"]
                 addZone(evt)
             }
@@ -1898,9 +1910,9 @@ private Integer convertHexToInt(hex) {
  */
 private String getDeviceKey() {
     def key = ""
-    if (MONTYPE == "SHM")
+    if (isSmartThings())
         key = "${state.ip}:${state.port}"
-    if (MONTYPE == "HSM")
+    else if (isHubitat()) 
         key = "${state.ip}"
 
     return key
@@ -1934,7 +1946,7 @@ private getHostAddressFromDNI(d) {
 def _sendEventTranslate(ad2d, state) {
 
     // Grab the devices preferences for inverting
-    def invert = (ad2d.device.preferences.invert == "true" ? true : false)
+    def invert = (ad2d.device.getDataValue("invert") == "true" ? true : false)  
 
     // send a switch event if its a [Switch]
     // Default off = Off, on(Alerting) = On
@@ -1961,7 +1973,46 @@ def _sendEventTranslate(ad2d, state) {
         // send switch event
         ad2d.sendEvent(name: "contact", value: (sval ? "open" : "close") , isStateChange: true, filtered: true)
     }
+    
+    // send a 'motion' event if its a [Motion Sensor]
+    // Default inactive = Off, active(Alerting) = On
+    if (ad2d.hasCapability("Motion Sensor")) {
+        // convert: Any matches is ON(true) no match is OFF(false)
+        def sval = ((state == "on") ? true : false)
 
+        // invert: If device has invert attribute then invert signal
+        sval = (invert ? !sval : sval)
+
+        // send switch event
+        ad2d.sendEvent(name: "motion", value: (sval ? "active" : "inactive") , isStateChange: true, filtered: true)
+    }
+
+    // send a 'shock' event if its a [Shock Sensor]
+    // Default clear = Off, detected(Alerting) = On
+    if (ad2d.hasCapability("Shock Sensor")) {
+        // convert: Any matches is ON(true) no match is OFF(false)
+        def sval = ((state == "on") ? true : false)
+
+        // invert: If device has invert attribute then invert signal
+        sval = (invert ? !sval : sval)
+
+        // send switch event
+        ad2d.sendEvent(name: "shock", value: (sval ? "detected" : "clear") , isStateChange: true, filtered: true)
+    }
+	
+	// send a 'carbonMonoxide' event if its a [Carbon Monoxide Detector]
+    // Default clear = Off, detected(Alerting) = On
+    if (ad2d.hasCapability("Carbon Monoxide Detector")) {
+        // convert: Any matches is ON(true) no match is OFF(false)
+        def sval = ((state == "on") ? true : false)
+
+        // invert: If device has invert attribute then invert signal
+        sval = (invert ? !sval : sval)
+
+        // send switch event
+        ad2d.sendEvent(name: "carbonMonoxide", value: (sval ? "detected" : "clear") , isStateChange: true, filtered: true)
+    }
+	
     // send a 'smoke' event if its a [Smoke Detector]
     // Default clear = Off, detected(Alerting) = On
     if (ad2d.hasCapability("Smoke Detector")) {

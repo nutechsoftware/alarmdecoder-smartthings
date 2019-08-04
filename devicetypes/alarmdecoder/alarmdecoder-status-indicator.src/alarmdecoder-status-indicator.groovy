@@ -45,3 +45,11 @@ metadata {
 def parse(String description) {
    log.debug "AlarmDecoderStatusIndicator: Parsing '${description}'"
 }
+
+def installed() {
+    updateDataValue("invert", invert.toString())
+}
+
+def updated() {
+    updateDataValue("invert", invert.toString())
+}
