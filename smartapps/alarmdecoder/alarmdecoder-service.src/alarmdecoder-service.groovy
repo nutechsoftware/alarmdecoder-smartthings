@@ -26,7 +26,9 @@
  * Version 2.0.9 - Sean Mathews <coder@f34r.com> - Split some devices from a single combined Momentary to a Momentary and a Contact for
  *                                                 easy access by other systems.
  * Version 2.1.0 - Sean Mathews <coder@f34r.com> - Modified virtual RFX devices to allow inverting signal and capabilities detection.
-                                                   Set the RFX device type to AlarmDecoder virtual smoke and it will report as a smoke detector.
+ *                                                 Set the RFX device type to AlarmDecoder virtual smoke and it will report as a smoke detector.
+ *                                                 Modified sending of events creating a wrapper to invert and adjust to the device type.
+ *
  */
 
 /*
@@ -238,7 +240,7 @@ mappings {
 /**
  * Section note on saving and < icons
  */
-def section_no_save_note() {section("Please note") { paragraph "Do not use the \"<\" or the \"Save\" buttons on this page."}}
+def section_no_save_note() {section("Please note") { paragraph "Do not use the \"Save\" buttons on this page. Use the \"<\" to exit or go back."}}
 
 /**
  * our main page dynamicly generated to control page based upon logic.
@@ -385,8 +387,8 @@ def page_add_new_cid() {
             }
             section {
                 paragraph titles("section_cid_names")
-                input(name: "input_cid_name", type: "text", required: false, submitOnChange: true, title: titles("input_cid_name"))
-                input(name: "input_cid_label", type: "text", required: false, submitOnChange: true, title: titles("input_cid_label"))
+                input(name: "input_cid_name", type: "text", required: false, defaultValue: '', submitOnChange: true, title: titles("input_cid_name"))
+                input(name: "input_cid_label", type: "text", required: false, defaultValue: '', submitOnChange: true, title: titles("input_cid_label"))
             }
             // If input_cid_number or input_cid_number_raw have a value
             if ( (input_cid_number && (input_cid_number != "0")) || (input_cid_number_raw)) {
@@ -551,8 +553,8 @@ def page_add_new_rfx() {
         }
         section {
             paragraph titles("section_rfx_names")
-            input(name: "input_rfx_name", type: "text", required: false, submitOnChange: true, title: titles("input_rfx_name"))
-            input(name: "input_rfx_label", type: "text", required: false, submitOnChange: true, title: titles("input_rfx_label"))
+            input(name: "input_rfx_name", type: "text", required: false, defaultValue: '', submitOnChange: true, title: titles("input_rfx_name"))
+            input(name: "input_rfx_label", type: "text", required: false, defaultValue: '', submitOnChange: true, title: titles("input_rfx_label"))
         }
         section {
             input(name: "input_rfx_sn", type: "text", required: true, defaultValue: '000000', submitOnChange: true, title: titles("input_rfx_sn"))
@@ -961,18 +963,27 @@ def actionButton(id) {
     if (id.contains(":alarmFire")) {
         d.fire()
     }
+    // Turn off alarm bell if pushed
+    if (id.contains(":alarmBellStatus")) {
+        def cd = getChildDevice("${id}")
+        if (!cd) {
+            log.info("actionButton: Could not clear '${id}'.")
+            return
+        }
+        _sendEventTranslate(cd, "off")
+    }
     if (id.contains(":CID-")) {
         def cd = getChildDevice("${id}")
         if (!cd) {
-            log.info("actionButton: Could not CID device '${id}'.")
+            log.info("actionButton: Could not clear device '${id}'.")
             return
         }
-        cd.sendEvent(name: "switch", value: "off", isStateChange: true, filtered: true)
+        _sendEventTranslate(cd, "off")
     }
 }
 
 /**
- * send event to smokeAlarm device to set state
+ * send event to smokeAlarm device to set state [detected, clear]
  */
 def smokeSet(evt) {
     if (debug) log.debug("smokeSet: desc=${evt.value}")
@@ -983,13 +994,13 @@ def smokeSet(evt) {
         log.info("smokeSet: Could not find 'SmokeAlarm' device.")
         return
     }
-    d.sendEvent(name: "smoke", value: evt.value, isStateChange: true, filtered: true)
+    _sendEventTranslate(d, (evt.value == "detected" ? "on" : "off"))
 
     d = getChildDevice("${getDeviceKey()}:alarmFireStatus")
     if (!d) {
-        log.info("armAwaySet: Could not find 'alarmFireStatus' device.")
+        log.info("smokeSet: Could not find 'alarmFireStatus' device.")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open") , isStateChange: true, filtered: true)
+        _sendEventTranslate(d, (evt.value == "detected" ? "on" : "off"))
     }
 }
 
@@ -1002,14 +1013,14 @@ def armAwaySet(evt) {
     if (!d) {
         log.info("armAwaySet: Could not find 'armAway' device.")
     } else {
-        d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 
     d = getChildDevice("${getDeviceKey()}:armAwayStatus")
     if (!d) {
         log.info("armAwaySet: Could not find 'armAwayStatus' device.")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open") , isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 }
 
@@ -1029,7 +1040,7 @@ def armStaySet(evt) {
     if (!d) {
         log.info("armStaySet: Could not find 'armStayStatus' device.")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 }
 
@@ -1042,7 +1053,7 @@ def alarmBellSet(evt) {
     if (!d) {
         log.info("alarmBellSet: Could not find 'alarmBellStatus' device.")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 }
 
@@ -1055,14 +1066,14 @@ def chimeSet(evt) {
     if (!d) {
         log.info("chimeSet: Could not find device 'chimeMode'")
     } else {
-        d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 
     d = getChildDevice("${getDeviceKey()}:chimeModeStatus")
     if (!d) {
         log.info("chimeSet: Could not find device 'chimeModeStatus'")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 }
 
@@ -1075,14 +1086,14 @@ def exitSet(evt) {
     if (!d) {
         log.info("exitSet: Could not find device 'exit'")
     } else {
-        d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 
     d = getChildDevice("${getDeviceKey()}:exitStatus")
     if (!d) {
         log.info("exitSet: Could not find device 'exitStatus'")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 }
 
@@ -1096,7 +1107,7 @@ def bypassSet(evt) {
         log.info("bypassSet: Could not find device 'bypassStatus'")
         return
     }
-    d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+    _sendEventTranslate(d, evt.value)
 }
 
 /**
@@ -1109,7 +1120,7 @@ def readySet(evt) {
         log.info("readySet: Could not find 'readyStatus' device.")
         return
     }
-    d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+    _sendEventTranslate(d, evt.value)
 }
 
 /**
@@ -1121,7 +1132,7 @@ def disarmSet(evt) {
     if (!d) {
       log.info("disarmSet: Could not find 'disarm' device.")
     } else {
-      d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+      _sendEventTranslate(d, evt.value)
     }
 }
 
@@ -1158,7 +1169,7 @@ def cidSet(evt) {
             def match = it.deviceNetworkId.split(":")[2].trim()
             if (device_name =~ /${match}/) {
                 if (debug) log.error("cidSet device: ${device_name} matches ${match} sendng state ${cidstate}")
-                it.sendEvent(name: "switch", value: cidstate, isStateChange: true, filtered: true)
+                _sendEventTranslate(it, cidstate)
                 sent = true
             } else {
                 if (debug) log.error("cidSet device: ${device_name} no match ${match}")
@@ -1174,9 +1185,9 @@ def cidSet(evt) {
 
 /**
  * send RFX event to the correct device if one exists
- * evt.value example raw !RFX:123123,00
- * eventmessage 0462932:0:0:1:0:0:0
- * 01020304:1388:RFX-0014374-1-?-1-?-?-?
+ * evt.value example raw !RFX:123123,a0
+ * eventmessage 123123:0:0:1:1:0:0
+ * 01020304:1388:RFX-123123-?-?-1-?-?-?
  */
 def rfxSet(evt) {
     log.info("rfxSet ${evt.value}")
@@ -1232,41 +1243,7 @@ def rfxSet(evt) {
                     tot++
                 }
 
-                def invert = (it.device.preferences.invert == "true" ? true : false)
-
-                // send a switch event if its a switch
-                if (it.hasCapability("Switch")) {
-                    // convert: Any matches is ON(true) no match is OFF(false)
-                    def sval = ((tot>0) ? true : false)
-
-                    // invert: If device has invert attribute then invert signal
-                    sval = (invert ? !sval : sval)
-
-                    // send switch event
-                    it.sendEvent(name: "switch", value: (sval ? "on" : "off"), isStateChange: true, filtered: true)
-                }
-
-                if (it.hasCapability("Contact Sensor")) {
-                    // convert: Any matches is ON(true) no match is OFF(false)
-                    def sval = ((tot>0) ? true : false)
-
-                    // invert: If device has invert attribute then invert signal
-                    sval = (invert ? !sval : sval)
-
-                    // send switch event
-                    it.sendEvent(name: "contact", value: (sval ? "open" : "close") , isStateChange: true, filtered: true)
-                }
-
-                if (it.hasCapability("Smoke Detector")) {
-                    // convert: Any matches is ON(true) no match is OFF(false)
-                    def sval = ((tot>0) ? true : false)
-
-                    // invert: If device has invert attribute then invert signal
-                    sval = (invert ? !sval : sval)
-
-                    // send switch event
-                    it.sendEvent(name: "smoke", value: (sval ? "clear" : "detected") , isStateChange: true, filtered: true)
-                }
+				_sendEventTranslate(it, (tot>0 ? "on" : "off"))
 
                 if (debug) log.info("rfxSet device: ${device_name} matches ${match} sendng state ${tot}")
 
@@ -1301,7 +1278,7 @@ def addZone(evt) {
         }
 
         // Set default contact state.
-        zone_switch.sendEvent(name: "contact", value: sensorValue, isStateChange: true, displayed: false)
+        _sendEventTranslate(zone_switch, (sensorValue == "open" ? "on" : "off"))
     } catch (e) {
         log.error "There was an error (${e}) when trying to addZone ${i}"
     }
@@ -1322,7 +1299,7 @@ def zoneOn(evt) {
         if (settings.defaultSensorToClosed == true)
             sensorValue = "open"
 
-        d.sendEvent(name: "contact", value: sensorValue, isStateChange: true, filtered: true)
+        _sendEventTranslate(d, (sensorValue == "open" ? "on" : "off"))
     }
 }
 
@@ -1340,7 +1317,7 @@ def zoneOff(evt) {
         if (settings.defaultSensorToClosed == true)
             sensorValue = "closed"
 
-        d.sendEvent(name: "contact", value: sensorValue, isStateChange: true, filtered: true)
+        _sendEventTranslate(d, (sensorValue == "open" ? "on" : "off"))
     }
 }
 
@@ -1680,8 +1657,8 @@ def addExistingDevices() {
             // Add Ready status contact if it does not exist.
             addAD2VirtualDevices("ready", "Ready", false, false, true)
 
-            // Add virtual Alarm Bell status contact if it does not exist.
-            addAD2VirtualDevices("alarmBell", "Alarm Bell", false, false, true)
+            // Add virtual Alarm Bell switch/indicator combo if it does not exist.
+            addAD2VirtualDevices("alarmBell", "Alarm Bell", false, true, true)
 
             // Add FIRE Alarm switch/indicator combo if it does not exist.
             addAD2VirtualDevices("alarmFire", "Fire Alarm", false, true, true)
@@ -1931,4 +1908,63 @@ private getHostAddressFromDNI(d) {
   def ip = convertHexToIP(parts[0])
   def port = convertHexToInt(parts[1])
   return ip + ":" + port
+}
+
+/**
+ * Send a state change to an AD2 virtual device adjusting it to
+ * the devices actual capabilities and inverting if preferred.
+ *
+ * ad2d: The device handle.
+ * state: [on, off]
+ * Capabilities: [Switch]
+ *   Default off = off, on(Alerting) = on
+ * Capabilities: [Contact Sensor]
+ *   Default close = off, open(Alerting) = on
+ * Capabilities: [Smoke Detector]
+ *   Default clear = off, detected(Alerting) = on
+ *
+ */
+def _sendEventTranslate(ad2d, state) {
+
+    // Grab the devices preferences for inverting
+    def invert = (ad2d.device.preferences.invert == "true" ? true : false)
+
+    // send a switch event if its a [Switch]
+    // Default off = Off, on(Alerting) = On
+    if (ad2d.hasCapability("Switch")) {
+        // convert: Any matches is ON(true) no match is OFF(false)
+        def sval = ((state == "on") ? true : false)
+
+        // invert: If device has invert attribute then invert signal
+        sval = (invert ? !sval : sval)
+
+        // send 'switch' event
+        ad2d.sendEvent(name: "switch", value: (sval ? "on" : "off"), isStateChange: true, filtered: true)
+    }
+
+    // send a 'contact' event if its a [Contact Sensor]
+    // Default close = Off, open(Alerting) = On
+    if (ad2d.hasCapability("Contact Sensor")) {
+        // convert: Any matches is ON(true) no match is OFF(false)
+        def sval = ((state == "on") ? true : false)
+
+        // invert: If device has invert attribute then invert signal
+        sval = (invert ? !sval : sval)
+
+        // send switch event
+        ad2d.sendEvent(name: "contact", value: (sval ? "open" : "close") , isStateChange: true, filtered: true)
+    }
+
+    // send a 'smoke' event if its a [Smoke Detector]
+    // Default clear = Off, detected(Alerting) = On
+    if (ad2d.hasCapability("Smoke Detector")) {
+        // convert: Any matches is ON(true) no match is OFF(false)
+        def sval = ((state == "on") ? true : false)
+
+        // invert: If device has invert attribute then invert signal
+        sval = (invert ? !sval : sval)
+
+        // send switch event
+        ad2d.sendEvent(name: "smoke", value: (sval ? "detected" : "clear") , isStateChange: true, filtered: true)
+    }
 }
