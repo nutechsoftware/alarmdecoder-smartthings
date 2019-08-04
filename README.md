@@ -2,7 +2,7 @@ This repository provides support for the AlarmDecoder webapp inside of the Smart
 
 ## Requirements
 
-* AlarmDecoder webapp 0.8.2+
+* AlarmDecoder webapp 0.8.3+
 * SmartThings or Hubitat hub
 
 ## Features
@@ -16,6 +16,7 @@ This repository provides support for the AlarmDecoder webapp inside of the Smart
 * Smart Home Monitor / Home Security Module integration.  
 One-way - Arm or disarm your panel when the Smart Home Monitor status is changed.  
 Two-way - Change Smart Home Monitor's status when your panel is armed or disarmed.  
+* Change virtual device handlers in the graph pages to change device capabilities and the system will adjust event types to match the device. Change a Zone Sensor to a AD2 Virtual Smoke Alarm and it will report 'clear' or 'detected'. This allows changing of device types to match what is needed for the task.  
 
 ## Virtual devices
 
@@ -24,13 +25,19 @@ Description: Main service device provides a simple user interface to manage the 
 
 * Security Alarm Bell  
 Capabilities:  Contact sensor  
-Description: An indicator to show the panel bell state  
+Description: An indicator to show the panel bell state.  
+ -- Action **'push'** to turn off  
+States: [open, close = Alarm Bell Sounding]  
+
+* Security Alarm Bell Status  
+Capabilities:  Contact sensor  
+Description: An indicator to show the panel bell state.  
 States: [open, close = Alarm Bell Sounding]  
 
 * Security Chime  
 Capabilities:  Momentary  
-Description: indicator to show the Chime state.
--- Action **'push'** will toggle the chime state.  
+Description: indicator to show the Chime state.  
+ -- Action **'push'** will toggle the chime state  
 States: [on = Chime Mode On, off]  
 
 * Security Chime Status  
@@ -55,65 +62,69 @@ States: [clear, detected]
 
 * Security Disarm  
 Capabilities:  Momentary  
-Description: Action **'push'** will send the DISARM Alarm command to the panel  
+Description: Disarm the alarm.  
+ -- Action **'push'** will send the DISARM Alarm command to the panel  
 States: No indication of alarm type  
 
 * Security Stay  
 Capabilities:  Momentary  
-Description: indicator to show the arm Stay state
--- Action **'push'** will send the arm Stay command to the panel  
+Description: indicator to show the arm Stay state.  
+ -- Action **'push'** will send the arm Stay command to the panel  
 States: [on = Armed Stay, off]  
 
 * Security Stay Status  
 Capabilities:  Contact Sensor  
-Description: indicator to show the arm Stay state
+Description: indicator to show the arm Stay state.  
 States: [open, close = Armed Stay]  
 
 * Security Away  
 Capabilities:  Momentary  
-Description: indicator to show the arm Away state
--- Action **'push'** will send the arm Away command to the panel  
+Description: indicator to show the arm Away state.  
+ -- Action **'push'** will send the arm Away command to the panel  
 States: [on = Armed Away, off]  
 
 * Security Away Status  
 Capabilities:  Contact Sensor  
-Description: indicator to show the arm Away state
+Description: indicator to show the arm Away state.  
 States: [open, close = Armed Away]  
 
 * Security Exit  
 Capabilities:  Momentary  
-Description: indicator to show the arm Exit state
--- Action **'push'** will send the exit command to the panel  
+Description: indicator to show the arm Exit state.  
+ -- Action **'push'** will send the exit command to the panel  
 States: [on = You May Exit Now, off]  
 
 * Security Exit Status  
 Capabilities:  Contact Sensor  
-Description: indicator to show the arm Exit state
+Description: indicator to show the arm Exit state.  
 States: [open, close = You May Exit Now]  
 
 * Security Panic Alarm  
 Capabilities:  Momentary  
-Description: Action **'push'** will send the Panic Alarm command to the panel  
+Description: Panic button.  
+ -- Action **'push'** will send the Panic Alarm command to the panel  
 States: No indication of alarm type  
 
 * Security Aux Alarm  
 Capabilities:  Momentary  
-Description: Action **'push'** will send the AUX Alarm command to the panel  
+Description: Aux(Medical) panic button.  
+ -- Action **'push'** will send the AUX Alarm command to the panel  
 States: No indication of alarm type  
 
 * Security Fire Alarm  
 Capabilities:  Momentary  
-Description: Action **'push'** will send the Fire Alarm command to the panel  
+Description: Fire panic button.  
+ -- Action **'push'** will send the Fire Alarm command to the panel  
 States: States: [on = Fire Alarm Active, off]  
 
 * Security Fire Alarm Status  
 Capabilities:  Contact Sensor  
-Description: indicator to show the a fire alarm is active. Follows Security Smoke Alarm  
+Description: indicator to show the a fire alarm is active. Follows Security Smoke Alarm.  
 States: [open, close = Fire Alarm Active]
 
 * Security Zone Sensor #N  
 Capabilities: Contact Sensor  
-Description: An indicator to show the zone state  
+Description: An indicator to show the zone state.  
 States: [open , close] * reversible in parent device settings  
 
 * CID-***AAA***-***B***-***CCC***  

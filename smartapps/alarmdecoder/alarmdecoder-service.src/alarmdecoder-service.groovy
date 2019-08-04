@@ -964,7 +964,7 @@ def actionButton(id) {
         d.fire()
     }
     // Turn off alarm bell if pushed
-    if (id.contains(":alarmBellStatus")) {
+    if (id.contains(":alarmBell")) {
         def cd = getChildDevice("${id}")
         if (!cd) {
             log.info("actionButton: Could not clear '${id}'.")
@@ -1049,9 +1049,16 @@ def armStaySet(evt) {
  */
 def alarmBellSet(evt) {
     if (debug) log.debug("alarmBellSet ${evt.value}")
-    def d = getChildDevice("${getDeviceKey()}:alarmBellStatus")
+    def d = getChildDevice("${getDeviceKey()}:alarmBell")
     if (!d) {
-        log.info("alarmBellSet: Could not find 'alarmBellStatus' device.")
+        log.info("alarmBellSet: Could not find 'alarmBell' device.")
+    } else {
+        _sendEventTranslate(d, evt.value)
+    }
+
+    d = getChildDevice("${getDeviceKey()}:alarmBellStatus")
+    if (!d) {
+        log.info("alarmBellSet: Could not find device 'alarmBellStatus'")
     } else {
         _sendEventTranslate(d, evt.value)
     }
@@ -1061,7 +1068,7 @@ def alarmBellSet(evt) {
  * send event to chime indicator device to set state
  */
 def chimeSet(evt) {
-    if (debug) log.debug("chimeSet ${evt.value}")
+    /* if (debug)*/ log.debug("chimeSet ${evt.value}")
     def d = getChildDevice("${getDeviceKey()}:chimeMode")
     if (!d) {
         log.info("chimeSet: Could not find device 'chimeMode'")
