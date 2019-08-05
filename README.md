@@ -9,7 +9,7 @@ This repository provides support for the AlarmDecoder webapp inside of the Smart
 
 * Arm, disarm, toggle chime, or panic your alarm system from within SmartThings/Hubitat.
 * Provides virtual sensors that can be tied to zones on your panel to allow automation based on zones faulting and restoring.
-* Provides virtual momentary switches with indicators for arming away, stay and toggling chime mode with each switch indicating the current state. Alexa<sup>[\#warn](#alexa)</sup> and other systems are able to activate these switches to allow a wide array of alarm panel control possibilities.
+* Provides virtual momentary switches with indicators for arming away, stay and toggling chime mode with each switch indicating the current state. Alexa<sup>[\#warn](#warn)</sup> and other systems are able to activate these switches to allow a wide array of alarm panel control possibilities.
 * Provide virtual contact sensors for "Ready" and "Alarm Bell" indications on the alarm panel.
 * Provides a virtual "Smoke Alarm" that can be integrated with SHM or other systems to control state during a fire event such as turning all lights on.
 * Provides the ability to create virtual switches that can be tied to specific Contact ID report codes from the alarm panel. As an example a zone setup as a Carbon Monoxide alarm can be directly tied to a virtual switch that will OPEN in the event it triggers using Contact ID 162.
@@ -19,7 +19,7 @@ One-way - Arm or disarm your panel when the Smart Home Monitor status is changed
 Two-way - Change Smart Home Monitor's status when your panel is armed or disarmed.  
 * Change virtual device handlers in the graph pages to change device capabilities and the system will adjust event types to match the device. Change a Zone Sensor to a Virtual Smoke Alarm and it will report 'clear' or 'detected'. This allows changing of device types to match what is needed for the task.  
 
-  <a name="warn">#warn</a>: Alexa and other systems may be confused by the device name to send ON or OFF action too. This can be done using fuzzy AI logic than can cause the system to send the event to a Panic or Alarm action button triggering an alarm. Thoughtful naming of devices as well as restricting access is advised before allowing these external systems to access the virtual buttons.</sup>  
+<a name="warn">#warn</a>: Alexa and other systems may be confused by the device name to send ON or OFF action too. This can be done using fuzzy AI logic than can cause the system to send the event to a Panic or Alarm action button triggering an alarm. Thoughtful naming of devices as well as restricting access is advised before allowing these external systems to access the virtual buttons.</sup>  
 
 ## Virtual devices
 
