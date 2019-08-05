@@ -27,7 +27,7 @@ Description: Main service device provides a simple user interface to manage the 
 * Security<sup>[\#1](#vdevicenames)</sup> Alarm Bell  
 Network Mask: \*:alarmBell  
 Description: An indicator to show the panel bell state and button to clear.  
-Default Handler:  **AlarmDecoder action button indicator**  
+Default Handler:  **AlarmDecoder action button indicator**<sup>[\#5](#flexible_handlers)</sup>  
  -- capabilities [Momentary, Switch]  
  -- actions [push: manually set state to off and clear]  
  -- states [on(Alarming), off]  
@@ -35,14 +35,14 @@ Default Handler:  **AlarmDecoder action button indicator**
 * Security<sup>[\#1](#vdevicenames)</sup> Alarm Bell Status  
 Network Mask: \*:alarmBellStatus  
 Description: An indicator to show the panel bell state.  
-Default Handler: **AlarmDecoder status indicator**  
+Default Handler: **AlarmDecoder status indicator**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities  [Contact sensor]  
   -- states [open(Alarming), close]  
 
 * Security<sup>[\#1](#vdevicenames)</sup> Chime  
 Network Mask: \*:chimeMode  
 Description: indicator to show the Chime state and button to toggle.  
-Default Handler:  **AlarmDecoder action button indicator**  
+Default Handler:  **AlarmDecoder action button indicator**<sup>[\#5](#flexible_handlers)</sup>  
  -- capabilities [Momentary, Switch]  
  -- actions [push: toggle chime mode]  
  -- states [on(Enabled), off]  
@@ -50,35 +50,35 @@ Default Handler:  **AlarmDecoder action button indicator**
 * Security<sup>[\#1](#vdevicenames)</sup> Chime Status  
 Network Mask: \*:chimeModeStatus  
 Description: An indicator to show the chime state.  
-Default Handler: **AlarmDecoder status indicator**  
+Default Handler: **AlarmDecoder status indicator**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities  [Contact sensor]  
   -- states [open(Enabled), close]  
 
 * Security<sup>[\#1](#vdevicenames)</sup> Ready Status  
 Network Mask: \*:readyStatus  
 Description: An indicator to show the panel ready to arm state.  
-Default Handler: **AlarmDecoder status indicator**  
+Default Handler: **AlarmDecoder status indicator**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities  [Contact sensor]  
   -- states [open(READY), close]  
 
 * Security<sup>[\#1](#vdevicenames)</sup> Bypass Status  
 Network Mask: \*:bypassStatus  
 Description: An indicator to show if the panel has a bypassed zone.  
-Default Handler: **AlarmDecoder status indicator**  
+Default Handler: **AlarmDecoder status indicator**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities  [Contact sensor]  
   -- states [open(Zone(s) bypassed), close]  
 
 * Security<sup>[\#1](#vdevicenames)</sup> Smoke Alarm  
 Network Mask: \*:smokeAlarm  
 Description: An indicator to show the panel fire state.  
-Default Handler: **AlarmDecoder virtual smoke alarm**  
+Default Handler: **AlarmDecoder virtual smoke alarm**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities  [Smoke Detector]  
   -- states [clear, detected]  
 
 * Security<sup>[\#1](#vdevicenames)</sup> Disarm  
 Network Mask: \*:disarm  
 Description: indicator to show the arm state and button to disarm.  
-Default Handler:  **AlarmDecoder action button indicator**  
+Default Handler:  **AlarmDecoder action button indicator**<sup>[\#5](#flexible_handlers)</sup>  
  -- capabilities [Momentary, Switch]  
  -- actions [push: disarm panel]  
  -- states [on(Armed), off]  
@@ -86,7 +86,7 @@ Default Handler:  **AlarmDecoder action button indicator**
 * Security<sup>[\#1](#vdevicenames)</sup> Stay  
 Network Mask: \*:armStay  
 Description: indicator to show the arm stay state and button to arm stay.  
-Default Handler:  **AlarmDecoder action button indicator**  
+Default Handler:  **AlarmDecoder action button indicator**<sup>[\#5](#flexible_handlers)</sup>  
  -- capabilities [Momentary, Switch]  
  -- actions [push: arm stay]  
  -- states [on(Armed Stay), off]  
@@ -94,14 +94,14 @@ Default Handler:  **AlarmDecoder action button indicator**
 * Security<sup>[\#1](#vdevicenames)</sup> Stay Status  
 Network Mask: \*:armStayStatus  
 Description: An indicator to show if the panel is armed in stay mode.  
-Default Handler: **AlarmDecoder status indicator**  
+Default Handler: **AlarmDecoder status indicator**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities  [Contact sensor]  
   -- states [open(Armed Stay), close]  
 
 * Security<sup>[\#1](#vdevicenames)</sup> Away  
 Network Mask: \*:armAway  
 Description: indicator to show the arm away state and button to arm away.  
-Default Handler:  **AlarmDecoder action button indicator**  
+Default Handler:  **AlarmDecoder action button indicator**<sup>[\#5](#flexible_handlers)</sup>  
  -- capabilities [Momentary, Switch]  
  -- actions [push: arm away]  
  -- states [on(Armed Away), off]  
@@ -109,14 +109,14 @@ Default Handler:  **AlarmDecoder action button indicator**
 * Security<sup>[\#1](#vdevicenames)</sup> Away Status  
 Network Mask: \*:armAwayStatus  
 Description: An indicator to show if the panel is armed in stay mode.  
-Default Handler: **AlarmDecoder status indicator**  
+Default Handler: **AlarmDecoder status indicator**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities  [Contact sensor]  
   -- states [open(Armed Away), close]  
 
 * Security<sup>[\#1](#vdevicenames)</sup> Exit  
 Network Mask: \*:exit  
 Description: indicator to show the exit state.  
-Default Handler:  **AlarmDecoder action button indicator**  
+Default Handler:  **AlarmDecoder action button indicator**<sup>[\#5](#flexible_handlers)</sup>  
  -- capabilities [Momentary, Switch]  
  -- actions [push: request exit]  
  -- states [on(Exit now active), off]  
@@ -124,14 +124,14 @@ Default Handler:  **AlarmDecoder action button indicator**
 * Security<sup>[\#1](#vdevicenames)</sup> Exit Status  
 Network Mask: \*:exitStatus  
 Description: An indicator to show if the panel exit mode is active.  
-Default Handler: **AlarmDecoder status indicator**  
+Default Handler: **AlarmDecoder status indicator**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities  [Contact sensor]  
   -- states [open(Exit now active), close]  
 
 * Security<sup>[\#1](#vdevicenames)</sup> Panic Alarm  
 Network Mask: \*:alarmPanic  
 Description: Button to send Panic Alarm signal to the panel.  
-Default Handler:  **AlarmDecoder action button indicator**  
+Default Handler:  **AlarmDecoder action button indicator**<sup>[\#5](#flexible_handlers)</sup>  
  -- capabilities [Momentary, Switch]  
  -- actions [push: request panic]  
  -- states N/A<sup>[\#1](#notsupported)</sup>
@@ -139,7 +139,7 @@ Default Handler:  **AlarmDecoder action button indicator**
 * Security<sup>[\#1](#vdevicenames)</sup> AUX(Medical) Alarm  
 Network Mask: \*:alarmAUX  
 Description: Button to send AUX(Medical) Alarm signal to the panel.  
-Default Handler:  **AlarmDecoder action button indicator**  
+Default Handler:  **AlarmDecoder action button indicator**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities [Momentary, Switch]  
   -- actions [push: request aux alarm]  
   -- states N/A<sup>[\#1](#notsupported)</sup>
@@ -147,7 +147,7 @@ Default Handler:  **AlarmDecoder action button indicator**
 * Security<sup>[\#1](#vdevicenames)</sup> Fire Alarm  
 Network Mask: \*:alarmFire  
 Description: An indicator to show the panel fire state and button to clear.  
-Default Handler:  **AlarmDecoder action button indicator**  
+Default Handler:  **AlarmDecoder action button indicator**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities [Momentary, Switch]  
   -- actions [push: manually set state to off and clear]  
   -- states [on(Alarming), off]  
@@ -155,21 +155,21 @@ Default Handler:  **AlarmDecoder action button indicator**
 * Security<sup>[\#1](#vdevicenames)</sup> Fire Alarm Status  
 Network Mask: \*:alarmFireStatus  
 Description: An indicator to show the panel fire alarm state.  
-Default Handler: **AlarmDecoder status indicator**  
+Default Handler: **AlarmDecoder status indicator**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities  [Contact sensor]  
   -- states [open(Alarming), close]  
 
 * Security<sup>[\#1](#vdevicenames)</sup> Zone Sensor #N<sup>[\#4](#zonenumbers)</sup>  
 Network Mask: \*:switch[#N]  
 Description: An indicator to show the zone state.  
-Default Handler: **AlarmDecoder virtual contact sensor**  
+Default Handler: **AlarmDecoder virtual contact sensor**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities  [Contact sensor]  
   -- states [open(Alarming), close]  
 
 * CID-***AAA***-***B***-***CCC***<sup>[\#2](#cidmask)</sup>  
 Network Mask: \*:CID-AAAA-B-CCC  
 Description: Indicates the state of the given Contact ID report state.  
-Default Handler: **AlarmDecoder action button indicator**  
+Default Handler: **AlarmDecoder action button indicator**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities  [Contact sensor]  
   -- actions [push: manually set state to off and clear]    
   -- states [on(Active), off]  
@@ -177,7 +177,7 @@ Default Handler: **AlarmDecoder action button indicator**
 * RFX-AAAAAA-B-C-D-E-F-G<sup>[\#3](#rfxmask)</sup>
 Network Mask: \*:RFX-AAAAAAA-B-C-D-E-F-G  
 Description: Indicates the state of the given RFX sensor.  
-Default Handler: **AlarmDecoder action button indicator**  
+Default Handler: **AlarmDecoder action button indicator**<sup>[\#5](#flexible_handlers)</sup>  
   -- capabilities  [Contact sensor]  
   -- actions [push: manually set state to off and clear]    
   -- states [on(Active), off]  
@@ -189,6 +189,24 @@ Default Handler: **AlarmDecoder action button indicator**
 <a name="rfxmask">#3</a>:AAAAAA is the RF Serial Number B is battery status, C is supervisor event(ignore with ?), D is loop0(ignore with ?), E is loop1(ignore with ?), F is loop2(ignore with ?) and E is loop3(ignore with ?). Ex. RFX-123456-?-?-1-?-?-? will monitor 5800 RF sensor with serial number 123456 and loop1 for changes.  
 
 <a name="zonenumbers">#4</a>: The number assigned initially to each device zone name is sequential and arbitrary. The actual zone tracked for each device is configured in the **AlarmDecoder UI** device settings page.  So 'Security Zone Sensor #1' could actually be zone 20.  Rename these as needed.
+
+<a name="flexible_handlers">#5</a>: Each AlarmDecoder Virtual device receives a default type when it is created. This Device Type or Device Handler can be changed using the device editor. [Several example device types](#devicetypes) are provided and more can be created using the examples as reference.  
+
+<a name="devicetypes"></a>
+## Alarm Decoder Device Handlers  
+The Device Type or Device Handler for a given virtual device can be changed at any time. If the application requires a Smoke Detector and does not support Contact Sensors simply change the Type in the device editor. AlarmDecoder virtual devices will receive a translated message from on/off to a message appropriate to the devices type and capabilities.  
+* AlarmDecoder virtual contact sensor  
+capabilities [Contact Sensor]  
+* AlarmDecoder action button indicator  
+capabilities [Momentary, Switch]  
+* AlarmDecoder status indicator  
+capabilities [Contact Sensor]  
+* AlarmDecoder virtual carbon monoxide detector  
+capabilities [Carbon Monoxide Detector]  
+* AlarmDecoder virtual shock sensor  
+capabilities [Shock Sensor]  
+* AlarmDecoder virtual smoke alarm  
+capabilities [Smoke Detector]
 
 ## Setup SmartThings
 
@@ -209,6 +227,8 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
    * `AlarmDecoder virtual smoke alarm`
    * `AlarmDecoder action button indicator`
    * `AlarmDecoder status indicator`
+   * `AlarmDecoder virtual shock sensor`
+   * `AlarmDecoder virtual carbon monoxide detector`
 10. Check **Publish** (bottom of dialog)
 11. Click **Execute Update**
 
