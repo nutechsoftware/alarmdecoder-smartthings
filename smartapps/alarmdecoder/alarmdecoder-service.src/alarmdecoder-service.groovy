@@ -182,7 +182,7 @@ def titles(String name, Object... args) {
     "input_cid_label": "Enter the new device label or blank for auto",
     "input_cid_devices": "Remove installed CID virutal switches",
     "input_cid_number": "Select the CID number for this device",
-    "input_cid_value": "Zero PAD 3 digit User,Zone or simple regex pattern ex. '001' or '...'",
+    "input_cid_value": "Zero PAD 3 digit User,Zone or simple regex pattern ex. '001' or '???'",
     "input_cid_partition": "Enter the partition or 0 for system",
     "input_cid_number_raw": "Enter CID # or simple regex pattern",
 
@@ -366,12 +366,17 @@ def page_add_new_cid() {
     // list of some of the CID #'s and descriptions.
     // 000 will trigger a manual input of the CID number.
     def cid_numbers = [  "0": "000 - Other / Custom",
-                       "101": "101 - Pendant Transmitter",
-                       "110": "110 - Fire",
-                       "150": "150 - 24 HOUR (AUXILIARY)",
+                       "10?": "100-102 - ALL Medical alarms",
+                       "11?": "110-118 - ALL Fire alarms",
+                       "12?": "120-126 - ALL Panic alarms",
+                       "13?": "130-139 - ALL Burglar alarms",
+                       "14?": "140-149 - ALL General alarms",
+                       "1[5-6]?": "150-169 - ALL 24 HOUR AUX alarms",
                        "154": "154 - Water Leakage",
                        "158": "158 - High Temp",
                        "162": "162 - Carbon Monoxide Detected",
+                       "301": "301 - AC Loss",
+                       "3??": "3?? - All System Troubles",
                        "401": "401 - Arm AWAY OPEN/CLOSE",
                        "441": "441 - Arm STAY OPEN/CLOSE",
                        "4[0,4]1": "4[0,4]1 - Arm Stay or Away OPEN/CLOSE"]
@@ -391,7 +396,7 @@ def page_add_new_cid() {
             }
             section {
                 paragraph titles("section_cid_value", buildcidvalue())
-                input(name: "input_cid_value", type: "text", required: true, defaultValue: 001,submitOnChange: true, title: titles("input_cid_value"))
+                input(name: "input_cid_value", type: "text", required: true, defaultValue: "???",submitOnChange: true, title: titles("input_cid_value"))
             }
             section {
                 paragraph titles("section_cid_partition")
@@ -1186,12 +1191,16 @@ def cidSet(evt) {
     children.each {
         if (it.deviceNetworkId.contains(":CID-")) {
             def match = it.deviceNetworkId.split(":")[2].trim()
+
+            // replace ? with . non regex
+            match = match.replace("?",".")
+
             if (device_name =~ /${match}/) {
-                if (debug) log.error("cidSet device: ${device_name} matches ${match} sendng state ${cidstate}")
+                if (debug) log.debug("cidSet device: ${device_name} matches ${match} sendng state ${cidstate}")
                 _sendEventTranslate(it, cidstate)
                 sent = true
             } else {
-                if (debug) log.error("cidSet device: ${device_name} no match ${match}")
+                if (debug) log.debug("cidSet device: ${device_name} no match ${match}")
             }
         }
     }
@@ -1269,7 +1278,7 @@ def rfxSet(evt) {
                 sent = true
 
             } else {
-                if (debug) log.error("rfxSet device: ${device_name} no match ${match}")
+                if (debug) log.info("rfxSet device: ${device_name} no match ${match}")
             }
         }
     }
