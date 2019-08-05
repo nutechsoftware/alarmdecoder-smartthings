@@ -11,131 +11,184 @@ This repository provides support for the AlarmDecoder webapp inside of the Smart
 * Provides virtual sensors that can be married to zones on your panel to allow automation based on zones faulting and restoring.
 * Provides virtual momentary switches with indicators for arming away, stay and toggling chime mode with each switch indicating the current state. Alexa and other systems are able to activate these switches to allow a wide array of alarm panel control possibilities.
 * Provide virtual contact sensors for "Ready" and "Alarm Bell" indications on the alarm panel.
-* Provides a virtual "AD2 Smoke Alarm" that can be integrated with SHM or other systems to control state during a fire event such as turning all lights on.
+* Provides a virtual "Smoke Alarm" that can be integrated with SHM or other systems to control state during a fire event such as turning all lights on.
 * Provides the ability to create virtual switches that can be tied to specific Contact ID report codes from the alarm panel. As an example a zone setup as a Carbon Monoxide alarm can be directly tied to a virtual switch that will OPEN in the event it triggers using Contact ID 162.
+* Provides the ability to create virtual switches that can be tied to specific 5800 RF devices. Typical use case is using a 5800micra sensor to monitor open/close of secure areas but not require panel zone programming to use. Just record its serial number and tie it to a virtual device using the serial number only.
 * Smart Home Monitor / Home Security Module integration.  
 One-way - Arm or disarm your panel when the Smart Home Monitor status is changed.  
 Two-way - Change Smart Home Monitor's status when your panel is armed or disarmed.  
-* Change virtual device handlers in the graph pages to change device capabilities and the system will adjust event types to match the device. Change a Zone Sensor to a AD2 Virtual Smoke Alarm and it will report 'clear' or 'detected'. This allows changing of device types to match what is needed for the task.  
+* Change virtual device handlers in the graph pages to change device capabilities and the system will adjust event types to match the device. Change a Zone Sensor to a Virtual Smoke Alarm and it will report 'clear' or 'detected'. This allows changing of device types to match what is needed for the task.  
 
 ## Virtual devices
 
 * AlarmDecoder UI  
 Description: Main service device provides a simple user interface to manage the alarm.  
 
-* Security Alarm Bell  
-Capabilities:  Contact sensor  
+* Security<sup>[\#1](#vdevicenames)</sup> Alarm Bell  
+Network Mask: \*:alarmBell  
+Description: An indicator to show the panel bell state and button to clear.  
+Default Handler:  **AlarmDecoder action button indicator**  
+ -- capabilities [Momentary, Switch]  
+ -- actions [push: manually set state to off and clear]  
+ -- states [on(Alarming), off]  
+
+* Security<sup>[\#1](#vdevicenames)</sup> Alarm Bell Status  
+Network Mask: \*:alarmBellStatus  
 Description: An indicator to show the panel bell state.  
- -- Action **'push'** to turn off  
-States: [open, close = Alarm Bell Sounding]  
+Default Handler: **AlarmDecoder status indicator**  
+  -- capabilities  [Contact sensor]  
+  -- states [open(Alarming), close]  
 
-* Security Alarm Bell Status  
-Capabilities:  Contact sensor  
-Description: An indicator to show the panel bell state.  
-States: [open, close = Alarm Bell Sounding]  
+* Security<sup>[\#1](#vdevicenames)</sup> Chime  
+Network Mask: \*:chimeMode  
+Description: indicator to show the Chime state and button to toggle.  
+Default Handler:  **AlarmDecoder action button indicator**  
+ -- capabilities [Momentary, Switch]  
+ -- actions [push: toggle chime mode]  
+ -- states [on(Enabled), off]  
 
-* Security Chime  
-Capabilities:  Momentary  
-Description: indicator to show the Chime state.  
- -- Action **'push'** will toggle the chime state  
-States: [on = Chime Mode On, off]  
+* Security<sup>[\#1](#vdevicenames)</sup> Chime Status  
+Network Mask: \*:chimeModeStatus  
+Description: An indicator to show the chime state.  
+Default Handler: **AlarmDecoder status indicator**  
+  -- capabilities  [Contact sensor]  
+  -- states [open(Enabled), close]  
 
-* Security Chime Status  
-Capabilities:  Contact sensor  
-Description: indicator to show the Chime state.
-States: [open, close = Chime Mode On]  
-
-* Security Ready Status  
-Capabilities: Contact Sensor  
+* Security<sup>[\#1](#vdevicenames)</sup> Ready Status  
+Network Mask: \*:readyStatus  
 Description: An indicator to show the panel ready to arm state.  
-States: [open, close = Ready]  
+Default Handler: **AlarmDecoder status indicator**  
+  -- capabilities  [Contact sensor]  
+  -- states [open(READY), close]  
 
-* Security Bypass Status  
-Capabilities: Contact Sensor  
+* Security<sup>[\#1](#vdevicenames)</sup> Bypass Status  
+Network Mask: \*:bypassStatus  
 Description: An indicator to show if the panel has a bypassed zone.  
-States: [open, close = Zone(s) Bypassed]  
+Default Handler: **AlarmDecoder status indicator**  
+  -- capabilities  [Contact sensor]  
+  -- states [open(Zone(s) bypassed), close]  
 
-* Security Smoke Alarm  
-Capabilities: smokeDetector  
+* Security<sup>[\#1](#vdevicenames)</sup> Smoke Alarm  
+Network Mask: \*:smokeAlarm  
 Description: An indicator to show the panel fire state.  
-States: [clear, detected]  
+Default Handler: **AlarmDecoder virtual smoke alarm**  
+  -- capabilities  [Smoke Detector]  
+  -- states [clear, detected]  
 
-* Security Disarm  
-Capabilities:  Momentary  
-Description: Disarm the alarm.  
- -- Action **'push'** will send the DISARM Alarm command to the panel  
-States: No indication of alarm type  
+* Security<sup>[\#1](#vdevicenames)</sup> Disarm  
+Network Mask: \*:disarm  
+Description: indicator to show the arm state and button to disarm.  
+Default Handler:  **AlarmDecoder action button indicator**  
+ -- capabilities [Momentary, Switch]  
+ -- actions [push: disarm panel]  
+ -- states [on(Armed), off]  
 
-* Security Stay  
-Capabilities:  Momentary  
-Description: indicator to show the arm Stay state.  
- -- Action **'push'** will send the arm Stay command to the panel  
-States: [on = Armed Stay, off]  
+* Security<sup>[\#1](#vdevicenames)</sup> Stay  
+Network Mask: \*:armStay  
+Description: indicator to show the arm stay state and button to arm stay.  
+Default Handler:  **AlarmDecoder action button indicator**  
+ -- capabilities [Momentary, Switch]  
+ -- actions [push: arm stay]  
+ -- states [on(Armed Stay), off]  
 
-* Security Stay Status  
-Capabilities:  Contact Sensor  
-Description: indicator to show the arm Stay state.  
-States: [open, close = Armed Stay]  
+* Security<sup>[\#1](#vdevicenames)</sup> Stay Status  
+Network Mask: \*:armStayStatus  
+Description: An indicator to show if the panel is armed in stay mode.  
+Default Handler: **AlarmDecoder status indicator**  
+  -- capabilities  [Contact sensor]  
+  -- states [open(Armed Stay), close]  
 
-* Security Away  
-Capabilities:  Momentary  
-Description: indicator to show the arm Away state.  
- -- Action **'push'** will send the arm Away command to the panel  
-States: [on = Armed Away, off]  
+* Security<sup>[\#1](#vdevicenames)</sup> Away  
+Network Mask: \*:armAway  
+Description: indicator to show the arm away state and button to arm away.  
+Default Handler:  **AlarmDecoder action button indicator**  
+ -- capabilities [Momentary, Switch]  
+ -- actions [push: arm away]  
+ -- states [on(Armed Away), off]  
 
-* Security Away Status  
-Capabilities:  Contact Sensor  
-Description: indicator to show the arm Away state.  
-States: [open, close = Armed Away]  
+* Security<sup>[\#1](#vdevicenames)</sup> Away Status  
+Network Mask: \*:armAwayStatus  
+Description: An indicator to show if the panel is armed in stay mode.  
+Default Handler: **AlarmDecoder status indicator**  
+  -- capabilities  [Contact sensor]  
+  -- states [open(Armed Away), close]  
 
-* Security Exit  
-Capabilities:  Momentary  
-Description: indicator to show the arm Exit state.  
- -- Action **'push'** will send the exit command to the panel  
-States: [on = You May Exit Now, off]  
+* Security<sup>[\#1](#vdevicenames)</sup> Exit  
+Network Mask: \*:exit  
+Description: indicator to show the exit state.  
+Default Handler:  **AlarmDecoder action button indicator**  
+ -- capabilities [Momentary, Switch]  
+ -- actions [push: request exit]  
+ -- states [on(Exit now active), off]  
 
-* Security Exit Status  
-Capabilities:  Contact Sensor  
-Description: indicator to show the arm Exit state.  
-States: [open, close = You May Exit Now]  
+* Security<sup>[\#1](#vdevicenames)</sup> Exit Status  
+Network Mask: \*:exitStatus  
+Description: An indicator to show if the panel exit mode is active.  
+Default Handler: **AlarmDecoder status indicator**  
+  -- capabilities  [Contact sensor]  
+  -- states [open(Exit now active), close]  
 
-* Security Panic Alarm  
-Capabilities:  Momentary  
-Description: Panic button.  
- -- Action **'push'** will send the Panic Alarm command to the panel  
-States: No indication of alarm type  
+* Security<sup>[\#1](#vdevicenames)</sup> Panic Alarm  
+Network Mask: \*:alarmPanic  
+Description: Button to send Panic Alarm signal to the panel.  
+Default Handler:  **AlarmDecoder action button indicator**  
+ -- capabilities [Momentary, Switch]  
+ -- actions [push: request panic]  
+ -- states N/A<sup>[\#1](#notsupported)</sup>
 
-* Security Aux Alarm  
-Capabilities:  Momentary  
-Description: Aux(Medical) panic button.  
- -- Action **'push'** will send the AUX Alarm command to the panel  
-States: No indication of alarm type  
+* Security<sup>[\#1](#vdevicenames)</sup> AUX(Medical) Alarm  
+Network Mask: \*:alarmAUX  
+Description: Button to send AUX(Medical) Alarm signal to the panel.  
+Default Handler:  **AlarmDecoder action button indicator**  
+  -- capabilities [Momentary, Switch]  
+  -- actions [push: request aux alarm]  
+  -- states N/A<sup>[\#1](#notsupported)</sup>
 
-* Security Fire Alarm  
-Capabilities:  Momentary  
-Description: Fire panic button.  
- -- Action **'push'** will send the Fire Alarm command to the panel  
-States: States: [on = Fire Alarm Active, off]  
+* Security<sup>[\#1](#vdevicenames)</sup> Fire Alarm  
+Network Mask: \*:alarmFire  
+Description: An indicator to show the panel fire state and button to clear.  
+Default Handler:  **AlarmDecoder action button indicator**  
+  -- capabilities [Momentary, Switch]  
+  -- actions [push: manually set state to off and clear]  
+  -- states [on(Alarming), off]  
 
-* Security Fire Alarm Status  
-Capabilities:  Contact Sensor  
-Description: indicator to show the a fire alarm is active. Follows Security Smoke Alarm.  
-States: [open, close = Fire Alarm Active]
+* Security<sup>[\#1](#vdevicenames)</sup> Fire Alarm Status  
+Network Mask: \*:alarmFireStatus  
+Description: An indicator to show the panel fire alarm state.  
+Default Handler: **AlarmDecoder status indicator**  
+  -- capabilities  [Contact sensor]  
+  -- states [open(Alarming), close]  
 
-* Security Zone Sensor #N  
-Capabilities: Contact Sensor  
+* Security<sup>[\#1](#vdevicenames)</sup> Zone Sensor #N<sup>[\#4](#zonenumbers)</sup>  
+Network Mask: \*:switch[#N]  
 Description: An indicator to show the zone state.  
-States: [open , close] * reversible in parent device settings  
+Default Handler: **AlarmDecoder virtual contact sensor**  
+  -- capabilities  [Contact sensor]  
+  -- states [open(Alarming), close]  
 
-* CID-***AAA***-***B***-***CCC***  
-Capabilities: Momentary  
-Description: Indicates the state of the given Contact ID report state. The action **'push'** will restore to closed state. ***AAA*** is the Contact ID number ***B*** is the partition and ***CCC*** is the zone or user code to match with '...' matching all. Ex. CID-401-012 will monitor user 012 arming/disarming. Supports regex in the deviceNetworkId to allow to create devices that can trigger on multiple CID messages such as ***"CID-4[0,4]]1-1-..."*** will monitor all users for arming/disarming away or stay on partition 1.  
-States: [on, off]  
+* CID-***AAA***-***B***-***CCC***<sup>[\#2](#cidmask)</sup>  
+Network Mask: \*:CID-AAAA-B-CCC  
+Description: Indicates the state of the given Contact ID report state.  
+Default Handler: **AlarmDecoder action button indicator**  
+  -- capabilities  [Contact sensor]  
+  -- actions [push: manually set state to off and clear]    
+  -- states [on(Active), off]  
 
-* RFX-AAAAAA-B-C-D-E-F-G
-Capabilities: Momentary  
-Description: Indicates the state of the given Contact ID report state. The action **'push'** will restore to closed state. AAAAAA is the RF Serial Number B is battery status, C is supervisor event(ignore with ?), D is loop0(ignore with ?), E is loop1(ignore with ?), F is loop2(ignore with ?) and E is loop3(ignore with ?). Ex. RFX-123456-?-?-1-?-?-? will monitor 5800 RF sensor with serial number 123456 and loop1 for changes.
-States: [on, off]  
+* RFX-AAAAAA-B-C-D-E-F-G<sup>[\#3](#rfxmask)</sup>
+Network Mask: \*:RFX-AAAAAAA-B-C-D-E-F-G  
+Description: Indicates the state of the given RFX sensor.  
+Default Handler: **AlarmDecoder action button indicator**  
+  -- capabilities  [Contact sensor]  
+  -- actions [push: manually set state to off and clear]    
+  -- states [on(Active), off]  
+
+<a name="vdevicenames">#1</a>: The device name prefix is configurable during install by changing @Field lname at the top of the ***AlarmDecoder Service*** code. The name can be changed after installing but the address must not be modified.  
+
+<a name="cidmask">#2</a>: ***AAA*** is the Contact ID number ***B*** is the partition and ***CCC*** is the zone or user code to match with '???' matching all. Ex. CID-401-012 will monitor user 012 arming/disarming. Supports regex in the deviceNetworkId to allow to create devices that can trigger on multiple CID messages such as ***"CID-4[0,4]]1-1-???"*** will monitor all users for arming/disarming away or stay on partition 1.  
+
+<a name="rfxmask">#3</a>:AAAAAA is the RF Serial Number B is battery status, C is supervisor event(ignore with ?), D is loop0(ignore with ?), E is loop1(ignore with ?), F is loop2(ignore with ?) and E is loop3(ignore with ?). Ex. RFX-123456-?-?-1-?-?-? will monitor 5800 RF sensor with serial number 123456 and loop1 for changes.  
+
+<a name="zonenumbers">#4</a>: The number assigned initially to each device zone name is sequential and arbitrary. The actual zone tracked for each device is configured in the **AlarmDecoder UI** device settings page.  So 'Security Zone Sensor #1' could actually be zone 20.  Rename these as needed.
 
 ## Setup SmartThings
 
@@ -184,7 +237,7 @@ Navigate to [https://graph.api.smartthings.com](https://graph.api.smartthings.co
 Using the SmartThings app **on your phone**
 1. Open up the SmartThings app **on your phone**
 2. Tap **My Home** and select the **Things** tab
-3. Select the **AlarmDecoder** device
+3. Select the **AlarmDecoder UI** device
 4. Tap the gear icon to edit the device
 5. Enter the API key you generated from the AlarmDecoder webapp
 6. Enter the alarm code you'd like to use to arm/disarm your panel.
@@ -263,7 +316,7 @@ All 5800 sensors within range of the 5800 receiver are able to be monitored for 
 8. Press Save
 * notes
     1. If the AlarmDecoder Web App restarts it will loose subscriptions. It may take 5 minutes to restore PUSH notification.
-    2. Updating the **AlarmDecoder** device settings on the phone app or web-based IDE will force a new subscription.
+    2. Updating the **AlarmDecoder UI** device settings on the phone app or web-based IDE will force a new subscription.
 
 ## Known Issues
 
