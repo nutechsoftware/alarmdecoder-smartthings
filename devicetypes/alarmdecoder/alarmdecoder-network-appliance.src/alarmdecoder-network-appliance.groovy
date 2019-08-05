@@ -870,6 +870,7 @@ def update_state(data) {
            // If armed AWAY changes data.panel_armed_away
            if(!data.panel_armed_stay)
                events << createEvent(name: "arm-away-set", value: "on", displayed: true, isStateChange: true)
+           events << createEvent(name: "disarm-set", value: "on", displayed: true, isStateChange: true)
        }
     }
 
