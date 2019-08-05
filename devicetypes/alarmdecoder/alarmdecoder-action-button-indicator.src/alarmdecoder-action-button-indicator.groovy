@@ -64,3 +64,11 @@ def on() {
 def off() {
     push()
 }
+
+def installed() {
+    updateDataValue("invert", invert.toString())
+}
+
+def updated() {
+    updateDataValue("invert", invert.toString())
+}

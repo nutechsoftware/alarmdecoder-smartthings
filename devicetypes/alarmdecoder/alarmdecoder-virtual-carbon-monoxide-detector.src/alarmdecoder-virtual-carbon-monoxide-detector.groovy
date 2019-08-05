@@ -1,5 +1,5 @@
 /**
- *  Virtual Contact Sensor for alarm panel zones
+ *  Virtual Smoke Alarm for alarm panel
  *
  *  Copyright 2016-2018 Nu Tech Software Solutions, Inc.
  *
@@ -21,15 +21,15 @@ import groovy.transform.Field
 @Field APPNAMESPACE = "alarmdecoder"
 
 metadata {
-    definition (name: "AlarmDecoder virtual contact sensor", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
-        capability "Contact Sensor"
+    definition (name: "AlarmDecoder virtual carbon monoxide detector", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
+        capability "CarbonMonoxideDetector"
     }
 
     // tile definitions
     tiles {
-        standardTile("sensor", "device.contact", width: 2, height: 2, canChangeIcon: true) {
-            state "closed", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#00a0dc"
-            state "open", label: '${name}', icon: "st.contact.contact.open", backgroundColor: "#e86d13"
+        standardTile("sensor", "device.smoke", width: 2, height: 2, canChangeIcon: true) {
+            state "clear", label: '${name}', icon: "st.alarm.smoke.clear", backgroundColor: "#79b821"
+            state "detected", label: '${name}', icon: "st.alarm.smoke.smoke", backgroundColor: "#e86d13"
         }
         main "sensor"
         details "sensor"
