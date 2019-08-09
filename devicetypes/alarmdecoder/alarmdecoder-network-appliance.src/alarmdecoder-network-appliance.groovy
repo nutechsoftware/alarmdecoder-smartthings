@@ -814,7 +814,6 @@ def update_state(data) {
         skipstate = true;
     }
 
-	log.debug("eventid ${data.eventid} ${data.eventmessage}")
     // Event Type 18 EXP/REL send eventmessage upstream if we find one
     if (data.eventid == 18) {
         events << createEvent(name: "exp-set", value: data.eventmessage, displayed: true, isStateChange: true)
