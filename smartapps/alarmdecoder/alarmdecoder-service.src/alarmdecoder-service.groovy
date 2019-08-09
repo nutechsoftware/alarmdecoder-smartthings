@@ -65,7 +65,7 @@ def isSmartThings() {
     return physicalgraph?.device?.HubAction;
 }
 
-/* 
+/*
  * determines if the app is running under Hubitat
  */
 def isHubitat() {
@@ -1102,7 +1102,7 @@ def chimeSet(evt) {
 }
 
 /**
- * send event to chime indicator device to set state
+ * send event to exit indicator device to set state
  */
 def exitSet(evt) {
     if (debug) log.debug("exitSet ${evt.value}")
@@ -1120,6 +1120,33 @@ def exitSet(evt) {
         _sendEventTranslate(d, evt.value)
     }
 }
+
+/**
+ * send event to perimeter only indicator device to set state
+ */
+def perimeterOnlySet(evt) {
+    if (debug) log.debug("perimeterOnlySet ${evt.value}")
+    def d = getChildDevice("${getDeviceKey()}:perimeterOnlyStatus")
+    if (!d) {
+        log.info("perimeterOnlySet: Could not find device 'perimeterOnly'")
+        return
+    }
+    _sendEventTranslate(d, evt.value)
+}
+
+/**
+ * send event to entry delay off indicator device to set state
+ */
+def entryDelayOffSet(evt) {
+    if (debug) log.debug("entryDelayOffSet ${evt.value}")
+    def d = getChildDevice("${getDeviceKey()}:entryDelayOffStatus")
+    if (!d) {
+        log.info("entryDelayOffSet: Could not find device 'entryDelayOff'")
+        return
+    }
+    _sendEventTranslate(d, evt.value)
+}
+
 
 /**
  * send event to bypass status device to set state
@@ -1581,6 +1608,9 @@ def getDevices() {
 def addExistingDevices() {
     if (debug) log.debug("addExistingDevices: ${input_selected_devices}")
 
+	// resubscribe! Its a hack if one adds more subscriptions and does not want to rebuild everything.
+    configureDeviceSubscriptions()
+
     def selected_devices = input_selected_devices
     if (selected_devices instanceof java.lang.String) {
         selected_devices = [selected_devices]
@@ -1685,6 +1715,12 @@ def addExistingDevices() {
             // Add Ready status contact if it does not exist.
             addAD2VirtualDevices("ready", "Ready", false, false, true)
 
+            // Add perimeter only status contact if it does not exist.
+            addAD2VirtualDevices("perimeterOnly", "Perimeter Only", false, false, true)
+
+            // Add entry delay off status contact if it does not exist.
+            addAD2VirtualDevices("entryDelayOff", "Entry Delay Off", false, false, true)
+
             // Add virtual Alarm Bell switch/indicator combo if it does not exist.
             addAD2VirtualDevices("alarmBell", "Alarm Bell", false, true, true)
 
@@ -1776,6 +1812,12 @@ private def configureDeviceSubscriptions() {
 
     // subscribe to exit handler
     subscribe(device, "exit-set", exitSet, [filterEvents: false])
+
+    // subscribe to perimeter-only-set handler
+    subscribe(device, "perimeter-only-set", perimeterOnlySet, [filterEvents: false])
+
+    // subscribe to entry-deley-off-set handler
+    subscribe(device, "entry-delay-off-set", entryDelayOffSet, [filterEvents: false])
 
     // subscribe to bypass handler
     subscribe(device, "bypass-set", bypassSet, [filterEvents: false])
@@ -1921,7 +1963,7 @@ private String getDeviceKey() {
     def key = ""
     if (isSmartThings())
         key = "${state.ip}:${state.port}"
-    else if (isHubitat()) 
+    else if (isHubitat())
         key = "${state.ip}"
 
     return key
@@ -1955,7 +1997,7 @@ private getHostAddressFromDNI(d) {
 def _sendEventTranslate(ad2d, state) {
 
     // Grab the devices preferences for inverting
-    def invert = (ad2d.device.getDataValue("invert") == "true" ? true : false)  
+    def invert = (ad2d.device.getDataValue("invert") == "true" ? true : false)
 
     // send a switch event if its a [Switch]
     // Default off = Off, on(Alerting) = On
@@ -1982,7 +2024,7 @@ def _sendEventTranslate(ad2d, state) {
         // send switch event
         ad2d.sendEvent(name: "contact", value: (sval ? "open" : "close") , isStateChange: true, filtered: true)
     }
-    
+
     // send a 'motion' event if its a [Motion Sensor]
     // Default inactive = Off, active(Alerting) = On
     if (ad2d.hasCapability("Motion Sensor")) {
@@ -2008,7 +2050,7 @@ def _sendEventTranslate(ad2d, state) {
         // send switch event
         ad2d.sendEvent(name: "shock", value: (sval ? "detected" : "clear") , isStateChange: true, filtered: true)
     }
-	
+
 	// send a 'carbonMonoxide' event if its a [Carbon Monoxide Detector]
     // Default clear = Off, detected(Alerting) = On
     if (ad2d.hasCapability("Carbon Monoxide Detector")) {
@@ -2021,7 +2063,7 @@ def _sendEventTranslate(ad2d, state) {
         // send switch event
         ad2d.sendEvent(name: "carbonMonoxide", value: (sval ? "detected" : "clear") , isStateChange: true, filtered: true)
     }
-	
+
     // send a 'smoke' event if its a [Smoke Detector]
     // Default clear = Off, detected(Alerting) = On
     if (ad2d.hasCapability("Smoke Detector")) {

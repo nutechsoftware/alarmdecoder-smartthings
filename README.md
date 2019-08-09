@@ -70,6 +70,20 @@ Default Handler: **AlarmDecoder status indicator**<sup>[\#5](#flexible_handlers)
   -- capabilities  [Contact sensor]  
   -- states [open(Zone(s) bypassed), close]  
 
+* Security<sup>[\#1](#vdevicenames)</sup> Entry Delay Off state  
+Network Mask: \*:entryDelayOffStatus  
+Description: An indicator to show if the panel has exit delay off set.  
+Default Handler: **AlarmDecoder status indicator**<sup>[\#5](#flexible_handlers)</sup>  
+  -- capabilities  [Contact sensor]  
+  -- states [open(Exit Delay OFF), close]  
+
+* Security<sup>[\#1](#vdevicenames)</sup> Perimeter Only state  
+Network Mask: \*:perimeterOnlyStatus  
+Description: An indicator to show if the panel has perimeter only set.  
+Default Handler: **AlarmDecoder status indicator**<sup>[\#5](#flexible_handlers)</sup>  
+  -- capabilities  [Contact sensor]  
+  -- states [open(Perimeter Only ON), close]  
+
 * Security<sup>[\#1](#vdevicenames)</sup> Smoke Alarm  
 Network Mask: \*:smokeAlarm  
 Description: An indicator to show the panel fire state.  
