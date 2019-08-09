@@ -355,6 +355,8 @@ def updated() {
     state.panel_on_battery = true
     state.panel_powered = true
     state.panel_chime = true
+    state.panel_perimeter_only = false
+    state.panel_entry_delay_off = false
 
     // Calculated alarm state ENUM
     state.panel_state = "disarmed"
@@ -423,6 +425,8 @@ def parse_xml(String headers, String body) {
     resultMap['panel_panicked'] = xmlResult.property.panelstate.panel_panicked.toBoolean()
     resultMap['panel_powered'] = xmlResult.property.panelstate.panel_powered.toBoolean()
     resultMap['panel_ready'] = xmlResult.property.panelstate.panel_ready.toBoolean()
+    resultMap['panel_entry_delay_off'] = xmlResult.property.panelstate.panel_entry_delay_off.toBoolean()
+    resultMap['panel_perimeter_only'] = xmlResult.property.panelstate.panel_perimeter_only.toBoolean()
     resultMap['panel_type'] = xmlResult.property.panelstate.panel_type.text()
     resultMap['panel_chime'] = xmlResult.property.panelstate.panel_chime.toBoolean()
 
@@ -782,6 +786,7 @@ def chime() {
 def update_state(data) {
     log.trace("--- update_state")
     def forceguiUpdate = false
+    def skipstate = false
     def events = []
 
     /*
@@ -795,135 +800,171 @@ def update_state(data) {
      * [10000101000100003A0-],008,[f702000f1008015c08020000000000],"****DISARMED****  Ready to Arm  "
      */
 
-     // Get our armed state from our new state data
-    def armed = data.panel_armed || (data.panel_armed_stay != null && data.panel_armed_stay == true)
-
-    def panel_state = (data.panel_ready ? "ready" : "notready")
-
-    // Update our ready status virtual device
-    if (forceguiUpdate || data.panel_ready != state.panel_ready)
-        events << createEvent(name: "ready-set", value: (data.panel_ready ? "on" : "off"), displayed: true, isStateChange: true)
-
     // Event Type 14 CID send raw data upstream if we find one
     if (data.eventid == 14) {
         events << createEvent(name: "cid-set", value: data.rawmessage, displayed: true, isStateChange: true)
+        // do not trust state for these messages they could be out of sync.
+        skipstate = true;
     }
 
     // Event Type 17 RFX send eventmessage upstream if we find one
     if (data.eventid == 17) {
         events << createEvent(name: "rfx-set", value: data.eventmessage, displayed: true, isStateChange: true)
+        // do not trust state for these messages they could be out of sync.
+        skipstate = true;
+    }
+
+    // Event Type 18 EXP/REL send eventmessage upstream if we find one
+    if (data.eventid == 18) {
+        events << createEvent(name: "exp-set", value: data.eventmessage, displayed: true, isStateChange: true)
+        // do not trust state for these messages they could be out of sync.
+        skipstate = true;
+    }
+
+    // Event Type 19 AUI send eventmessage upstream if we find one
+    if (data.eventid == 19) {
+        events << createEvent(name: "aui-set", value: data.eventmessage, displayed: true, isStateChange: true)
+        // do not trust state for these messages they could be out of sync.
+        skipstate = true;
     }
 
     // Event Type 5 Bypass
     if (data.eventid == 5) {
-        log.debug("bypass-set: ${data.panel_bypassed}")
         events << createEvent(name: "bypass-set", value: (data.panel_bypassed ? "on" : "off"), displayed: true, isStateChange: true)
+        // do not trust state for these messages they could be out of sync.
+        skipstate = true;
     }
 
     // Event Type 16 Chime
     if (data.eventid == 16) {
         events << createEvent(name: "chime-set", value: (data.panel_chime ? "on" : "off"), displayed: true, isStateChange: true)
+        // do not trust state for these messages they could be out of sync.
+        skipstate = true;
     }
 
-    // If armed update internal UI state to exit mode and armed state
-    if (armed) {
-        if ( data.panel_exit ) {
-            if ( data.panel_armed_stay ) {
-                panel_state = "armed_stay_exit"
+	if (skipstate != true) {
+         // Get our armed state from our new state data
+        def armed = data.panel_armed || (data.panel_armed_stay != null && data.panel_armed_stay == true)
+
+        def panel_state = (data.panel_ready ? "ready" : "notready")
+
+        // Update our ready status virtual device
+        if (forceguiUpdate || data.panel_ready != state.panel_ready)
+            events << createEvent(name: "ready-set", value: (data.panel_ready ? "on" : "off"), displayed: true, isStateChange: true)
+
+        // If armed update internal UI state to exit mode and armed state
+        if (armed) {
+            if ( data.panel_exit ) {
+                if ( data.panel_armed_stay ) {
+                    panel_state = "armed_stay_exit"
+                } else {
+                    panel_state = "armed_exit"
+                }
             } else {
-                panel_state = "armed_exit"
+                panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
             }
-        } else {
-            panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
         }
-    }
 
-    //FORCE ARMED if ALARMING to be sure SHM gets it as it will not show alarms if not armed :(
-    if (data.panel_alarming) {
-        panel_state = "alarming"
-    }
-
-    // NOTE: Fire overrides alarm since it's definitely more serious.
-    if (data.panel_fire_detected) {
-        panel_state = "fire"
-    }
-
-    // Update our Smoke Sensor virtual device that SHM or others the current state.
-    if (forceguiUpdate || data.panel_fire_detected != state.panel_fire_detected)
-        events << createEvent(name: "smoke-set", value: (data.panel_fire_detected ? "detected" : "clear"), displayed: true, isStateChange: true)
-
-    // If armed STAY changes data.panel_armed_stay
-    if (forceguiUpdate || data.panel_armed_stay != state.panel_armed_stay) {
-        if(data.panel_armed_stay) {
-            events << createEvent(name: "arm-stay-set", value: "on", displayed: true, isStateChange: true)
-            events << createEvent(name: "arm-away-set", value: "off", displayed: true, isStateChange: true)
+        //FORCE ARMED if ALARMING to be sure SHM gets it as it will not show alarms if not armed :(
+        if (data.panel_alarming) {
+            panel_state = "alarming"
         }
-    }
 
-    // If the panel ARMED state changes
-    if (forceguiUpdate || armed != state.armed) {
-       if(!armed) {
-           events << createEvent(name: "arm-away-set", value: "off", displayed: true, isStateChange: true)
-           events << createEvent(name: "arm-stay-set", value: "off", displayed: true, isStateChange: true)
-           events << createEvent(name: "disarm-set", value: "off", displayed: true, isStateChange: true)
-       } else {
-           // If armed AWAY changes data.panel_armed_away
-           if(!data.panel_armed_stay)
-               events << createEvent(name: "arm-away-set", value: "on", displayed: true, isStateChange: true)
-       }
-    }
+        // NOTE: Fire overrides alarm since it's definitely more serious.
+        if (data.panel_fire_detected) {
+            panel_state = "fire"
+        }
 
-    // If Update exit state
-    if (forceguiUpdate || data.panel_exit != state.panel_exit) {
-        events << createEvent(name: "exit-set", value: (data.panel_exit ? "on" : "off"), displayed: true, isStateChange: true)
-    }
+        // Update our Smoke Sensor virtual device that SHM or others the current state.
+        if (forceguiUpdate || data.panel_fire_detected != state.panel_fire_detected)
+            events << createEvent(name: "smoke-set", value: (data.panel_fire_detected ? "detected" : "clear"), displayed: true, isStateChange: true)
 
-    // set our panel_state
-    if (forceguiUpdate || panel_state != state.panel_state) {
-        log.trace("--- update_state: new state ************** ${panel_state} ************")
-        events << createEvent(name: "panel_state", value: panel_state, displayed: true, isStateChange: true)
-    }
+        // If armed STAY changes data.panel_armed_stay
+        if (forceguiUpdate || data.panel_armed_stay != state.panel_armed_stay) {
+            if(data.panel_armed_stay) {
+                events << createEvent(name: "arm-stay-set", value: "on", displayed: true, isStateChange: true)
+                events << createEvent(name: "arm-away-set", value: "off", displayed: true, isStateChange: true)
+            }
+        }
 
-    // build our alarm_status value
-    def alarm_status = "off"
-    if (armed)
-    {
-        alarm_status = "away"
-        if (data.panel_armed_stay == true)
-            alarm_status = "stay"
-    }
+        // If the panel ARMED state changes
+        if (forceguiUpdate || armed != state.armed) {
+           if(!armed) {
+               events << createEvent(name: "arm-away-set", value: "off", displayed: true, isStateChange: true)
+               events << createEvent(name: "arm-stay-set", value: "off", displayed: true, isStateChange: true)
+               events << createEvent(name: "disarm-set", value: "off", displayed: true, isStateChange: true)
+           } else {
+               // If armed AWAY changes data.panel_armed_away
+               if(!data.panel_armed_stay)
+                   events << createEvent(name: "arm-away-set", value: "on", displayed: true, isStateChange: true)
+               events << createEvent(name: "disarm-set", value: "on", displayed: true, isStateChange: true)
+           }
+        }
 
-    // Create an event to notify Smart Home Monitor in our service.
-    // "enum", ["off", "stay", "away"]
-    if (forceguiUpdate || alarm_status != state.alarm_status)
-        events << createEvent(name: "alarmStatus", value: alarm_status, displayed: true, isStateChange: true)
+        // If Update exit state
+        if (forceguiUpdate || data.panel_exit != state.panel_exit) {
+            events << createEvent(name: "exit-set", value: (data.panel_exit ? "on" : "off"), displayed: true, isStateChange: true)
+        }
 
-    // Update our alarming switch so SHM or others know we are in an alarm state. In alarm close contact.
-    // "enum", ["open", "closed"]
-    if (forceguiUpdate || data.panel_alarming != state.panel_alarming)
-        events << createEvent(name: "alarmbell-set", value: (data.panel_alarming ? "on" : "off"), displayed: true, isStateChange: true)
+        // If Update perimeter only device
+        if (forceguiUpdate || data.panel_perimeter_only != state.panel_perimeter_only) {
+            events << createEvent(name: "perimeter-only-set", value: (data.panel_perimeter_only ? "on" : "off"), displayed: true, isStateChange: true)
+        }
 
-    // will only add events for zones that change state.
-    def zone_events = build_zone_events(data)
-    events = events.plus(zone_events)
+        // If Update entry delay off device
+        if (forceguiUpdate || data.panel_entry_delay_off != state.panel_entry_delay_off) {
+            events << createEvent(name: "entry-delay-off-set", value: (data.panel_entry_delay_off ? "on" : "off"), displayed: true, isStateChange: true)
+        }
 
-    // Update our saved state
-    /// Calculated state enum
-    state.panel_state = panel_state
-    state.armed = armed
+        // set our panel_state
+        if (forceguiUpdate || panel_state != state.panel_state) {
+            log.trace("--- update_state: new state ************** ${panel_state} ************")
+            events << createEvent(name: "panel_state", value: panel_state, displayed: true, isStateChange: true)
+        }
 
-    /// raw panel state bits
-    state.panel_ready = data.panel_ready
-    state.panel_armed = data.panel_armed
-    state.panel_armed_stay = data.panel_armed_stay
-    state.panel_exit = data.panel_exit
-    state.panel_fire_detected = data.panel_fire_detected
-    state.panel_alarming = data.panel_alarming
-    state.alarm_status = alarm_status
-    state.panel_powered = data.panel_powered
-    state.panel_on_battery = data.panel_on_battery
-    state.panel_ready = data.panel_ready
-    state.panel_chime = data.chime
+        // build our alarm_status value
+        def alarm_status = "off"
+        if (armed)
+        {
+            alarm_status = "away"
+            if (data.panel_armed_stay == true)
+                alarm_status = "stay"
+        }
+
+        // Create an event to notify Smart Home Monitor in our service.
+        // "enum", ["off", "stay", "away"]
+        if (forceguiUpdate || alarm_status != state.alarm_status)
+            events << createEvent(name: "alarmStatus", value: alarm_status, displayed: true, isStateChange: true)
+
+        // Update our alarming switch so SHM or others know we are in an alarm state. In alarm close contact.
+        // "enum", ["open", "closed"]
+        if (forceguiUpdate || data.panel_alarming != state.panel_alarming)
+            events << createEvent(name: "alarmbell-set", value: (data.panel_alarming ? "on" : "off"), displayed: true, isStateChange: true)
+
+        // will only add events for zones that change state.
+        def zone_events = build_zone_events(data)
+        events = events.plus(zone_events)
+
+        // Update our saved state
+        /// Calculated state enum
+        state.panel_state = panel_state
+        state.armed = armed
+
+        /// raw panel state bits
+        state.panel_ready = data.panel_ready
+        state.panel_armed = data.panel_armed
+        state.panel_armed_stay = data.panel_armed_stay
+        state.panel_exit = data.panel_exit
+        state.panel_fire_detected = data.panel_fire_detected
+        state.panel_alarming = data.panel_alarming
+        state.alarm_status = alarm_status
+        state.panel_powered = data.panel_powered
+        state.panel_on_battery = data.panel_on_battery
+        state.panel_ready = data.panel_ready
+        state.panel_chime = data.chime
+        state.panel_perimeter_only = data.panel_perimeter_only
+        state.panel_entry_delay_off = data.panel_entry_delay_off
+	}
 
     return events
 }

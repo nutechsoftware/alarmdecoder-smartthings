@@ -22,9 +22,13 @@
  * Version 2.0.5 - Sean Mathews <coder@f34r.com> - Add switch to create Disarm button.
  * Version 2.0.6 - Sean Mathews <coder@f34r.com> - Compatiblity between ST and HT. Still requires some manual code edits but it will be minimal.
  * Version 2.0.7 - Sean Mathews <coder@f34r.com> - Add RFX virtual device management to track Ademco 5800 wireless or VPLEX sensors directly.
- * Version 2.0.8 - Sean Mathews <coder@f32r.com> - Added Exit button. New flag from AD2 state to detect exit state. Added rebuild devices button.
- * Version 2.0.9 - Sean Mathews <coder@f32r.com> - Split some devices from a single combined Momentary to a Momentary and a Contact for
+ * Version 2.0.8 - Sean Mathews <coder@f34r.com> - Added Exit button. New flag from AD2 state to detect exit state. Added rebuild devices button.
+ * Version 2.0.9 - Sean Mathews <coder@f34r.com> - Split some devices from a single combined Momentary to a Momentary and a Contact for
  *                                                 easy access by other systems.
+ * Version 2.1.0 - Sean Mathews <coder@f34r.com> - Modified virtual RFX devices to allow inverting signal and capabilities detection.
+ *                                                 Set the RFX device type to AlarmDecoder virtual smoke and it will report as a smoke detector.
+ *                                                 Modified sending of events creating a wrapper to invert and adjust to the device type.
+ *
  */
 
 /*
@@ -40,9 +44,7 @@ import groovy.transform.Field
 @Field max_sensors = 20
 @Field nocreatedev = false
 @Field create_disarm = true
-// Set the HA system type SmartThings Hub(SHM) or Hubitat Elevation(HSM)
 // You will also need to comment out and comment code in sendVerfy and sendDiscover below.
-@Field MONTYPE = "SHM" /* ["HSM", "SHM"] */
 
 /*
  * Device label name settings
@@ -57,6 +59,20 @@ import groovy.transform.Field
 @Field idname = ""
 
 /*
+ * determines if the app is running under SmartThings
+ */
+def isSmartThings() {
+    return physicalgraph?.device?.HubAction;
+}
+
+/*
+ * determines if the app is running under Hubitat
+ */
+def isHubitat() {
+    return hubitat?.device?.HubAction;
+}
+
+/*
  * sendDiscover sends a discovery message to the HUB.
  * Leave comments out for the HUB type being used.
  */
@@ -64,11 +80,11 @@ def sendDiscover() {
     // Request HUB send out a UpNp broadcast discovery messages on the local network
     def haobj
     // Comment out the next line if we are using Hubitat
-    if(MONTYPE == "SHM") {
+    if (isSmartThings()) {
         // Comment out the next line if we are using Hubitat
         haobj = new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", physicalgraph.device.Protocol.LAN)
     }
-    if(MONTYPE == "HSM") {
+    else if (isHubitat()) {
         // Comment out the next line if we are using SmartThings
         //haobj = new hubitat.device.HubAction("lan discovery urn:schemas-upnp-org:device:AlarmDecoder:1", hubitat.device.Protocol.LAN)
     }
@@ -83,11 +99,11 @@ def sendVerify(deviceNetworkID, ssdpPath) {
   String ip = getHostAddressFromDNI(deviceNetworkId)
   if (debug) log.debug("verifyAlarmDecoder: $deviceNetworkId ssdpPath: ${ssdpPath} ip: ${ip}")
 
-  if(MONTYPE == "SHM") {
+  if(isSmartThings()) {
       // Comment out the next line if we are using Hubitat
       def result = new physicalgraph.device.HubAction([method: "GET", path: ssdpPath, headers: [Host: ip, Accept: "*/*"]], deviceNetworkId)
   }
-  if(MONTYPE == "HSM") {
+  else if (isHubitat()) {
       // Comment out the next line if we are using SmartThings
       //def result = new hubitat.device.HubAction([method: "GET", path: ssdpPath, headers: [Host: ip, Accept: "*/*"]], deviceNetworkId)
   }
@@ -166,7 +182,7 @@ def titles(String name, Object... args) {
     "input_cid_label": "Enter the new device label or blank for auto",
     "input_cid_devices": "Remove installed CID virutal switches",
     "input_cid_number": "Select the CID number for this device",
-    "input_cid_value": "Zero PAD 3 digit User,Zone or simple regex pattern ex. '001' or '...'",
+    "input_cid_value": "Zero PAD 3 digit User,Zone or simple regex pattern ex. '001' or '???'",
     "input_cid_partition": "Enter the partition or 0 for system",
     "input_cid_number_raw": "Enter CID # or simple regex pattern",
 
@@ -236,7 +252,7 @@ mappings {
 /**
  * Section note on saving and < icons
  */
-def section_no_save_note() {section("Please note") { paragraph "Do not use the \"<\" or the \"Save\" buttons on this page."}}
+def section_no_save_note() {section("Please note") { paragraph "Do not use the \"Save\" buttons on this page. Use the \"<\" to exit or go back."}}
 
 /**
  * our main page dynamicly generated to control page based upon logic.
@@ -350,12 +366,17 @@ def page_add_new_cid() {
     // list of some of the CID #'s and descriptions.
     // 000 will trigger a manual input of the CID number.
     def cid_numbers = [  "0": "000 - Other / Custom",
-                       "101": "101 - Pendant Transmitter",
-                       "110": "110 - Fire",
-                       "150": "150 - 24 HOUR (AUXILIARY)",
+                       "10?": "100-102 - ALL Medical alarms",
+                       "11?": "110-118 - ALL Fire alarms",
+                       "12?": "120-126 - ALL Panic alarms",
+                       "13?": "130-139 - ALL Burglar alarms",
+                       "14?": "140-149 - ALL General alarms",
+                       "1[5-6]?": "150-169 - ALL 24 HOUR AUX alarms",
                        "154": "154 - Water Leakage",
                        "158": "158 - High Temp",
                        "162": "162 - Carbon Monoxide Detected",
+                       "301": "301 - AC Loss",
+                       "3??": "3?? - All System Troubles",
                        "401": "401 - Arm AWAY OPEN/CLOSE",
                        "441": "441 - Arm STAY OPEN/CLOSE",
                        "4[0,4]1": "4[0,4]1 - Arm Stay or Away OPEN/CLOSE"]
@@ -375,7 +396,7 @@ def page_add_new_cid() {
             }
             section {
                 paragraph titles("section_cid_value", buildcidvalue())
-                input(name: "input_cid_value", type: "text", required: true, defaultValue: 001,submitOnChange: true, title: titles("input_cid_value"))
+                input(name: "input_cid_value", type: "text", required: true, defaultValue: "???",submitOnChange: true, title: titles("input_cid_value"))
             }
             section {
                 paragraph titles("section_cid_partition")
@@ -383,8 +404,8 @@ def page_add_new_cid() {
             }
             section {
                 paragraph titles("section_cid_names")
-                input(name: "input_cid_name", type: "text", required: false, submitOnChange: true, title: titles("input_cid_name"))
-                input(name: "input_cid_label", type: "text", required: false, submitOnChange: true, title: titles("input_cid_label"))
+                input(name: "input_cid_name", type: "text", required: false, defaultValue: '', submitOnChange: true, title: titles("input_cid_name"))
+                input(name: "input_cid_label", type: "text", required: false, defaultValue: '', submitOnChange: true, title: titles("input_cid_label"))
             }
             // If input_cid_number or input_cid_number_raw have a value
             if ( (input_cid_number && (input_cid_number != "0")) || (input_cid_number_raw)) {
@@ -549,8 +570,8 @@ def page_add_new_rfx() {
         }
         section {
             paragraph titles("section_rfx_names")
-            input(name: "input_rfx_name", type: "text", required: false, submitOnChange: true, title: titles("input_rfx_name"))
-            input(name: "input_rfx_label", type: "text", required: false, submitOnChange: true, title: titles("input_rfx_label"))
+            input(name: "input_rfx_name", type: "text", required: false, defaultValue: '', submitOnChange: true, title: titles("input_rfx_name"))
+            input(name: "input_rfx_label", type: "text", required: false, defaultValue: '', submitOnChange: true, title: titles("input_rfx_label"))
         }
         section {
             input(name: "input_rfx_sn", type: "text", required: true, defaultValue: '000000', submitOnChange: true, title: titles("input_rfx_sn"))
@@ -959,18 +980,27 @@ def actionButton(id) {
     if (id.contains(":alarmFire")) {
         d.fire()
     }
+    // Turn off alarm bell if pushed
+    if (id.contains(":alarmBell")) {
+        def cd = getChildDevice("${id}")
+        if (!cd) {
+            log.info("actionButton: Could not clear '${id}'.")
+            return
+        }
+        _sendEventTranslate(cd, "off")
+    }
     if (id.contains(":CID-")) {
         def cd = getChildDevice("${id}")
         if (!cd) {
-            log.info("actionButton: Could not CID device '${id}'.")
+            log.info("actionButton: Could not clear device '${id}'.")
             return
         }
-        cd.sendEvent(name: "switch", value: "off", isStateChange: true, filtered: true)
+        _sendEventTranslate(cd, "off")
     }
 }
 
 /**
- * send event to smokeAlarm device to set state
+ * send event to smokeAlarm device to set state [detected, clear]
  */
 def smokeSet(evt) {
     if (debug) log.debug("smokeSet: desc=${evt.value}")
@@ -981,13 +1011,13 @@ def smokeSet(evt) {
         log.info("smokeSet: Could not find 'SmokeAlarm' device.")
         return
     }
-    d.sendEvent(name: "smoke", value: evt.value, isStateChange: true, filtered: true)
+    _sendEventTranslate(d, (evt.value == "detected" ? "on" : "off"))
 
     d = getChildDevice("${getDeviceKey()}:alarmFireStatus")
     if (!d) {
-        log.info("armAwaySet: Could not find 'alarmFireStatus' device.")
+        log.info("smokeSet: Could not find 'alarmFireStatus' device.")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open") , isStateChange: true, filtered: true)
+        _sendEventTranslate(d, (evt.value == "detected" ? "on" : "off"))
     }
 }
 
@@ -1000,14 +1030,14 @@ def armAwaySet(evt) {
     if (!d) {
         log.info("armAwaySet: Could not find 'armAway' device.")
     } else {
-        d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 
     d = getChildDevice("${getDeviceKey()}:armAwayStatus")
     if (!d) {
         log.info("armAwaySet: Could not find 'armAwayStatus' device.")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open") , isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 }
 
@@ -1027,7 +1057,7 @@ def armStaySet(evt) {
     if (!d) {
         log.info("armStaySet: Could not find 'armStayStatus' device.")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 }
 
@@ -1036,11 +1066,18 @@ def armStaySet(evt) {
  */
 def alarmBellSet(evt) {
     if (debug) log.debug("alarmBellSet ${evt.value}")
-    def d = getChildDevice("${getDeviceKey()}:alarmBellStatus")
+    def d = getChildDevice("${getDeviceKey()}:alarmBell")
     if (!d) {
-        log.info("alarmBellSet: Could not find 'alarmBellStatus' device.")
+        log.info("alarmBellSet: Could not find 'alarmBell' device.")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
+    }
+
+    d = getChildDevice("${getDeviceKey()}:alarmBellStatus")
+    if (!d) {
+        log.info("alarmBellSet: Could not find device 'alarmBellStatus'")
+    } else {
+        _sendEventTranslate(d, evt.value)
     }
 }
 
@@ -1048,24 +1085,24 @@ def alarmBellSet(evt) {
  * send event to chime indicator device to set state
  */
 def chimeSet(evt) {
-    if (debug) log.debug("chimeSet ${evt.value}")
+    /* if (debug)*/ log.debug("chimeSet ${evt.value}")
     def d = getChildDevice("${getDeviceKey()}:chimeMode")
     if (!d) {
         log.info("chimeSet: Could not find device 'chimeMode'")
     } else {
-        d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 
     d = getChildDevice("${getDeviceKey()}:chimeModeStatus")
     if (!d) {
         log.info("chimeSet: Could not find device 'chimeModeStatus'")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 }
 
 /**
- * send event to chime indicator device to set state
+ * send event to exit indicator device to set state
  */
 def exitSet(evt) {
     if (debug) log.debug("exitSet ${evt.value}")
@@ -1073,16 +1110,43 @@ def exitSet(evt) {
     if (!d) {
         log.info("exitSet: Could not find device 'exit'")
     } else {
-        d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 
     d = getChildDevice("${getDeviceKey()}:exitStatus")
     if (!d) {
         log.info("exitSet: Could not find device 'exitStatus'")
     } else {
-        d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+        _sendEventTranslate(d, evt.value)
     }
 }
+
+/**
+ * send event to perimeter only indicator device to set state
+ */
+def perimeterOnlySet(evt) {
+    if (debug) log.debug("perimeterOnlySet ${evt.value}")
+    def d = getChildDevice("${getDeviceKey()}:perimeterOnlyStatus")
+    if (!d) {
+        log.info("perimeterOnlySet: Could not find device 'perimeterOnly'")
+        return
+    }
+    _sendEventTranslate(d, evt.value)
+}
+
+/**
+ * send event to entry delay off indicator device to set state
+ */
+def entryDelayOffSet(evt) {
+    if (debug) log.debug("entryDelayOffSet ${evt.value}")
+    def d = getChildDevice("${getDeviceKey()}:entryDelayOffStatus")
+    if (!d) {
+        log.info("entryDelayOffSet: Could not find device 'entryDelayOff'")
+        return
+    }
+    _sendEventTranslate(d, evt.value)
+}
+
 
 /**
  * send event to bypass status device to set state
@@ -1094,7 +1158,7 @@ def bypassSet(evt) {
         log.info("bypassSet: Could not find device 'bypassStatus'")
         return
     }
-    d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+    _sendEventTranslate(d, evt.value)
 }
 
 /**
@@ -1107,7 +1171,7 @@ def readySet(evt) {
         log.info("readySet: Could not find 'readyStatus' device.")
         return
     }
-    d.sendEvent(name: "contact", value: (evt.value == "on" ? "closed" : "open"), isStateChange: true, filtered: true)
+    _sendEventTranslate(d, evt.value)
 }
 
 /**
@@ -1119,7 +1183,7 @@ def disarmSet(evt) {
     if (!d) {
       log.info("disarmSet: Could not find 'disarm' device.")
     } else {
-      d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+      _sendEventTranslate(d, evt.value)
     }
 }
 
@@ -1154,12 +1218,16 @@ def cidSet(evt) {
     children.each {
         if (it.deviceNetworkId.contains(":CID-")) {
             def match = it.deviceNetworkId.split(":")[2].trim()
+
+            // replace ? with . non regex
+            match = match.replace("?",".")
+
             if (device_name =~ /${match}/) {
-                if (debug) log.error("cidSet device: ${device_name} matches ${match} sendng state ${cidstate}")
-                it.sendEvent(name: "switch", value: cidstate, isStateChange: true, filtered: true)
+                if (debug) log.debug("cidSet device: ${device_name} matches ${match} sendng state ${cidstate}")
+                _sendEventTranslate(it, cidstate)
                 sent = true
             } else {
-                if (debug) log.error("cidSet device: ${device_name} no match ${match}")
+                if (debug) log.debug("cidSet device: ${device_name} no match ${match}")
             }
         }
     }
@@ -1172,9 +1240,9 @@ def cidSet(evt) {
 
 /**
  * send RFX event to the correct device if one exists
- * evt.value example raw !RFX:123123,00
- * eventmessage 0462932:0:0:1:0:0:0
- * 01020304:1388:RFX-0014374-1-?-1-?-?-?
+ * evt.value example raw !RFX:123123,a0
+ * eventmessage 123123:0:0:1:1:0:0
+ * 01020304:1388:RFX-123123-?-?-1-?-?-?
  */
 def rfxSet(evt) {
     log.info("rfxSet ${evt.value}")
@@ -1199,11 +1267,12 @@ def rfxSet(evt) {
     def children = getChildDevices()
     children.each {
         if (it.deviceNetworkId.contains(":RFX-")) {
+
             // Network mask differes from ST to HT
             def sp = ""
-            if (MONTYPE == "SHM")
+            if (isSmartThings())
                 sp = it.deviceNetworkId.split(":")[2].trim().split("-")
-            if (MONTYPE == "HSM")
+            else if (isHubitat())
                 sp = it.deviceNetworkId.split(":")[1].trim().split("-")
 
 
@@ -1229,17 +1298,19 @@ def rfxSet(evt) {
                     tot++
                 }
 
+				_sendEventTranslate(it, (tot>0 ? "on" : "off"))
+
                 if (debug) log.info("rfxSet device: ${device_name} matches ${match} sendng state ${tot}")
-                it.sendEvent(name: "switch", value: tot, isStateChange: true, filtered: true)
+
                 sent = true
 
             } else {
-                if (debug) log.error("rfxSet device: ${device_name} no match ${match}")
+                if (debug) log.info("rfxSet device: ${device_name} no match ${match}")
             }
         }
     }
 
-    if (!sent) {
+    if (!sent && debug) {
         log.error("rfxSet: Could not find '${device_name}|XXX' device.")
         return
     }
@@ -1262,7 +1333,7 @@ def addZone(evt) {
         }
 
         // Set default contact state.
-        zone_switch.sendEvent(name: "contact", value: sensorValue, isStateChange: true, displayed: false)
+        _sendEventTranslate(zone_switch, (sensorValue == "open" ? "on" : "off"))
     } catch (e) {
         log.error "There was an error (${e}) when trying to addZone ${i}"
     }
@@ -1283,7 +1354,7 @@ def zoneOn(evt) {
         if (settings.defaultSensorToClosed == true)
             sensorValue = "open"
 
-        d.sendEvent(name: "contact", value: sensorValue, isStateChange: true, filtered: true)
+        _sendEventTranslate(d, (sensorValue == "open" ? "on" : "off"))
     }
 }
 
@@ -1301,7 +1372,7 @@ def zoneOff(evt) {
         if (settings.defaultSensorToClosed == true)
             sensorValue = "closed"
 
-        d.sendEvent(name: "contact", value: sensorValue, isStateChange: true, filtered: true)
+        _sendEventTranslate(d, (sensorValue == "open" ? "on" : "off"))
     }
 }
 
@@ -1324,7 +1395,7 @@ def monitorAlarmHandler(evt) {
             {
                 if (debug) log.debug("monitorAlarmHandler DEBUG-- ${device.deviceNetworkId}")
                 /* SmartThings */
-                if (MONTYPE == "SHM") {
+                if (isSmartThings()) {
                     if (evt.value == "away" || evt.value == "armAway") {
                         // do not send if already in that state.
                         if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay")) {
@@ -1352,7 +1423,7 @@ def monitorAlarmHandler(evt) {
                         log.debug "Unknown SHM alarm value: ${evt.value}"
                 }
                 /* Hubitat */
-                if (MONTYPE == "HSM") {
+                else if (isHubitat()) {
                     if (evt.value == "armedAway") {
                         // do not send if already in that state.
                         if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay")) {
@@ -1399,12 +1470,12 @@ def alarmdecoderAlarmHandler(evt) {
     if (debug) log.debug("alarmdecoderAlarmHandler -- ${evt.value}, lastMONStatus ${state.lastMONStatus}, lastAlarmDecoderStatus ${state.lastAlarmDecoderStatus}")
 
     if (state.lastAlarmDecoderStatus != evt.value) {
-        if(MONTYPE == "SHM") {
+        if(isSmartThings()) {
             /* no traslation needed already [stay,away,off] */
             if (debug) log.debug("alarmdecoderAlarmHandler: alarmSystemStatus ${evt.value}")
             sendLocationEvent(name: "alarmSystemStatus", value: evt.value)
         }
-        if(MONTYPE == "HSM") {
+        else if (isHubitat()) {
             /* translate to HSM */
             msg = ""
             if (evt.value == "stay") {
@@ -1437,10 +1508,10 @@ def initSubscriptions() {
     // subscribe to the Smart Home Manager api for alarm status events
     if (debug) log.debug("initSubscriptions: Subscribe to handlers")
 
-    if (MONTYPE == "SHM") {
+    if (isSmartThings()) {
         subscribe(location, "alarmSystemStatus", monitorAlarmHandler)
     }
-    if (MONTYPE == "HSM") {
+    else if (isHubitat()) {
         subscribe(location, "hsmStatus", monitorAlarmHandler)
     }
 
@@ -1537,6 +1608,9 @@ def getDevices() {
 def addExistingDevices() {
     if (debug) log.debug("addExistingDevices: ${input_selected_devices}")
 
+	// resubscribe! Its a hack if one adds more subscriptions and does not want to rebuild everything.
+    configureDeviceSubscriptions()
+
     def selected_devices = input_selected_devices
     if (selected_devices instanceof java.lang.String) {
         selected_devices = [selected_devices]
@@ -1597,11 +1671,11 @@ def addExistingDevices() {
         {
             if (debug) log.debug("Adding virtual zone sensor ${i}")
             // SmartThings we do out of band with callback
-            if (MONTYPE == "SHM") {
+            if (isSmartThings()) {
                 sendEvent(name: "addZone", value: "${i+1}", data: "${getDeviceKey()}:switch${i+1}")
             }
             // Callbacks to local events seem to not work on HT
-            if (MONTYPE == "HSM") {
+            else if (isHubitat()) {
                 def evt = [value: "${i+1}", data: "${state.ip}:switch${i+1}"]
                 addZone(evt)
             }
@@ -1641,8 +1715,14 @@ def addExistingDevices() {
             // Add Ready status contact if it does not exist.
             addAD2VirtualDevices("ready", "Ready", false, false, true)
 
-            // Add virtual Alarm Bell status contact if it does not exist.
-            addAD2VirtualDevices("alarmBell", "Alarm Bell", false, false, true)
+            // Add perimeter only status contact if it does not exist.
+            addAD2VirtualDevices("perimeterOnly", "Perimeter Only", false, false, true)
+
+            // Add entry delay off status contact if it does not exist.
+            addAD2VirtualDevices("entryDelayOff", "Entry Delay Off", false, false, true)
+
+            // Add virtual Alarm Bell switch/indicator combo if it does not exist.
+            addAD2VirtualDevices("alarmBell", "Alarm Bell", false, true, true)
 
             // Add FIRE Alarm switch/indicator combo if it does not exist.
             addAD2VirtualDevices("alarmFire", "Fire Alarm", false, true, true)
@@ -1732,6 +1812,12 @@ private def configureDeviceSubscriptions() {
 
     // subscribe to exit handler
     subscribe(device, "exit-set", exitSet, [filterEvents: false])
+
+    // subscribe to perimeter-only-set handler
+    subscribe(device, "perimeter-only-set", perimeterOnlySet, [filterEvents: false])
+
+    // subscribe to entry-deley-off-set handler
+    subscribe(device, "entry-delay-off-set", entryDelayOffSet, [filterEvents: false])
 
     // subscribe to bypass handler
     subscribe(device, "bypass-set", bypassSet, [filterEvents: false])
@@ -1875,9 +1961,9 @@ private Integer convertHexToInt(hex) {
  */
 private String getDeviceKey() {
     def key = ""
-    if (MONTYPE == "SHM")
+    if (isSmartThings())
         key = "${state.ip}:${state.port}"
-    if (MONTYPE == "HSM")
+    else if (isHubitat())
         key = "${state.ip}"
 
     return key
@@ -1892,4 +1978,102 @@ private getHostAddressFromDNI(d) {
   def ip = convertHexToIP(parts[0])
   def port = convertHexToInt(parts[1])
   return ip + ":" + port
+}
+
+/**
+ * Send a state change to an AD2 virtual device adjusting it to
+ * the devices actual capabilities and inverting if preferred.
+ *
+ * ad2d: The device handle.
+ * state: [on, off]
+ * Capabilities: [Switch]
+ *   Default off = off, on(Alerting) = on
+ * Capabilities: [Contact Sensor]
+ *   Default close = off, open(Alerting) = on
+ * Capabilities: [Smoke Detector]
+ *   Default clear = off, detected(Alerting) = on
+ *
+ */
+def _sendEventTranslate(ad2d, state) {
+
+    // Grab the devices preferences for inverting
+    def invert = (ad2d.device.getDataValue("invert") == "true" ? true : false)
+
+    // send a switch event if its a [Switch]
+    // Default off = Off, on(Alerting) = On
+    if (ad2d.hasCapability("Switch")) {
+        // convert: Any matches is ON(true) no match is OFF(false)
+        def sval = ((state == "on") ? true : false)
+
+        // invert: If device has invert attribute then invert signal
+        sval = (invert ? !sval : sval)
+
+        // send 'switch' event
+        ad2d.sendEvent(name: "switch", value: (sval ? "on" : "off"), isStateChange: true, filtered: true)
+    }
+
+    // send a 'contact' event if its a [Contact Sensor]
+    // Default close = Off, open(Alerting) = On
+    if (ad2d.hasCapability("Contact Sensor")) {
+        // convert: Any matches is ON(true) no match is OFF(false)
+        def sval = ((state == "on") ? true : false)
+
+        // invert: If device has invert attribute then invert signal
+        sval = (invert ? !sval : sval)
+
+        // send switch event
+        ad2d.sendEvent(name: "contact", value: (sval ? "open" : "close") , isStateChange: true, filtered: true)
+    }
+
+    // send a 'motion' event if its a [Motion Sensor]
+    // Default inactive = Off, active(Alerting) = On
+    if (ad2d.hasCapability("Motion Sensor")) {
+        // convert: Any matches is ON(true) no match is OFF(false)
+        def sval = ((state == "on") ? true : false)
+
+        // invert: If device has invert attribute then invert signal
+        sval = (invert ? !sval : sval)
+
+        // send switch event
+        ad2d.sendEvent(name: "motion", value: (sval ? "active" : "inactive") , isStateChange: true, filtered: true)
+    }
+
+    // send a 'shock' event if its a [Shock Sensor]
+    // Default clear = Off, detected(Alerting) = On
+    if (ad2d.hasCapability("Shock Sensor")) {
+        // convert: Any matches is ON(true) no match is OFF(false)
+        def sval = ((state == "on") ? true : false)
+
+        // invert: If device has invert attribute then invert signal
+        sval = (invert ? !sval : sval)
+
+        // send switch event
+        ad2d.sendEvent(name: "shock", value: (sval ? "detected" : "clear") , isStateChange: true, filtered: true)
+    }
+
+	// send a 'carbonMonoxide' event if its a [Carbon Monoxide Detector]
+    // Default clear = Off, detected(Alerting) = On
+    if (ad2d.hasCapability("Carbon Monoxide Detector")) {
+        // convert: Any matches is ON(true) no match is OFF(false)
+        def sval = ((state == "on") ? true : false)
+
+        // invert: If device has invert attribute then invert signal
+        sval = (invert ? !sval : sval)
+
+        // send switch event
+        ad2d.sendEvent(name: "carbonMonoxide", value: (sval ? "detected" : "clear") , isStateChange: true, filtered: true)
+    }
+
+    // send a 'smoke' event if its a [Smoke Detector]
+    // Default clear = Off, detected(Alerting) = On
+    if (ad2d.hasCapability("Smoke Detector")) {
+        // convert: Any matches is ON(true) no match is OFF(false)
+        def sval = ((state == "on") ? true : false)
+
+        // invert: If device has invert attribute then invert signal
+        sval = (invert ? !sval : sval)
+
+        // send switch event
+        ad2d.sendEvent(name: "smoke", value: (sval ? "detected" : "clear") , isStateChange: true, filtered: true)
+    }
 }

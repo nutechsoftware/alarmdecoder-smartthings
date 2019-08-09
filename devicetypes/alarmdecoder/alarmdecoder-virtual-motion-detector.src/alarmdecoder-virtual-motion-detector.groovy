@@ -14,31 +14,46 @@
  *
  */
 
-/*
- * global support
- */
 import groovy.transform.Field
 @Field APPNAMESPACE = "alarmdecoder"
 
 metadata {
-    definition (name: "AlarmDecoder virtual contact sensor", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
-        capability "Contact Sensor"
+    definition (name: "AlarmDecoder virtual motion sensor", namespace: APPNAMESPACE, author: "scott@nutech.com") {
+        capability "Motion Sensor"
     }
 
     // tile definitions
-    tiles {
-        standardTile("sensor", "device.contact", width: 2, height: 2, canChangeIcon: true) {
-            state "closed", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#00a0dc"
-            state "open", label: '${name}', icon: "st.contact.contact.open", backgroundColor: "#e86d13"
-        }
-        main "sensor"
-        details "sensor"
-    }
 
-    // preferences
-    preferences {
+	tiles(scale: 2) {
+		multiAttributeTile(name:"motion", type: "generic", width: 6, height: 4){
+			tileAttribute ("device.motion", key: "PRIMARY_CONTROL") {
+				attributeState "active", label:'motion', icon:"st.motion.motion.active", backgroundColor:"#53a7c0"
+				attributeState "inactive", label:'no motion', icon:"st.motion.motion.inactive", backgroundColor:"#ffffff"
+			}
+		}
+		main "motion"
+		details "motion"
+	}
+    
+        preferences {
         input name: "invert", type: "bool", title: "Invert", description: "Invert signal ON is OFF/OPEN is CLOSE/DETECTED is CLEAR", required: false
     }
+}
+
+def parse(String description) {
+    if (description != "updated"){
+    	log.info "parse returned:${description}"
+		def pair = description.split(":")
+		createEvent(name: pair[0].trim(), value: pair[1].trim())
+      }
+}
+
+def active() {
+	sendEvent(name: "motion", value: "active")
+}
+
+def inactive() {
+    sendEvent(name: "motion", value: "inactive")
 }
 
 def installed() {
