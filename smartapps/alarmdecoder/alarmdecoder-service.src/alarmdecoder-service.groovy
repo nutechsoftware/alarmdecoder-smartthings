@@ -2022,7 +2022,7 @@ def _sendEventTranslate(ad2d, state) {
         sval = (invert ? !sval : sval)
 
         // send switch event
-        ad2d.sendEvent(name: "contact", value: (sval ? "open" : "close") , isStateChange: true, filtered: true)
+        ad2d.sendEvent(name: "contact", value: (sval ? "open" : "closed") , isStateChange: true, filtered: true)
     }
 
     // send a 'motion' event if its a [Motion Sensor]
