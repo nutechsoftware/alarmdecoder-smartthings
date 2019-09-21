@@ -1,5 +1,5 @@
 /**
- *  Virtual Contact Sensor for alarm panel zones
+ *  Virtual Motion Detector for alarm panel zones
  *
  *  Copyright 2016-2018 Nu Tech Software Solutions, Inc.
  *
@@ -18,7 +18,7 @@ import groovy.transform.Field
 @Field APPNAMESPACE = "alarmdecoder"
 
 metadata {
-    definition (name: "AlarmDecoder virtual motion sensor", namespace: APPNAMESPACE, author: "scott@nutech.com") {
+    definition (name: "AlarmDecoder virtual motion detector", namespace: APPNAMESPACE, author: "scott@nutech.com") {
         capability "Motion Sensor"
     }
 
@@ -34,7 +34,7 @@ metadata {
 		main "motion"
 		details "motion"
 	}
-    
+
         preferences {
         input name: "invert", type: "bool", title: "Invert", description: "Invert signal ON is OFF/OPEN is CLOSE/DETECTED is CLEAR", required: false
     }
