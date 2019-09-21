@@ -63,4 +63,3 @@ def installed() {
 def updated() {
     updateDataValue("invert", invert.toString())
 }
-
