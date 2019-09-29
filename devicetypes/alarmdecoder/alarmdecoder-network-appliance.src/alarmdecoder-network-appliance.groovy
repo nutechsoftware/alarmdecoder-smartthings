@@ -3,119 +3,52 @@
  *
  *  Copyright 2016-2019 Nu Tech Software Solutions, Inc.
  *
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License. You may obtain a copy of the License at:
- *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at:
  *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
- *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
- *  for the specific language governing permissions and limitations under the License.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
  */
 
-/*
+/**
  * global support
  */
 import groovy.transform.Field
 @Field APPNAMESPACE = "alarmdecoder"
 
-/*
- * System Settings
- */
-@Field debug = false
-// Set the HA system type SmartThings Hub(SHM) or Hubitat Elevation(HSM)
-// You will also need to comment out and comment code in sendVerfy and sendDiscover below.
-@Field MONTYPE = "SHM" /* ["HSM", "SHM"] */
-
-
-/*
- * build hubAction SUBSCRIBE object.
- * Leave comments out for the HUB type being used.
- */
-def getHubSubscribeAction(urn, address, path, callbackPath) {
-	def result
-	log.trace("--- getHubSubscribeAction")
-	def obj = [
-		method: "SUBSCRIBE",
-		path: path,
-		headers: [
-			HOST: urn,
-			CALLBACK: "<http://${address}/notify${callbackPath}>",
-			NT: "upnp:event",
-			TIMEOUT: "Second-28800"
-		]
-	]
-
-	if(MONTYPE == "SHM") {
-		// Comment out the next line if we are using Hubitat
-		result = new physicalgraph.device.HubAction(obj)
-		// We get requestId back in parse() so we know what it is.
-		result.requestId = "SUBSCRIBE"
-	}
-
-	if(MONTYPE == "HSM") {
-		// Comment out the next line if we are using SmartThings
-		//result = new hubitat.device.HubAction(obj)
-	}
-
-    return result
-}
-
-/*
- * build hubAction HTTPRequest  object.
- * Leave comments out for the HUB type being used.
- */
-def getHubHttpRequestAction(httpRequest, host) {
-    def result
-    if(MONTYPE == "SHM") {
-       // Comment out the next line if we are using Hubitat
-       result = new physicalgraph.device.HubAction(httpRequest, "${host}")
-    }
-    if(MONTYPE == "HSM") {
-       // Comment out the next line if we are using SmartThings
-       //result = new hubitat.device.HubAction(httpRequest, "${host}")
-    }
-    return result
-}
-
-
-/*
+/**
  * Parsing support
  */
 import groovy.json.JsonSlurper;
 import groovy.util.XmlParser;
 
+/**
+ * System Settings
+ */
+// The max number of zone faults we can show on this page.
+// To adjust requires manual adding of the tiles into preferences.
+@Field MAX_ZONE_FAULT_TILES = 12
+
+/**
+ * preferences
+ */
 preferences {
     section() {
         input("api_key", "password", title: "API Key", description: "The key to access the REST API", required: true)
         input("user_code", "password", title: "Alarm Code", description: "The user code for the panel", required: true)
-        input("panel_type", "enum", title: "Panel Type", description: "Type of panel", options: ["ADEMCO", "DSC"], defaultValue: "ADEMCO", required: true)
-    }
-    section() {
-        input("zonetracker1zone", "number", title: "ZoneTracker Sensor #1", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker2zone", "number", title: "ZoneTracker Sensor #2", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker3zone", "number", title: "ZoneTracker Sensor #3", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker4zone", "number", title: "ZoneTracker Sensor #4", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker5zone", "number", title: "ZoneTracker Sensor #5", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker6zone", "number", title: "ZoneTracker Sensor #6", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker7zone", "number", title: "ZoneTracker Sensor #7", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker8zone", "number", title: "ZoneTracker Sensor #8", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker9zone", "number", title: "ZoneTracker Sensor #9", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker10zone", "number", title: "ZoneTracker Sensor #10", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker11zone", "number", title: "ZoneTracker Sensor #11", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker12zone", "number", title: "ZoneTracker Sensor #12", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker13zone", "number", title: "ZoneTracker Sensor #13", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker14zone", "number", title: "ZoneTracker Sensor #14", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker15zone", "number", title: "ZoneTracker Sensor #15", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker16zone", "number", title: "ZoneTracker Sensor #16", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker17zone", "number", title: "ZoneTracker Sensor #17", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker18zone", "number", title: "ZoneTracker Sensor #18", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker19zone", "number", title: "ZoneTracker Sensor #19", description: "Zone number to associate with this contact sensor.")
-        input("zonetracker20zone", "number", title: "ZoneTracker Sensor #20", description: "Zone number to associate with this contact sensor.")
+        input("panel_type", "enum", title: "Panel Type", description: "Type of panel [ADEMCO,DSC]", options: ["ADEMCO", "DSC"], defaultValue: "ADEMCO", required: true)
     }
 }
 
+/**
+ * metadata
+ */
 metadata {
     definition (name: "AlarmDecoder network appliance", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
         capability "Refresh"
@@ -332,13 +265,32 @@ metadata {
 }
 
 
-/*** Handlers ***/
+/*** Event Handlers ***/
 
+/**
+ * installed()
+ *
+ * Called when the device page reports an install event.
+ */
 def installed() {
     for (def i = 1; i <= 12; i++)
         sendEvent(name: "zoneStatus${i}", value: "", displayed: false)
 }
 
+/**
+ * uninstalled()
+ *
+ * Called when the device page reports an uninstall event.
+ */
+def uninstalled() {
+    log.trace "--- handler.uninstalled"
+}
+
+/**
+ * update()
+ *
+ * Called when the device settings are udpated.
+ */
 def updated() {
     log.trace "--- handler.updated"
 
@@ -379,122 +331,79 @@ def updated() {
     runEvery5Minutes(subscribeNotifications)
 }
 
-def uninstalled() {
-    log.trace "--- handler.uninstalled"
-}
-
-// Subscribe to the AlarmDecoder upnp event notification
-// FIXME: Need to get this from the eventSubURL in the ssdpPath: /static/device_description.xml
-def subscribeNotifications() {
-    if (debug) log.trace "--- subscribeNotifications: ${getDataValue("urn")}"
-    subscribeAction(getDataValue("urn"), "/api/v1/alarmdecoder/event?apikey=${_get_api_key()}")
-}
-
-// Parse JSON and new state. Build UI and return UI update events
-def parse_json(String headers, String body) {
-    log.trace("--- parse_json")
-
-    def slurper = new JsonSlurper()
-    def result = slurper.parseText(body)
-
-    // Build our events list from our current state
-    def events = []
-    update_state(result).each { e-> events << e }
-
-    return events
-}
-
-// Parse XML and new state. Build UI and return UI update events
-def parse_xml(String headers, String body) {
-    log.trace("--- parse_xml")
-    def xmlResult = new XmlSlurper().parseText(body)
-
-    def resultMap = [:]
-    resultMap['eventid'] = xmlResult.property.eventid.toInteger()
-    resultMap['eventdesc'] = xmlResult.property.eventdesc.text()
-    resultMap['eventmessage'] = xmlResult.property.eventmessage.text()
-    resultMap['rawmessage'] = xmlResult.property.rawmessage.text()
-    resultMap['last_message_received'] = xmlResult.property.panelstate.last_message_received.text()
-    resultMap['panel_alarming'] = xmlResult.property.panelstate.panel_alarming.toBoolean()
-    resultMap['panel_armed'] = xmlResult.property.panelstate.panel_armed.toBoolean()
-    resultMap['panel_armed_stay'] = xmlResult.property.panelstate.panel_armed_stay.toBoolean()
-    resultMap['panel_exit'] = xmlResult.property.panelstate.panel_exit.toBoolean()
-    resultMap['panel_bypassed'] = xmlResult.property.panelstate.panel_bypassed.toBoolean()
-    resultMap['panel_fire_detected'] = xmlResult.property.panelstate.panel_fire_detected.toBoolean()
-    resultMap['panel_on_battery'] = xmlResult.property.panelstate.panel_on_battery.toBoolean()
-    resultMap['panel_panicked'] = xmlResult.property.panelstate.panel_panicked.toBoolean()
-    resultMap['panel_powered'] = xmlResult.property.panelstate.panel_powered.toBoolean()
-    resultMap['panel_ready'] = xmlResult.property.panelstate.panel_ready.toBoolean()
-    resultMap['panel_entry_delay_off'] = xmlResult.property.panelstate.panel_entry_delay_off.toBoolean()
-    resultMap['panel_perimeter_only'] = xmlResult.property.panelstate.panel_perimeter_only.toBoolean()
-    resultMap['panel_type'] = xmlResult.property.panelstate.panel_type.text()
-    resultMap['panel_chime'] = xmlResult.property.panelstate.panel_chime.toBoolean()
-
-    // build list of faulted zones unpack xml
-    // only update zone list on zone change events
-    // <eventmessage><![CDATA[Zone <unnamed> (9) has been faulted.]]></eventmessage>
-    if (xmlResult.property.eventmessage.text().startsWith('Zone ')) {
-        def zones = []
-        xmlResult.property.panelstate.panel_zones_faulted.z.each { e-> zones << e.toInteger() }
-        resultMap['panel_zones_faulted'] = zones
-    }
-
-    // unpack the relay xml
-    def relays = []
-    xmlResult.property.panelstate.panel_relay_status.r.each { e->
-        relays << ['address': e.a, 'channel': e.c, 'value': e.v]
-    }
-    resultMap['panel_relay_status'] = relays
-
-    // Build our events list from our current state
-    def events = []
-    if (debug) log.debug("---  update_state in:****** ${resultMap}")
-    update_state(resultMap).each { e-> events << e }
-    if (debug) log.debug("---  update_state out:****** ${events}")
-    return events
-}
-
-// parse events into attributes
+/**
+ * parse()
+ *
+ * Core event parse routine for Device Handler
+ *
+ * Expect:
+ *  Response to SUBSCRIBE requests to the AlarmDecoder.
+ *
+ * Test from the AlarmDecoder Appliance:
+ *   curl
+ *
+ */
 def parse(String description) {
+    if (parent.debug)
+        log.debug("--- parse: em: ${em}, description: '${description}'")
+
+    // Create our events array we will append into.
     def events = []
-    def event = parseEventMessage(description)
+
+    // Parse the event string.
+    def em = parent.parseEventMessage(description)
+
+    // Is this a message from the active registerd AlarmDecoder?
+    // FIXME: Add some security test.
+    if (em.mac != getDataValue("mac")) {
+        if (parent.debug)
+            log.info("--- parse: skipping event incorrect mac address: ${em.mac}")
+        return events
+    } else {
+        if (parent.debug)
+            log.info("--- parse: event match mac: ${em.mac}")
+    }
 
     // If we initiate a connection it will get an id.
     // Just grab the last for loging.
-    def rID = ((event.requestId && event.requestId.length() > 12) ? event.requestId.substring(event.requestId.length()-12) : "000000000000")
+    def rID = ((em.requestId?.length() > 12)
+        ? em.requestId.substring(em.requestId.length()-12) : "000000000000")
 
-    log.info("---  parse: mac: ${event?.mac} requestId: ${rID}")
-
-    // HTTP we just need headers for a valid HTTP request.
-    if (event?.headers) {
-        def headerString = new String(event.headers.decodeBase64())
-
-        // body may be empty.
-        def bodyString = (event?.body) ? (new String(event.body.decodeBase64())) : ""
-
-        def type = (headerString =~ /Content-Type:.*/) ? (headerString =~ /Content-Type:.*/)[0] : null
-
-        if (debug) {
-            log.debug("---  parse: ${rID}: headers: ${headerString}")
-            log.debug("---  parse: ${rID}: body: ${bodyString}")
-        }
-
-        def result
-
-        // Based upon content type process the headers and body
-        if (type?.contains("json") && bodyString.length()) {
-            parse_json(headerString, bodyString).each { e-> events << e }
-        } else
-        if (type?.contains("xml") && bodyString.length()) {
-            parse_xml(headerString, bodyString).each { e-> events << e }
-        }
-
+    // We need headers for a valid request.
+    if (!em.headers) {
+        if (parent.debug)
+            log.info("--- parse: skipping event missing headers from ${em.mac}")
+        return events
     }
 
-    if (debug) log.debug("---  parse: ${rID}: events: ${events}")
+    log.info("--- parse: mac: ${event?.mac} requestId: ${rID}")
+
+    // The body may be empty.
+    def bodyString = (em.body) ? em.body : ""
+
+    // Verbose debug details.
+    if (parent.debug) {
+        log.debug("--- parse: type: ${em.contenttype} raw rid: ${em.requestId}, headers: ${em.headers}")
+        log.debug("--- parse: rid: ${rID}, body: ${em.body}")
+    }
+
+    def type = em.contenttype
+
+    // Based upon content type process the content.
+    if (type?.contains("json") && bodyString.length()) {
+        parse_json(bodyString).each { e-> events << e }
+    } else if (type?.contains("xml") && bodyString.length()) {
+        parse_xml(bodyString).each { e-> events << e }
+    } else {
+        if (parent.debug) log.debug("--- parse: unknown type: ${type}")
+    }
+
+    if (parent.debug) log.debug("--- parse: results rid:${rID}, events: ${events}")
 
     return events
 }
+
+
 
 /*** Capabilities ***/
 
@@ -971,6 +880,141 @@ def update_state(data) {
 
 /*** Utility ***/
 
+/**
+ * parse_json(String body)
+ *
+ * Parse json response data from a PULL request made to the
+ * AlarmDecoder REST api.
+ */
+def parse_json(String body) {
+    def events = []
+
+    try {
+        def slurper = new JsonSlurper()
+        def result = slurper.parseText(body)
+
+        // Build our events list from our current state
+        update_state(result).each { e-> events << e }
+
+        if (parent.debug) log.debug("parse_json in:****** ${resultMap}")
+        if (parent.debug) log.debug("parse_json out:****** ${events}")
+
+    } catch(Exception e) {
+        log.error("parse_json: Exception ${e}")
+    }
+
+    return events
+}
+
+/**
+ * parse_xml(String body)
+ *
+ * Parse xml data from a UPNP PUSH message from the AlarmDecoder
+ * push notification service.
+ */
+def parse_xml(String body) {
+    def events = []
+
+    try {
+        def xmlResult = new XmlSlurper().parseText(body)
+
+        def resultMap = [:]
+        resultMap['eventid'] = xmlResult.property.eventid.toInteger()
+        resultMap['eventdesc'] = xmlResult.property.eventdesc.text()
+        resultMap['eventmessage'] = xmlResult.property.eventmessage.text()
+        resultMap['rawmessage'] = xmlResult.property.rawmessage.text()
+        resultMap['last_message_received'] = xmlResult.property.panelstate.last_message_received.text()
+        resultMap['panel_alarming'] = xmlResult.property.panelstate.panel_alarming.toBoolean()
+        resultMap['panel_armed'] = xmlResult.property.panelstate.panel_armed.toBoolean()
+        resultMap['panel_armed_stay'] = xmlResult.property.panelstate.panel_armed_stay.toBoolean()
+        resultMap['panel_exit'] = xmlResult.property.panelstate.panel_exit.toBoolean()
+        resultMap['panel_bypassed'] = xmlResult.property.panelstate.panel_bypassed.toBoolean()
+        resultMap['panel_fire_detected'] = xmlResult.property.panelstate.panel_fire_detected.toBoolean()
+        resultMap['panel_on_battery'] = xmlResult.property.panelstate.panel_on_battery.toBoolean()
+        resultMap['panel_panicked'] = xmlResult.property.panelstate.panel_panicked.toBoolean()
+        resultMap['panel_powered'] = xmlResult.property.panelstate.panel_powered.toBoolean()
+        resultMap['panel_ready'] = xmlResult.property.panelstate.panel_ready.toBoolean()
+        resultMap['panel_entry_delay_off'] = xmlResult.property.panelstate.panel_entry_delay_off.toBoolean()
+        resultMap['panel_perimeter_only'] = xmlResult.property.panelstate.panel_perimeter_only.toBoolean()
+        resultMap['panel_type'] = xmlResult.property.panelstate.panel_type.text()
+        resultMap['panel_chime'] = xmlResult.property.panelstate.panel_chime.toBoolean()
+
+        // build list of faulted zones unpack xml
+        // only update zone list on zone change events
+        // <eventmessage><![CDATA[Zone <unnamed> (9) has been faulted.]]></eventmessage>
+        if (xmlResult.property.eventmessage.text().startsWith('Zone ')) {
+            def zones = []
+            xmlResult.property.panelstate.panel_zones_faulted.z.each { e-> zones << e.toInteger() }
+            resultMap['panel_zones_faulted'] = zones
+        }
+
+        // unpack the relay xml
+        def relays = []
+        xmlResult.property.panelstate.panel_relay_status.r.each { e->
+            relays << ['address': e.a, 'channel': e.c, 'value': e.v]
+        }
+        resultMap['panel_relay_status'] = relays
+
+        // Build our events list from our current state
+        update_state(resultMap).each { e-> events << e }
+
+        if (parent.debug) log.debug("parse_xml in:****** ${resultMap}")
+        if (parent.debug) log.debug("parse_xml out:****** ${events}")
+
+    } catch(Exception e) {
+        log.error("parse_xml: Exception ${e}")
+    }
+
+    return events
+}
+
+/**
+ * subscribeNotifications()
+ *
+ * Send a SUBSCRIBE request to the AlarmDecoder UPNP notification service.
+ * To receive event PUSH notifications.
+ *
+ * Note:
+ *  Be sure to enable the AlarmDecoder UPNP notification service.
+ *
+ * FIXME: Need to get this from the eventSubURL in the ssdpPath: /static/device_description.xml
+ */
+def subscribeNotifications() {
+    if (parent.debug) log.trace "--- subscribeNotifications: ${getDataValue("urn")}"
+
+    // Get our HUBs address details for callbacks.
+    def address = parent.getHubURN()
+
+    // Build the SUBSCRIBE request.
+	def obj = [
+		method: "SUBSCRIBE",
+		path: "/api/v1/alarmdecoder/event?apikey=${_get_api_key()}",
+		headers: [
+			HOST: getDataValue("urn"),
+			CALLBACK: "<http://${address}/notify${callbackPath}>",
+			NT: "upnp:event",
+			TIMEOUT: "Second-28800"
+		]
+	]
+
+    // Build the HubAction object.
+    def ha = parent.getHubAction(obj, address)
+
+    // Tag the HubAction message. It will return in the event handler parse().
+    // FIXME: Add some security test.
+	ha.requestId = "SUBSCRIBE"
+
+    sendHubCommand(ha)
+}
+
+
+/*
+ * build_zone_events(data)
+ *
+ * Parse the zone events and return a list of events
+ * for each zone filtered to report only events with
+ * a changes in state.
+ */
 private def build_zone_events(data) {
     def events = []
 
@@ -978,9 +1022,7 @@ private def build_zone_events(data) {
     if (state.faulted_zones == null)
         state.faulted_zones = []
 
-    //log.trace("Previous faulted zones: ${state.faulted_zones}")
-
-    // if we have no tag then do nothing.
+    // If we have no tag then do nothing.
     def current_faults = data.panel_zones_faulted
     if (current_faults == null)
       return events
@@ -990,30 +1032,28 @@ private def build_zone_events(data) {
     def new_faults = current_faults.minus(state.faulted_zones)
     def cleared_faults = state.faulted_zones.minus(current_faults)
 
-    if (debug) log.trace("Current faulted zones: ${current_faults}")
-    if (debug) log.trace("New faults: ${new_faults}")
-    if (debug) log.trace("Cleared faults: ${cleared_faults}")
+    if (parent.debug) log.trace("Current faulted zones: ${current_faults}")
+    if (parent.debug) log.trace("New faults: ${new_faults}")
+    if (parent.debug) log.trace("Cleared faults: ${cleared_faults}")
 
     // Trigger switches for newly faulted zones.
     for (def i = 0; i < new_faults.size(); i++)
     {
-        if (debug) log.trace("Setting switch ${new_faults[i]}")
-        def switch_events = update_zone_switches(new_faults[i], true)
+        if (parent.debug) log.trace("Setting switch ${new_faults[i]}")
+        def switch_events = update_zone_switch(new_faults[i], true)
         events = events.plus(switch_events)
     }
 
     // Reset switches for cleared zones.
     for (def i = 0; i < cleared_faults.size(); i++)
     {
-        if (debug) log.trace("Clearing switch ${cleared_faults[i]}")
-        def switch_events = update_zone_switches(cleared_faults[i], false)
+        if (parent.debug) log.trace("Clearing switch ${cleared_faults[i]}")
+        def switch_events = update_zone_switch(cleared_faults[i], false)
         events = events.plus(switch_events)
     }
 
-    //log.trace("Filling zone tiles..")
-
-    // Fill zone tiles
-    for (def i = 1; i <= 12; i++) {
+    // Fill AlarmDecoder UI zone tiles
+    for (def i = 1; i <= MAX_ZONE_FAULT_TILES; i++) {
         if (number_of_zones_faulted > 0 && i <= number_of_zones_faulted) {
             if ((device.currentValue("zoneStatus${i}") ?: "0").toInteger() != current_faults[i-1])
                 events << createEvent(name: "zoneStatus${i}", value: current_faults[i-1], displayed: true)
@@ -1029,120 +1069,44 @@ private def build_zone_events(data) {
     return events
 }
 
-private def update_zone_switches(zone, faulted) {
+/*
+ * update_zone_switch(zone, faulted)
+ *
+ * Send a zone update event to the AlarmDecoder service for processing.
+ * This sends the raw zone number and it is up to the service to route
+ * this event to the correct virtual switch.
+ *
+ */
+private def update_zone_switch(zone, faulted) {
     def events = []
 
-    // Iterate through the zone tracker settings.  If the zone number matches,
-    // trigger an event for the service manager to use to flip the virtual
-    // switches.
-    for (def i = 1; i <= 20; i++) {
-        if (zone == settings."zonetracker${i}zone") {
-            if (faulted)
-                events << createEvent(name: "zone-on", value: i, isStateChange: true, displayed: false)
-            else
-                events << createEvent(name: "zone-off", value: i, isStateChange: true, displayed: false)
-        }
+    if (faulted) {
+        events << createEvent(
+            name: "zone-on",
+            value: zone,
+            isStateChange: true,
+            displayed: false
+        )
+    } else {
+        events << createEvent(
+            name: "zone-off",
+            value: zone,
+            isStateChange: true,
+            displayed: false
+        )
     }
 
     return events
 }
 
-private def parseEventMessage(String description) {
-    def event = [:]
-    def parts = description.split(',')
-
-    parts.each { part ->
-        part = part.trim()
-        if (part.startsWith('devicetype:')) {
-            def valueString = part.split(":")[1].trim()
-            event.devicetype = valueString
-        }
-        else if (part.startsWith('mac:')) {
-            def valueString = part.split(":")[1].trim()
-            if (valueString) {
-                event.mac = valueString
-            }
-        }
-        // If we made the request we will get the requestId of the host we contacted.
-        // If we did not provide one in HubAction() then it will be auto generated
-        // ex. c089d06f-ba3c-4baa-a1a4-950b9ffd372a
-        else if (part.startsWith('requestId:')) {
-            part -= "requestId:"
-            def valueString = part.trim()
-            if (valueString) {
-                event.requestId = valueString
-            }
-        }
-        // If we made the request we will get the IP of the host we contacted.
-        else if (part.startsWith('ip:')) {
-            part -= "ip:"
-            def valueString = part.trim()
-            if (valueString) {
-                event.ip = valueString
-            }
-        }
-        // If we made the request we will get the PORT of the host we contacted.
-        else if (part.startsWith('port:')) {
-            part -= "port:"
-            def valueString = part.trim()
-            if (valueString) {
-                event.port = valueString
-            }
-        }
-        else if (part.startsWith('networkAddress:')) {
-            def valueString = part.split(":")[1].trim()
-            if (valueString) {
-                event.ip = valueString
-            }
-        }
-        else if (part.startsWith('deviceAddress:')) {
-            def valueString = part.split(":")[1].trim()
-            if (valueString) {
-                event.port = valueString
-            }
-        }
-        else if (part.startsWith('ssdpPath:')) {
-            part -= "ssdpPath:"
-            def valueString = part.trim()
-            if (valueString) {
-                event.ssdpPath = valueString
-            }
-        }
-        else if (part.startsWith('ssdpUSN:')) {
-            part -= "ssdpUSN:"
-            def valueString = part.trim()
-            if (valueString) {
-                event.ssdpUSN = valueString
-            }
-        }
-        else if (part.startsWith('ssdpTerm:')) {
-            part -= "ssdpTerm:"
-            def valueString = part.trim()
-            if (valueString) {
-                event.ssdpTerm = valueString
-            }
-        }
-        else if (part.startsWith('headers:')) {
-            part -= "headers:"
-            def valueString = part.trim()
-            if (valueString) {
-                event.headers = valueString
-            }
-        }
-        else if (part.startsWith('body:')) {
-            part -= "body:"
-            def valueString = part.trim()
-            if (valueString) {
-                event.body = valueString
-            }
-        }
-    }
-
-    event
-}
-
-def send_keys(keys) {
-    if (debug)
+/*
+ * send_keys(keys)
+ *
+ * Build a GET request HubAction object to call the
+ * AlarmDecoder REST api send command.
+ */
+def send_keys(String keys) {
+    if (parent.debug)
       log.trace("--- send_keys: keys=${keys}")
     else
       log.trace("--- send_keys")
@@ -1150,11 +1114,21 @@ def send_keys(keys) {
     def urn = getDataValue("urn")
     def apikey = _get_api_key()
 
-    return hub_http_post(urn, "/api/v1/alarmdecoder/send?apikey=${apikey}", """{ "keys": "${keys}" }""")
+    return hub_http_post(
+               urn,
+    	       "/api/v1/alarmdecoder/send?apikey=${apikey}",
+               """{ "keys": "${keys}" }"""
+           )
 }
 
+/*
+ * hub_http_get()
+ *
+ * Build a GET request HubAction object.
+ */
 def hub_http_get(host, path) {
-    log.trace "--- hub_http_get: host=${host}, path=${path}"
+    if (parent.debug)
+        log.trace "--- hub_http_get: host=${host}, path=${path}"
 
     def httpRequest = [
         method:     "GET",
@@ -1162,12 +1136,17 @@ def hub_http_get(host, path) {
         headers:    [ HOST: host ]
     ]
 
-    return getHubHttpRequestAction(httpRequest, "${host}")
-
+    return parent.getHubAction(httpRequest, host)
 }
 
+/*
+ * hub_http_post()
+ *
+ * Build a POST request HubAction object.
+ */
 def hub_http_post(host, path, body) {
-    log.trace "--- hub_http_post: host=${host}, path=${path}"
+    if (parent.debug)
+        log.trace "--- hub_http_post: host=${host}, path=${path} body=${body}"
 
     def httpRequest = [
         method:     "POST",
@@ -1176,51 +1155,25 @@ def hub_http_post(host, path, body) {
         body:       body
     ]
 
-    return getHubHttpRequestAction(httpRequest, "${host}")
+    return parent.getHubAction(httpRequest, host)
 }
 
+/*
+ * _get_user_code()
+ *
+ * Internal routine to return the current user_code setting
+ * for the connected AlarmDecoder WEBAPP
+ */
 def _get_user_code() {
-    def user_code = settings.user_code
-
-    return user_code
+    return settings.user_code
 }
 
+/*
+ * _get_api_key()
+ *
+ * Internal routine to return the current REST api key setting
+ * for the connected AlarmDecoder WEBAPP
+ */
 def _get_api_key() {
-    def api_key = settings.api_key
-
-    return api_key
-}
-
-/**
- * Subscribe to an AlarmDecoder for event PUSH notifications.
- *
- * Let the AlarmDecoder know you want to be notified of events for a given path.
- *
- */
-def subscribeAction(urn, path, callbackPath="") {
-    if (debug) log.trace "subscribeAction(${urn}, ${path}, ${callbackPath})"
-
-    // get our HUBs details so the AlarmDecoder knows how to call us back on events
-    def address = getCallBackAddress()
-    if (debug) log.trace "our address ${address}"
-    def result = getHubSubscribeAction(urn, address, path, callbackPath)
-
-    // log.debug "SUBSCRIBE result: ${result}"
-    sendHubCommand(result)
-
-}
-
-
-/**
- * gets the address of the hub
- */
-def getCallBackAddress() {
-    return device.hub.getDataValue("localIP") + ":" + device.hub.getDataValue("localSrvPortTCP")
-}
-
-/**
- * access to state from parent service
- */
-def getStateValue(key) {
-    return state[key]
+    return settings.api_key
 }
