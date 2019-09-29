@@ -2906,7 +2906,7 @@ private getHostAddressFromDNI(d) {
   def port = ""
   if (d) {
     def parts = d.split(":")
-    if (parts == 2) {
+    if (parts.size() == 2) {
       ip = convertHexToIP(parts[0])
       port = convertHexToInt(parts[1])
     }
