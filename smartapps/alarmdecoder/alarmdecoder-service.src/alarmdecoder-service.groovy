@@ -175,6 +175,7 @@ def szt(String name, Object... args) {
     "home": "home",
     "home_screen": "Press the < arrow above two times to return home.",
     "no_save_note": "Do not use the \"Save\" buttons on this page.",
+    "save_note": "Press \"Save\" buttons on this page to install the service devices.",
     "input_selected_devices_title": "Select device (%s found).",
     "section_monitor_integration": "Monitor integration",
     "section_zone_sensor_settings": "Zone Sensors",
@@ -316,6 +317,11 @@ mappings {
 /**
  * Misc helper sections
  */
+ def section_save_note() {
+     section(szt("save_note")) {
+     }
+ }
+
 def section_no_save_note() {
     section(szt("no_save_note")) {
     }
@@ -1140,29 +1146,32 @@ def page_discover() {
             name: "page_discover",
             title: szt("page_discover_title")
         ) {
-            section_no_save_note()
+            def section_select_device_heading = ""
 
-            // Find the discovered device with a matching
-            // dni XXXXXXXX:XXXX in input_selected_devices
-            def d = \
-              getDevices().find { k, v -> "${v.ip}:${v.port}" == "${input_selected_devices}" }
+            if (input_selected_devices) {
+                // Find the discovered device with a matching
+                // dni XXXXXXXX:XXXX in input_selected_devices
+                def d = \
+                  getDevices().find { k, v -> "${v.ip}:${v.port}" == "${input_selected_devices}" }
 
-            def dni = getDeviceKey(d.value.ip, d.value.port)
-            def urn = getHostAddressFromDNI(input_selected_devices)
-            def ssdpPath = d.value.ssdpPath
-            def mac = d.value.mac
-            def uuid = d.value.ssdpUSN
+                def dni = getDeviceKey(d?.value?.ip, d?.value?.port)
+                def urn = getHostAddressFromDNI(input_selected_devices)
+                def ssdpPath = d?.value?.ssdpPath
+                def mac = d?.value?.mac
+                def uuid = d?.value?.ssdpUSN
 
-            section (szt("page_discover_section_selected_device", "\ndni: ${dni}\nurn: ${urn}\nssdpPath: ${ssdpPath}\nmac: ${mac}\nusn: ${uuid}")) {
+                section_select_device_heading = szt("page_discover_section_selected_device", "\ndni: ${dni}\nurn: ${urn}\nssdpPath: ${ssdpPath}\nmac: ${mac}\nusn: ${uuid}")
+                section_save_note()
+            }
+            section (section_select_device_heading) {
                 href (
                     name: "href_confirm_discover_update",
-                    title: szt("page_select_device_title"),
+                    title: szt("tap_here"),
                     description: szt("page_select_device_desc"),
                     required: false,
                     page: "page_select_device"
                 )
             }
-
             section (szt("section_mon_integration")) {
                 input (
                     name: "monIntegration",
@@ -2893,9 +2902,15 @@ private String getHubURN() {
  *  ex. AABBCCDD:XXXX -> 192.168.1.1:5000
  */
 private getHostAddressFromDNI(d) {
-  def parts = d.split(":")
-  def ip = convertHexToIP(parts[0])
-  def port = convertHexToInt(parts[1])
+  def ip = ""
+  def port = ""
+  if (d) {
+    def parts = d.split(":")
+    if (parts == 2) {
+      ip = convertHexToIP(parts[0])
+      port = convertHexToInt(parts[1])
+    }
+  }
   return ip + ":" + port
 }
 
