@@ -122,10 +122,10 @@ Using the SmartThings app **on your phone**
 7. Select your panel type.  
 8. Zone sensors may be configured to open and close themselves when a zone is faulted.  For example, specifying zone 7 for Zonetracker Sensor #1 would trip that sensor whenever zone 7 is faulted.  
 9. Use **graph.api.smartthings.com** and modify the device type in the device editor. If the application needs the device to be a Smoke Alarm then change its device type to **AlarmDecoder virtual smoke alarm** in the device editor.  
-10. Using the devices preferences(gear) update the zone numbers and invert option for the **Zone Sensors**.
+10. Using the devices preferences(gear) update the zone numbers and invert option for the **Zone Sensors**.  
 
 Using **graph.api.smartthings.com**
-1\. Login to your SmartThings graph web-based IDE.  
+1. Login to your SmartThings graph web-based IDE.  
 2. Select **My Devices**  
 3. Select the  **AlarmDecoder(AD2)** device for your HUBs location.  
 4. Click Preferences(**edit**) link.  
