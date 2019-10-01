@@ -149,24 +149,21 @@ If the Ademco panel has an existing Internet or cellular communicator then the A
 6.  Select **Contact ID device management**
 7.  Select **Add new CID virtual switch**
 8.  Select the CID number pattern  
-
-
-    -       000 - Other / Custom
-    -   100-102 - ALL Medical alarms
-    -   110-118 - ALL Fire alarms
-    -   120-126 - ALL Panic alarms
-    -   130-139 - ALL Burglar alarms
-    -   140-149 - ALL General alarms
-    -   150-169 - ALL 24 HOUR AUX alarms
-    -   154 - Water Leakage
-    -   158 - High Temp
-    -   162 - Carbon Monoxide Detected
-    -   301 - AC Loss
-    -   3?? - All System Troubles
-    -   401 - Arm AWAY OPEN/CLOSE
-    -   441 - Arm STAY OPEN/CLOSE  
-    -   4[0,4]1 - Arm Stay or Away OPEN/CLOSE
-
+    -- 000 - Other / Custom  
+    -- 100-102 - ALL Medical alarms  
+    -- 110-118 - ALL Fire alarms  
+    -- 120-126 - ALL Panic alarms  
+    -- 130-139 - ALL Burglar alarms  
+    -- 140-149 - ALL General alarms  
+    -- 150-169 - ALL 24 HOUR AUX alarms  
+    -- 154 - Water Leakage  
+    -- 158 - High Temp  
+    -- 162 - Carbon Monoxide Detected  
+    -- 301 - AC Loss  
+    -- 3?? - All System Troubles  
+    -- 401 - Arm AWAY OPEN/CLOSE  
+    -- 441 - Arm STAY OPEN/CLOSE  
+    -- 4[0,4]1 - Arm Stay or Away OPEN/CLOSE  
 9.  Enter the User or ZONE to match or ??? to match all.
 10. Enter the partition to match 0(system), 1, 2 or ? to match all.
 11. select **Add new CID virtual switch**
