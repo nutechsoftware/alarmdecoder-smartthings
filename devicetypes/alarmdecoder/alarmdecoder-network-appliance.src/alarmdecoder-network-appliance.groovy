@@ -1002,7 +1002,8 @@ def subscribeNotifications() {
 
     // Tag the HubAction message. It will return in the event handler parse().
     // FIXME: Add some security test.
-	ha.requestId = "SUBSCRIBE"
+    if (parent.isSmartThings())
+		ha.requestId = "SUBSCRIBE"
 
     sendHubCommand(ha)
 }
