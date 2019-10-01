@@ -66,7 +66,7 @@ metadata {
       type: "number",
       title: "Zone Number",
       description: "Zone # required for zone events.",
-      required: false
+      required: false)
     }
   }
 
