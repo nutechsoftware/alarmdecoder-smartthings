@@ -23,29 +23,55 @@ import groovy.transform.Field
 @Field APPNAMESPACE = "alarmdecoder"
 
 metadata {
-    definition (name: "AlarmDecoder action button indicator", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
-        capability "Switch"
-        capability "Momentary"
-        command "push"
-        command "on"
-        command "off"
-    }
+  definition(
+    name: "AlarmDecoder action button indicator",
+    namespace: APPNAMESPACE,
+    author: "Nu Tech Software Solutions, Inc.") {
+    capability "Switch"
+    capability "Momentary"
+    command "push"
+    command "on"
+    command "off"
+  }
 
-    // tile definitions
-    tiles {
-        standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-            state "off", label: 'Push', action: "momentary.push", backgroundColor: "#ffffff"
-            state "on", label: 'Push', action: "momentary.push", backgroundColor: "#00a0dc"
-        }
-        main "switch"
-        details "switch"
+  // tile definitions
+  tiles {
+    standardTile(
+      "switch",
+      "device.switch",
+      width: 2, height: 2,
+      canChangeIcon: true) {
+      state(
+        "off",
+        label: 'Push',
+        action: "momentary.push",
+        backgroundColor: "#ffffff")
+      state(
+        "on",
+        label: 'Push',
+        action: "momentary.push",
+        backgroundColor: "#00a0dc")
     }
+    main "switch"
+    details "switch"
+  }
 
-    // preferences
-    preferences {
-        input name: "invert", type: "bool", title: "Invert signal [true,false]", description: "Invert signal [true,false]. Changes ON/OFF,OPEN/CLOSE,DETECTED/CLEAR", required: false
-		input name: "zone", type: "number", title: "Zone Number", description: "Zone # required for zone events.", required: false
-    }
+  // preferences
+  preferences {
+    input(
+      name: "invert",
+      type: "bool",
+      title: "Invert signal [true,false]",
+      description: "Invert signal [true,false]." +
+      " Changes ON/OFF,OPEN/CLOSE,DETECTED/CLEAR",
+      required: false)
+    input(
+      name: "zone",
+      type: "number",
+      title: "Zone Number",
+      description: "Zone # required for zone events.",
+      required: false)
+  }
 
 }
 
@@ -59,26 +85,26 @@ metadata {
  *
  */
 def installed() {
-    updateDataValue("invert", invert.toString())
-    updateDataValue("zone", zone.toString())
+  updateDataValue("invert", invert.toString())
+  updateDataValue("zone", zone.toString())
 }
 
 def updated() {
-    updateDataValue("invert", invert.toString())
-    updateDataValue("zone", zone.toString())
+  updateDataValue("invert", invert.toString())
+  updateDataValue("zone", zone.toString())
 }
 
 // Send the request to the service for processing.
 def push() {
-    if (parent.debug)
-        log.debug "AlarmDecoderActionButtonIndicator: Executing 'actionButton'"
-    parent.actionButton(device.getDeviceNetworkId())
+  if (parent.debug)
+    log.debug "AlarmDecoderActionButtonIndicator: Executing 'actionButton'"
+  parent.actionButton(device.getDeviceNetworkId())
 }
 
 def on() {
-    push()
+  push()
 }
 
 def off() {
-    push()
+  push()
 }

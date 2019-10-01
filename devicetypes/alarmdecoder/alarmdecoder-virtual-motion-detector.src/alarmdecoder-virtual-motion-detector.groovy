@@ -23,27 +23,53 @@ import groovy.transform.Field
 @Field APPNAMESPACE = "alarmdecoder"
 
 metadata {
-    definition (name: "AlarmDecoder virtual motion detector", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
-        capability "Motion Sensor"
+  definition(
+    name: "AlarmDecoder virtual motion detector",
+    namespace: APPNAMESPACE,
+    author: "Nu Tech Software Solutions, Inc.") {
+    capability "Motion Sensor"
+  }
+
+  // tile definitions
+  tiles(scale: 2) {
+    multiAttributeTile(
+      name: "motion",
+      type: "generic",
+      width: 6, height: 4) {
+      tileAttribute(
+        "device.motion",
+        key: "PRIMARY_CONTROL") {
+        attributeState(
+          "active",
+          label: 'motion',
+          icon: "st.motion.motion.active",
+          backgroundColor: "#53a7c0")
+        attributeState(
+          "inactive",
+          label: 'no motion',
+          icon: "st.motion.motion.inactive",
+          backgroundColor: "#ffffff")
+      }
     }
+    main "motion"
+    details "motion"
+  }
 
-    // tile definitions
-
-	tiles(scale: 2) {
-		multiAttributeTile(name:"motion", type: "generic", width: 6, height: 4){
-			tileAttribute ("device.motion", key: "PRIMARY_CONTROL") {
-				attributeState "active", label:'motion', icon:"st.motion.motion.active", backgroundColor:"#53a7c0"
-				attributeState "inactive", label:'no motion', icon:"st.motion.motion.inactive", backgroundColor:"#ffffff"
-			}
-		}
-		main "motion"
-		details "motion"
-	}
-
-    preferences {
-        input name: "invert", type: "bool", title: "Invert signal [true,false]", description: "Invert signal [true,false]. Changes ON/OFF,OPEN/CLOSE,DETECTED/CLEAR", required: false
-		input name: "zone", type: "number", title: "Zone Number", description: "Zone # required for zone events.", required: false
-    }
+  preferences {
+    input(
+      name: "invert",
+      type: "bool",
+      title: "Invert signal [true,false]",
+      description: "Invert signal [true,false]." +
+      " Changes ON/OFF,OPEN/CLOSE,DETECTED/CLEAR",
+      required: false)
+    input(
+      name: "zone",
+      type: "number",
+      title: "Zone Number",
+      description: "Zone # required for zone events.",
+      required: false)
+  }
 }
 
 /**
@@ -56,29 +82,29 @@ metadata {
  *
  */
 def installed() {
-    updateDataValue("invert", invert.toString())
-    updateDataValue("zone", zone.toString())
+  updateDataValue("invert", invert.toString())
+  updateDataValue("zone", zone.toString())
 }
 
 def updated() {
-    updateDataValue("invert", invert.toString())
-    updateDataValue("zone", zone.toString())
+  updateDataValue("invert", invert.toString())
+  updateDataValue("zone", zone.toString())
 }
 
 // FIXME: what?
 def parse(String description) {
-    if (description != "updated") {
-        if (parent.debug)
-    	    log.info "parse returned:${description}"
-		def pair = description.split(":")
-		createEvent(name: pair[0].trim(), value: pair[1].trim())
-     }
+  if (description != "updated") {
+    if (parent.debug)
+      log.info "parse returned:${description}"
+    def pair = description.split(":")
+    createEvent(name: pair[0].trim(), value: pair[1].trim())
+  }
 }
 
 def active() {
-	sendEvent(name: "motion", value: "active")
+  sendEvent(name: "motion", value: "active")
 }
 
 def inactive() {
-    sendEvent(name: "motion", value: "inactive")
+  sendEvent(name: "motion", value: "inactive")
 }

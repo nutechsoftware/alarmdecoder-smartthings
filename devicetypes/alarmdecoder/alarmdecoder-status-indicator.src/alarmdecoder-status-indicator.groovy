@@ -23,42 +23,68 @@ import groovy.transform.Field
 @Field APPNAMESPACE = "alarmdecoder"
 
 metadata {
-    definition (name: "AlarmDecoder status indicator", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
-        capability "Contact Sensor"
-    }
+  definition(
+    name: "AlarmDecoder status indicator",
+    namespace: APPNAMESPACE,
+    author: "Nu Tech Software Solutions, Inc.") {
+    capability "Contact Sensor"
+  }
 
-    // tile definitions
-    tiles {
-        standardTile("contact", "device.contact", width: 2, height: 2, canChangeIcon: true) {
-            state "closed", label: '${name}', icon: "st.contact.contact.closed", backgroundColor: "#00a0dc"
-            state "open", label: '${name}', icon: "st.contact.contact.open", backgroundColor: "#e86d13"
-        }
-        main "contact"
-        details "contact"
+  // tile definitions
+  tiles {
+    standardTile(
+      "contact",
+      "device.contact",
+      width: 2, height: 2,
+      canChangeIcon: true) {
+      state(
+        "closed",
+        label: '${name}',
+        icon: "st.contact.contact.closed",
+        backgroundColor: "#00a0dc")
+      state(
+        "open",
+        label: '${name}',
+        icon: "st.contact.contact.open",
+        backgroundColor: "#e86d13")
     }
+    main "contact"
+    details "contact"
+  }
 
-    // preferences
-    preferences {
-        input name: "invert", type: "bool", title: "Invert signal [true,false]", description: "Invert signal [true,false]. Changes ON/OFF,OPEN/CLOSE,DETECTED/CLEAR", required: false
-		input name: "zone", type: "number", title: "Zone Number", description: "Zone # required for zone events.", required: false
+  // preferences
+  preferences {
+    input(
+      name: "invert",
+      type: "bool",
+      title: "Invert signal [true,false]",
+      description: "Invert signal [true,false]." +
+      " Changes ON/OFF,OPEN/CLOSE,DETECTED/CLEAR",
+      required: false)
+    input(
+      name: "zone",
+      type: "number",
+      title: "Zone Number",
+      description: "Zone # required for zone events.",
+      required: false
     }
-}
+  }
 
-/**
- * installed()/updated()
- *
- * It is not possible for a service to access preferences directly so
- * update device data value to allow access from parent
- * using getDeviceDataByName getDataValue
- * FIXME: diff ^ docs not clear.
- *
- */
-def installed() {
+  /**
+   * installed()/updated()
+   *
+   * It is not possible for a service to access preferences directly so
+   * update device data value to allow access from parent
+   * using getDeviceDataByName getDataValue
+   * FIXME: diff ^ docs not clear.
+   *
+   */
+  def installed() {
     updateDataValue("invert", invert.toString())
     updateDataValue("zone", zone.toString())
-}
+  }
 
-def updated() {
+  def updated() {
     updateDataValue("invert", invert.toString())
     updateDataValue("zone", zone.toString())
-}
+  }
