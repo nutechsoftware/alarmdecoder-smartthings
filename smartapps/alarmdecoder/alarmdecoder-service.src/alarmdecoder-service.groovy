@@ -2060,11 +2060,15 @@ def monitorAlarmHandler(evt) {
     if (settings.monIntegration == false)
         return
 
-    if (debug)
-        log.debug("monitorAlarmHandler -- ${evt.value}, lastMONStatus ${state.lastMONStatus}, lastAlarmDecoderStatus ${state.lastAlarmDecoderStatus}")
 
     if (state.lastMONStatus != evt.value)
     {
+        if (debug)
+           log.debug("monitorAlarmHandler -- update lastMONStatus to ${evt.value} from ${state.lastMONStatus}")
+
+        // Update last known MON state
+        state.lastMONStatus = evt.value
+
         getAllChildDevices().each { device ->
             // Only refresh the main device that has a panel_state
             def device_type = device.getTypeName()
@@ -2133,8 +2137,6 @@ def monitorAlarmHandler(evt) {
             }
         }
     }
-    // Track for async processing
-    state.lastMONStatus = evt.value
 }
 
 /**
@@ -2147,40 +2149,48 @@ def alarmdecoderAlarmHandler(evt) {
         return
 
     if (debug)
-        log.debug("alarmdecoderAlarmHandler -- ${evt.value}, lastMONStatus ${state.lastMONStatus}, lastAlarmDecoderStatus ${state.lastAlarmDecoderStatus}")
+        log.debug("alarmdecoderAlarmHandler -- update lastAlarmDecoderStatus to ${evt.value} from ${state.lastAlarmDecoderStatus}")
 
-    if (state.lastAlarmDecoderStatus != evt.value) {
+        state.lastAlarmDecoderStatus = evt.value
+
         if(isSmartThings()) {
             /* no traslation needed already [stay,away,off] */
             if (debug)
-                log.debug("alarmdecoderAlarmHandler: alarmSystemStatus ${evt.value}")
+                log.debug("alarmdecoderAlarmHandler alarmSystemStatus ${evt.value}")
+
+            // Update last known MON state
+            state.lastMONStatus = evt.value
+
             sendLocationEvent(name: "alarmSystemStatus", value: evt.value)
         }
         else if (isHubitat()) {
             /* translate to HSM */
             msg = ""
+            nstate = ""
             if (evt.value == "stay") {
                 msg = "armHome"
-                state.lastMONStatus = "armedHome" // prevent loop
+                nstate = "armedHome" // prevent loop
             }
             if (evt.value == "away") {
                 msg = "armAway"
-                state.lastMONStatus = "armedAway" // prevent loop
+                nstate = "armedAway" // prevent loop
             }
             if (evt.value == "off") {
                 msg = "disarm"
-                state.lastMONStatus = "disarmed" // prevent loop
+                nstate = "disarmed" // prevent loop
             }
 
             if (debug)
-                log.debug("alarmdecoderAlarmHandler: hsmSetArm ${msg}")
+                log.debug("alarmdecoderAlarmHandler: hsmSetArm ${msg} last ${state.lastMONStatus} new ${nstate}")
+
+            // Update last known MON state
+            state.lastMONStatus = nstate
 
             // Notify external MON of the change
             sendLocationEvent(name: "hsmSetArm", value: msg)
+        } else {
+            log.warn("alarmdecoderAlarmHandler: monttype?  evt:value: ${evt.value}  lastAlarmDecoderStatus: ${state.lastAlarmDecoderStatus}")
         }
-    }
-
-    state.lastAlarmDecoderStatus = evt.value
 }
 
 /*** Utility/Misc ***/
