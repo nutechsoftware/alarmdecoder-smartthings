@@ -1178,3 +1178,12 @@ def _get_user_code() {
 def _get_api_key() {
     return settings.api_key
 }
+
+/*
+ * getStateValue(key)
+ *
+ * helper parent access to state.
+ */
+def getStateValue(key) {
+    return state[key]
+}
