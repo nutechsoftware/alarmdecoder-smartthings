@@ -1930,7 +1930,7 @@ def cidSet(evt) {
   children.each {
     if (it.deviceNetworkId.contains(":CID-")) {
 
-      def match = getDeviceNamePart(it).split("-")
+      def match = getDeviceNamePart(it)
 
       // replace ? with . non regex
       match = match.replace("?", ".")
