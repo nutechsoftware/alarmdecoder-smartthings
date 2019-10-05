@@ -121,7 +121,19 @@ metadata {
     command "aux2"
     command "chime"
     command "bypass", ["number"]
-    command "bypassN", ["number"]
+    command "bypassN", ["string"]
+    command "bypass1"
+    command "bypass2"
+    command "bypass3"
+    command "bypass4"
+    command "bypass5"
+    command "bypass6"
+    command "bypass7"
+    command "bypass8"
+    command "bypass9"
+    command "bypass10"
+    command "bypass11"
+    command "bypass12"
   }
 
   simulator {
@@ -390,7 +402,7 @@ metadata {
       state "default",
         icon: "",
         label: '${currentValue}',
-        action: "bypassN(1)",
+        action: "bypass1",
         nextState: "default",
         backgroundColors: [
           [value: 0, color: "#ffffff"],
@@ -407,7 +419,7 @@ metadata {
       state "default",
         icon: "",
         label: '${currentValue}',
-        action: "bypassN(2)",
+        action: "bypass2",
         nextState: "default",
         backgroundColors: [
           [value: 0, color: "#ffffff"],
@@ -424,7 +436,7 @@ metadata {
       state "default",
         icon: "",
         label: '${currentValue}',
-        action: "bypassN(3)",
+        action: "bypass3",
         nextState: "default",
         backgroundColors: [
           [value: 0, color: "#ffffff"],
@@ -441,7 +453,7 @@ metadata {
       state "default",
         icon: "",
         label: '${currentValue}',
-        action: "bypassN(4)",
+        action: "bypass4",
         nextState: "default",
         backgroundColors: [
           [value: 0, color: "#ffffff"],
@@ -458,7 +470,7 @@ metadata {
       state "default",
         icon: "",
         label: '${currentValue}',
-        action: "bypassN(5)",
+        action: "bypass5",
         nextState: "default",
         backgroundColors: [
           [value: 0, color: "#ffffff"],
@@ -475,7 +487,7 @@ metadata {
       state "default",
         icon: "",
         label: '${currentValue}',
-        action: "bypassN(6)",
+        action: "bypass6",
         nextState: "default",
         backgroundColors: [
           [value: 0, color: "#ffffff"],
@@ -492,7 +504,7 @@ metadata {
       state "default",
         icon: "",
         label: '${currentValue}',
-        action: "bypassN(7)",
+        action: "bypass7",
         nextState: "default",
         backgroundColors: [
           [value: 0, color: "#ffffff"],
@@ -509,7 +521,7 @@ metadata {
       state "default",
         icon: "",
         label: '${currentValue}',
-        action: "bypassN(8)",
+        action: "bypass8",
         nextState: "default",
         backgroundColors: [
           [value: 0, color: "#ffffff"],
@@ -526,7 +538,7 @@ metadata {
       state "default",
         icon: "",
         label: '${currentValue}',
-        action: "bypassN(9)",
+        action: "bypass9",
         nextState: "default",
         backgroundColors: [
           [value: 0, color: "#ffffff"],
@@ -543,7 +555,7 @@ metadata {
       state "default",
         icon: "",
         label: '${currentValue}',
-        action: "bypassN(10)",
+        action: "bypass10",
         nextState: "default",
         backgroundColors: [
           [value: 0, color: "#ffffff"],
@@ -560,7 +572,7 @@ metadata {
       state "default",
         icon: "",
         label: '${currentValue}',
-        action: "bypassN(11)",
+        action: "bypass11",
         nextState: "default",
         backgroundColors: [
           [value: 0, color: "#ffffff"],
@@ -577,7 +589,7 @@ metadata {
       state "default",
         icon: "",
         label: '${currentValue}',
-        action: "bypassN(12)",
+        action: "bypass12",
         nextState: "default",
         backgroundColors: [
           [value: 0, color: "#ffffff"],
@@ -973,6 +985,23 @@ def checkAux() {
     log.trace("clearing aux");
   }
 }
+
+/**
+ * bypassX()
+ *
+ */
+def bypass1(evt) { bypassN(1) }
+def bypass2(evt) { bypassN(2) }
+def bypass3(evt) { bypassN(3) }
+def bypass4(evt) { bypassN(4) }
+def bypass5(evt) { bypassN(5) }
+def bypass6(evt) { bypassN(6) }
+def bypass7(evt) { bypassN(7) }
+def bypass8(evt) { bypassN(8) }
+def bypass9(evt) { bypassN(9) }
+def bypass10(evt) { bypassN(10) }
+def bypass11(evt) { bypassN(11) }
+def bypass12(evt) { bypassN(12) }
 
 /**
  * bypassN()
