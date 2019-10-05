@@ -605,10 +605,11 @@ metadata {
       "device.refresh",
       inactiveLabel: false,
       decoration: "flat",
-      width: 6, height: 2) {
+      width: 1, height: 1) {
       state "default",
         action: "refresh.refresh",
-        icon: "st.secondary.refresh"
+        icon: "st.secondary.refresh",
+        label: "refresh"
     }
 
     // main page layout and order
@@ -620,6 +621,7 @@ metadata {
         "panic",
         "fire",
         "aux",
+        "refresh",
         "zoneStatus1",
         "zoneStatus2",
         "zoneStatus3",
@@ -631,8 +633,7 @@ metadata {
         "zoneStatus9",
         "zoneStatus10",
         "zoneStatus11",
-        "zoneStatus12",
-        "refresh"
+        "zoneStatus12"
       ])
   }
 }
