@@ -488,7 +488,7 @@ def page_cid_management() {
     getAllChildDevices().each {
       device->
         if (device.deviceNetworkId.contains(":CID-")) {
-          found_devices << device.deviceNetworkId.split(":")[2].trim()
+          found_devices << getDeviceNamePart(device)
         }
     }
     section_no_save_note()
@@ -537,7 +537,7 @@ def page_remove_selected_cid() {
     device->
       if (device.deviceNetworkId.contains(":CID-")) {
         // Only remove the one that matches our list
-        def device_name = device.deviceNetworkId.split(":")[2].trim()
+        def device_name = getDeviceNamePart(device)
         def d = input_cid_devices.find {
           it == device_name
         }
@@ -784,7 +784,7 @@ def page_rfx_management() {
       device->
         if (device.deviceNetworkId.contains(":RFX-")) {
           found_devices << \
-            device.deviceNetworkId.split(":")[2].trim()
+            getDeviceNamePart(device)
         }
     }
     section_no_save_note()
@@ -833,7 +833,7 @@ def page_remove_selected_rfx() {
     device->
       if (device.deviceNetworkId.contains(":RFX-")) {
         // Only remove the one that matches our list
-        def device_name = device.deviceNetworkId.split(":")[2].trim()
+        def device_name = getDeviceNamePart(device)
         def d = input_rfx_devices.find {
           it == device_name
         }
@@ -1929,7 +1929,8 @@ def cidSet(evt) {
   def children = getChildDevices()
   children.each {
     if (it.deviceNetworkId.contains(":CID-")) {
-      def match = it.deviceNetworkId.split(":")[2].trim()
+
+      def match = getDeviceNamePart(it).split("-")
 
       // replace ? with . non regex
       match = match.replace("?", ".")
@@ -1989,13 +1990,7 @@ def rfxSet(evt) {
   children.each {
     if (it.deviceNetworkId.contains(":RFX-")) {
 
-      // Network mask differes from ST to HT
-      def sp = ""
-      if (isSmartThings())
-        sp = it.deviceNetworkId.split(":")[2].trim().split("-")
-      else if (isHubitat())
-        sp = it.deviceNetworkId.split(":")[1].trim().split("-")
-
+      def sp = getDeviceNamePart(it).split("-")
 
       def match = sp[0] + "-" + sp[1] + "-*"
       if (device_name =~ /${match}/) {
@@ -3015,6 +3010,20 @@ private getHostAddressFromDNI(d) {
   return ip + ":" + port
 }
 
+/**
+ * return a device network name rightmost data Z
+ * SmartThings AABBCCDD:XXXX:ZZZZZZZZZ
+ * Hubitat AABBCCDD:ZZZZZZZZZ
+ */
+private getDeviceNamePart(d) {
+  def result = ""
+  if (isSmartThings()) {
+    result = d.deviceNetworkId.split(":")[2].trim()
+  } else if (isHubitat()) {
+    result = d.deviceNetworkId.split(":")[1].trim()
+  }
+  return result
+}
 
 /**
  * Send a state change to an AD2 virtual device adjusting it to
