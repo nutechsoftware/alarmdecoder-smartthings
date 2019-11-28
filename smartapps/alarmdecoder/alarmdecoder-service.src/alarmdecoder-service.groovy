@@ -2011,6 +2011,43 @@ def rfxSet(evt) {
   def device_name = "RFX-${sn}-${bat}-${supv}-" +
     "${loop0}-${loop1}-${loop2}-${loop3}"
 
+    def d = getChildDevices().findAll {
+			it.deviceNetworkId.contains(":switch") &&
+			  it.getDataValue("serial") == sn
+		  }
+		  
+		  if (d) {
+			if (loop1 == "1" || loop2 == "1" || loop3 == "1" || loop4 == "1") {
+				d.each {
+				  _sendEventTranslate(it, ("on"), false)
+				}
+			}
+			else {
+				d.each {
+				  _sendEventTranslate(it, ("off"), false)
+				}
+				
+				d.each {
+					it.sendEvent(
+					  name: "low_battery",
+					  value: bat == "1"
+					)
+				}
+				
+				if (supv == "1") {
+					def last_checkin = now()
+					d.each {
+						it.sendEvent(
+						  name: "last_checkin",
+						  value: last_checkin
+						)
+					}
+				}
+			}
+			 
+		  } 
+
+    
   def children = getChildDevices()
   children.each {
     if (it.deviceNetworkId.contains(":RFX-")) {
@@ -2047,11 +2084,10 @@ def rfxSet(evt) {
 
         sent = true
 
-      } else {
-        if (debug) log.info("rfxSet device: ${device_name} no match ${match}")
-      }
+      } 
     }
-  }
+      
+  }    
 
   if (!sent) {
     log.warn("rfxSet: Could not find '${device_name}|XXX' device.")
@@ -2117,7 +2153,7 @@ def zoneOn(evt) {
   // Find all :switch devices with a matching zone the event.
   def d = getChildDevices().findAll {
     it.deviceNetworkId.contains(":switch") &&
-      it.getDataValue("zone") == evt.value
+      it.getDataValue("zone") == evt.value && it.getDataValue("serial") == null
   }
 
   if (d) {
@@ -2139,7 +2175,7 @@ def zoneOff(evt) {
 
   def d = getChildDevices().findAll {
     it.deviceNetworkId.contains(":switch") &&
-      it.getDataValue("zone") == evt.value
+      it.getDataValue("zone") == evt.value && it.getDataValue("serial") == null
   }
 
   if (d) {
@@ -3086,7 +3122,7 @@ private getDeviceNamePart(d) {
  *   Default clear = off, detected(Alerting) = on
  *
  */
-def _sendEventTranslate(ad2d, state) {
+def _sendEventTranslate(ad2d, state, stateChange = true) {
 
   // Grab the devices preferences for inverting
   def invert = (ad2d.device.getDataValue("invert") == "true" ? true : false)
@@ -3104,7 +3140,7 @@ def _sendEventTranslate(ad2d, state) {
     ad2d.sendEvent(
       name: "switch",
       value: (sval ? "on" : "off"),
-      isStateChange: true,
+      isStateChange: stateChange,
       filtered: true
     )
   }
@@ -3122,7 +3158,7 @@ def _sendEventTranslate(ad2d, state) {
     ad2d.sendEvent(
       name: "contact",
       value: (sval ? "open" : "closed"),
-      isStateChange: true,
+      isStateChange: stateChange,
       filtered: true
     )
   }
@@ -3140,7 +3176,7 @@ def _sendEventTranslate(ad2d, state) {
     ad2d.sendEvent(
       name: "motion",
       value: (sval ? "active" : "inactive"),
-      isStateChange: true,
+      isStateChange: stateChange,
       filtered: true
     )
   }
@@ -3158,7 +3194,7 @@ def _sendEventTranslate(ad2d, state) {
     ad2d.sendEvent(
       name: "shock",
       value: (sval ? "detected" : "clear"),
-      isStateChange: true,
+      isStateChange: stateChange,
       filtered: true
     )
   }
@@ -3176,7 +3212,7 @@ def _sendEventTranslate(ad2d, state) {
     ad2d.sendEvent(
       name: "carbonMonoxide",
       value: (sval ? "detected" : "clear"),
-      isStateChange: true,
+      isStateChange: stateChange,
       filtered: true
     )
   }
@@ -3194,7 +3230,7 @@ def _sendEventTranslate(ad2d, state) {
     ad2d.sendEvent(
       name: "smoke",
       value: (sval ? "detected" : "clear"),
-      isStateChange: true,
+      isStateChange: stateChange,
       filtered: true
     )
   }
