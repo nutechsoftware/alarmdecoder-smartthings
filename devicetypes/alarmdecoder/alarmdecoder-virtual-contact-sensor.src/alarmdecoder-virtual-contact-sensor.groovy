@@ -28,6 +28,8 @@ metadata {
     namespace: APPNAMESPACE,
     author: "Nu Tech Software Solutions, Inc.") {
     capability "Contact Sensor"
+	attribute "low_battery", "bool"
+	attribute "last_checkin", "number"
   }
 
   // tile definitions
@@ -66,6 +68,11 @@ metadata {
       "number", title: "Zone Number",
       description: "Zone # required for zone events.",
       required: false)
+    input(
+      name: "serial", type:
+      "string", title: "Serial Number",
+      description: "The serial number of an RF device.",
+      required: false)
   }
 }
 
@@ -81,9 +88,11 @@ metadata {
 def installed() {
   updateDataValue("invert", invert.toString())
   updateDataValue("zone", zone.toString())
+  updateDataValue("serial", serial)
 }
 
 def updated() {
   updateDataValue("invert", invert.toString())
   updateDataValue("zone", zone.toString())
+  updateDataValue("serial", serial)
 }
