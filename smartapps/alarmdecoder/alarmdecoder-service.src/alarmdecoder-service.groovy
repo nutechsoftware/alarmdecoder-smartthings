@@ -1992,7 +1992,7 @@ def rfxSet(evt) {
   }
       
   if (d) {
-    if (loop1 == "1" || loop2 == "1" || loop3 == "1" || loop4 == "1") {
+    if (loop0 == "1" || loop1 == "1" || loop2 == "1" || loop3 == "1") {
         d.each {
           _sendEventTranslate(it, ("on"), false)
         }
