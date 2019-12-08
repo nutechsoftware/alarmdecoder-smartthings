@@ -2017,15 +2017,31 @@ def rfxSet(evt) {
   }
       
   if (d) {
-    if (loop1 == "1" || loop2 == "1" || loop3 == "1" || loop4 == "1") {
-        d.each {
-          _sendEventTranslate(it, ("on"), false)
-        }
-    }
-    else {
-      d.each {
-        _sendEventTranslate(it, ("off"), false)
-      }
+	d.each {
+	  def zoneLoop = it.getDataValue("zoneLoop")
+	  def tamperLoop = it.getDataValue("tamperLoop")
+	  
+	  if (zoneLoop != null && zoneLoop != "null") {
+	    if ((zoneLoop == "1" && loop0 == "1") || (zoneLoop == "2" && loop1 == "1") || (zoneLoop == "3" && loop2 == "1") || (zoneLoop == "4" && loop3 == "1")) {
+		  _sendEventTranslate(it, ("on"), false)
+		} else {
+		  _sendEventTranslate(it, ("off"), false)
+		}
+	  }
+	  
+	  if (tamperLoop != null && tamperLoop != "null") {
+        if ((tamperLoop == "1" && loop0 == "1") || (tamperLoop == "2" && loop1 == "1") || (tamperLoop == "3" && loop2 == "1") || (tamperLoop == "4" && loop3 == "1")) {
+		  it.sendEvent(
+            name: "tamper",
+            value: "detected"
+          )
+		} else {
+		  it.sendEvent(
+            name: "tamper",
+            value: "clear"
+          )
+		}
+	  }
 	}
         
     d.each {

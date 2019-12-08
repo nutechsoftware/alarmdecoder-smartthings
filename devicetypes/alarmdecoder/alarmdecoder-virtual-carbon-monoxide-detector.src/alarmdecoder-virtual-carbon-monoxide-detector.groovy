@@ -28,6 +28,7 @@ metadata {
     namespace: APPNAMESPACE,
     author: "Nu Tech Software Solutions, Inc.") {
     capability "CarbonMonoxideDetector"
+	capability "Tamper Alert"	
 	attribute "low_battery", "bool"
 	attribute "last_checkin", "number"
   }
@@ -74,6 +75,21 @@ metadata {
       "string", title: "Serial Number",
       description: "The serial number of an RF device.",
       required: false)
+	if (serial != null) {
+      input(
+        name: "zoneLoop", type:
+        "number", title: "Zone Loop", 
+		range: "1..4",
+        description: "The loop to use for zone open/close.",
+        required: true)
+      input(
+        name: "tamperLoop", type:
+        "number", title: "Tamper Loop",
+		range: "1..4",
+        description: "The loop to use to detect tamper.",
+		defaultValue: 4,
+        required: false)	  
+	}	  
   }
 }
 
@@ -90,10 +106,14 @@ def installed() {
   updateDataValue("invert", invert.toString())
   updateDataValue("zone", zone.toString())
   updateDataValue("serial", serial)
+  updateDataValue("zoneLoop", zoneLoop.toString())
+  updateDataValue("tamperLoop", tamperLoop.toString())
 }
 
 def updated() {
   updateDataValue("invert", invert.toString())
   updateDataValue("zone", zone.toString())
   updateDataValue("serial", serial)
+  updateDataValue("zoneLoop", zoneLoop.toString())
+  updateDataValue("tamperLoop", tamperLoop.toString())
 }
