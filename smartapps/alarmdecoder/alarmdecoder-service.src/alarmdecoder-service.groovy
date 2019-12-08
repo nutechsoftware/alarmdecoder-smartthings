@@ -2270,10 +2270,10 @@ def alarmdecoderAlarmHandler(evt) {
     if (debug)
       log.debug("alarmdecoderAlarmHandler alarmSystemStatus ${evt.value}")
 
-	msg = evt.value
+    msg = evt.value
 	
-	if (evt.value == "night")
-		msg = "stay"
+    if (evt.value == "night")
+      msg = "stay"
     // Update last known MON state
     state.lastMONStatus = msg
 
@@ -2291,8 +2291,8 @@ def alarmdecoderAlarmHandler(evt) {
       nstate = "armedAway" // prevent loop
     }
 	if (evt.value == "night") {
-		msg = "armNight"
-		nstate = "armedNight"
+      msg = "armNight"
+      nstate = "armedNight" // prevent loop
 	}
     if (evt.value == "off") {
       msg = "disarm"
@@ -2761,7 +2761,7 @@ private def configureDeviceSubscriptions() {
   // subscribe to arm-stay handler
   subscribe(device, "arm-stay-set", armStaySet, [filterEvents: false])
   
-    // subscribe to arm-night handler
+  // subscribe to arm-night handler
   subscribe(device, "arm-night-set", armNightSet, [filterEvents: false])
 
   // subscribe to chime handler
