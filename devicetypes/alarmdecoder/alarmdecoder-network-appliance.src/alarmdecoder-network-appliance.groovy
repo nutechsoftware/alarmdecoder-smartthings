@@ -83,6 +83,8 @@ metadata {
         "armed",
         "armed_stay",
         "armed_stay_exit",
+		"armed_night",
+		"armed_night_exit",
         "disarmed",
         "alarming",
         "fire",
@@ -172,6 +174,16 @@ metadata {
           label: 'Armed (exit-now)',
           icon: "st.nest.nest-away",
           backgroundColor: "#ffa81e")
+		attributeState(
+          "armed_night",
+          label: 'Armed (night)',
+          icon: "st.security.alarm.on",
+          backgroundColor: "#ffa81e")
+        attributeState(
+          "armed_night_exit",
+          label: 'Armed (exit-now)',
+          icon: "st.nest.nest-away",
+          backgroundColor: "#ffa81e")
         attributeState(
           "disarmed",
           label: 'Disarmed',
@@ -228,6 +240,16 @@ metadata {
         icon: "st.security.alarm.off",
         label: "DISARM")
       state(
+        "armed_night",
+        action: "disarm",
+        icon: "st.security.alarm.off",
+        label: "DISARM")
+	  state(
+        "armed_night_exit",
+        action: "disarm",
+        icon: "st.security.alarm.off",
+        label: "DISARM")	
+      state(
         "disarmed",
         action: "arm_away",
         icon: "st.security.alarm.on",
@@ -277,6 +299,16 @@ metadata {
         label: "EXIT")
       state(
         "armed_stay_exit",
+        action: "disarm",
+        icon: "st.security.alarm.off",
+        label: "DISARM")
+      state(
+        "armed_night",
+        action: "exit",
+        icon: "st.nest.nest-away",
+        label: "EXIT")
+      state(
+        "armed_night_exit",
         action: "disarm",
         icon: "st.security.alarm.off",
         label: "DISARM")
@@ -675,6 +707,7 @@ def updated() {
   state.panel_ready = true
   state.panel_armed = false
   state.panel_armed_stay = false
+  state.panel_armed_night = false
   state.panel_exit = false
   state.panel_fire_detected = false
   state.panel_alarming = false
@@ -879,6 +912,23 @@ def arm_stay() {
     log.warn("--- arm_stay: unknown panel_type.")
 
   return send_keys(keys)
+}
+
+/**
+ * arm_night()
+ * Sends an arm night command to the panel
+ */
+def arm_night() {
+  log.trace("--- arm_night")
+  if (settings.panel_type == "ADEMCO") {
+    return send_keys("${user_code}33")
+  }
+  else if (settings.panel_type == "DSC") {
+    arm_stay()
+    return send_keys("*1")
+  }
+  else
+    log.warn("--- arm_night: unknown panel_type.")
 }
 
 /**
@@ -1167,11 +1217,16 @@ def update_state(data) {
       if (data.panel_exit) {
         if (data.panel_armed_stay) {
           panel_state = "armed_stay_exit"
+          if (data.panel_entry_delay_off == false && data.panel_perimeter_only == true)
+            panel_state = "armed_night_exit"
         } else {
           panel_state = "armed_exit"
         }
       } else {
-        panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
+        if (data.panel_armed_stay && data.panel_entry_delay_off == false && data.panel_perimeter_only == true)
+          panel_state = "armed_night"
+        else
+          panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
       }
     }
 
@@ -1196,18 +1251,45 @@ def update_state(data) {
         isStateChange: true)
 
     // If armed STAY changes data.panel_armed_stay
-    if (forceguiUpdate || data.panel_armed_stay != state.panel_armed_stay) {
+	if (forceguiUpdate || data.panel_armed_stay != state.panel_armed_stay) {
       if (data.panel_armed_stay) {
-        events << createEvent(
-          name: "arm-stay-set",
-          value: "on",
-          displayed: true,
-          isStateChange: true)
-        events << createEvent(
-          name: "arm-away-set",
-          value: "off",
-          displayed: true,
-          isStateChange: true)
+	  
+		if (data.panel_entry_delay_off == false && data.panel_perimeter_only)
+		{
+			events << createEvent(
+			  name: "arm-stay-set",
+			  value: "off",
+			  displayed: true,
+			  isStateChange: true)
+			events << createEvent(
+			  name: "arm-away-set",
+			  value: "off",
+			  displayed: true,
+			  isStateChange: true)
+			events << createEvent(
+			  name: "arm-night-set",
+			  value: "on",
+			  displayed: true,
+			  isStateChange: true)
+		}
+		else
+		{
+			events << createEvent(
+			  name: "arm-stay-set",
+			  value: "on",
+			  displayed: true,
+			  isStateChange: true)
+			events << createEvent(
+			  name: "arm-away-set",
+			  value: "off",
+			  displayed: true,
+			  isStateChange: true)
+			events << createEvent(
+			  name: "arm-night-set",
+			  value: "off",
+			  displayed: true,
+			  isStateChange: true)
+	    }
       }
     }
 
@@ -1221,6 +1303,11 @@ def update_state(data) {
           isStateChange: true)
         events << createEvent(
           name: "arm-stay-set",
+          value: "off",
+          displayed: true,
+          isStateChange: true)
+		events << createEvent(
+          name: "arm-night-set",
           value: "off",
           displayed: true,
           isStateChange: true)
@@ -1289,7 +1376,11 @@ def update_state(data) {
     if (armed) {
       alarm_status = "away"
       if (data.panel_armed_stay == true)
+	  {
         alarm_status = "stay"
+        if (!data.panel_entry_delay_off && data.panel_perimeter_only)
+          alarm_status = "night"
+	  }
     }
 
     // Create an event to notify Smart Home Monitor in our service.
@@ -1334,6 +1425,7 @@ def update_state(data) {
     state.panel_chime = data.chime
     state.panel_perimeter_only = data.panel_perimeter_only
     state.panel_entry_delay_off = data.panel_entry_delay_off
+	state.panel_armed_night = data.panel_armed_stay && data.panel_perimeter_only && !data.panel_entry_delay_off
   }
   return events
 }

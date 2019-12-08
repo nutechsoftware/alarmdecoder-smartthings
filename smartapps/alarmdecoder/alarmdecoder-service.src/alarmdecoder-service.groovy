@@ -1771,6 +1771,31 @@ def armStaySet(evt) {
 }
 
 /**
+ * send event to armNight device to set state
+ */
+def armNightSet(evt) {
+  if (debug) log.debug("armStaySet ${evt.value}")
+  def d = getChildDevice("${getDeviceKey()}:armNight")
+  if (!d) {
+    log.info("armNightSet: Could not find 'armNight' device.")
+  } else {
+    d.sendEvent(
+      name: "switch",
+      value: evt.value,
+      isStateChange: true,
+      filtered: true
+    )
+  }
+
+  d = getChildDevice("${getDeviceKey()}:armNightStatus")
+  if (!d) {
+    log.info("armNightSet: Could not find 'armNightStatus' device.")
+  } else {
+    _sendEventTranslate(d, evt.value)
+  }
+}
+
+/**
  * send event to alarmbell indicator device to set state
  */
 def alarmBellSet(evt) {
@@ -2199,7 +2224,15 @@ def monitorAlarmHandler(evt) {
             } else {
               log.trace "monitorAlarmHandler -- no send arm_stay already set"
             }
-          } else if (evt.value == "disarmed") {
+          } else if (evt.value == "armedNight") {
+			// do not send if already in that state.
+            if (!device.getStateValue("panel_armed") &&
+              !device.getStateValue("panel_armed_night")) {
+              device.arm_night()
+            } else {
+              log.trace "monitorAlarmHandler -- no send arm_night already set"
+            }
+		  } else if (evt.value == "disarmed") {
             // do not send if already in that state.
             if (device.getStateValue("panel_armed") ||
               device.getStateValue("panel_armed_stay")) {
@@ -2233,14 +2266,18 @@ def alarmdecoderAlarmHandler(evt) {
   state.lastAlarmDecoderStatus = evt.value
 
   if (isSmartThings()) {
-    /* no traslation needed already [stay,away,off] */
+    /* no traslation needed for [stay,away,off] but night has to be translated to stay */
     if (debug)
       log.debug("alarmdecoderAlarmHandler alarmSystemStatus ${evt.value}")
 
+    msg = evt.value
+	
+    if (evt.value == "night")
+      msg = "stay"
     // Update last known MON state
-    state.lastMONStatus = evt.value
+    state.lastMONStatus = msg
 
-    sendLocationEvent(name: "alarmSystemStatus", value: evt.value)
+    sendLocationEvent(name: "alarmSystemStatus", value: msg)
   } else if (isHubitat()) {
     /* translate to HSM */
     msg = ""
@@ -2253,6 +2290,10 @@ def alarmdecoderAlarmHandler(evt) {
       msg = "armAway"
       nstate = "armedAway" // prevent loop
     }
+	if (evt.value == "night") {
+      msg = "armNight"
+      nstate = "armedNight" // prevent loop
+	}
     if (evt.value == "off") {
       msg = "disarm"
       nstate = "disarmed" // prevent loop
@@ -2564,6 +2605,9 @@ def addExistingDevices() {
       // Add Arm Away switch/indicator combo if it does not exist.
       addAD2VirtualDevices("armAway", "Away", false, true, true)
 
+      // Add Arm Night switch/indicator combo if it does not exist.
+      addAD2VirtualDevices("armNight", "Night", false, true, true)
+
       // Add Exit switch/indicator combo if it does not exist.
       addAD2VirtualDevices("exit", "Exit", false, true, true)
 
@@ -2716,6 +2760,9 @@ private def configureDeviceSubscriptions() {
 
   // subscribe to arm-stay handler
   subscribe(device, "arm-stay-set", armStaySet, [filterEvents: false])
+  
+  // subscribe to arm-night handler
+  subscribe(device, "arm-night-set", armNightSet, [filterEvents: false])
 
   // subscribe to chime handler
   subscribe(device, "chime-set", chimeSet, [filterEvents: false])
