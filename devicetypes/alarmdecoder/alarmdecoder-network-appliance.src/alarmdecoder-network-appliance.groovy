@@ -919,16 +919,16 @@ def arm_stay() {
  * Sends an arm night command to the panel
  */
 def arm_night() {
-	log.trace("--- arm_night")
-	if (settings.panel_type == "ADEMCO") {
-		return send_keys("${user_code}33")
-	}
-	else if (settings.panel_type == "DSC") {
-		arm_stay()
-		return send_keys("*1")
-	}
-	else
-		log.warn("--- arm_night: unknown panel_type.")
+  log.trace("--- arm_night")
+  if (settings.panel_type == "ADEMCO") {
+    return send_keys("${user_code}33")
+  }
+  else if (settings.panel_type == "DSC") {
+    arm_stay()
+    return send_keys("*1")
+  }
+  else
+    log.warn("--- arm_night: unknown panel_type.")
 }
 
 /**
@@ -1217,16 +1217,16 @@ def update_state(data) {
       if (data.panel_exit) {
         if (data.panel_armed_stay) {
           panel_state = "armed_stay_exit"
-		  if (data.panel_entry_delay_off == false && data.panel_perimeter_only == true)
-			panel_state = "armed_night_exit"
+          if (data.panel_entry_delay_off == false && data.panel_perimeter_only == true)
+            panel_state = "armed_night_exit"
         } else {
           panel_state = "armed_exit"
         }
       } else {
-		if (data.panel_armed_stay && data.panel_entry_delay_off == false && data.panel_perimeter_only == true)
-			panel_state = "armed_night"
-		else
-			panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
+        if (data.panel_armed_stay && data.panel_entry_delay_off == false && data.panel_perimeter_only == true)
+          panel_state = "armed_night"
+        else
+          panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
       }
     }
 
@@ -1378,8 +1378,8 @@ def update_state(data) {
       if (data.panel_armed_stay == true)
 	  {
         alarm_status = "stay"
-		if (!data.panel_entry_delay_off && data.panel_perimeter_only)
-			alarm_status = "night"
+        if (!data.panel_entry_delay_off && data.panel_perimeter_only)
+          alarm_status = "night"
 	  }
     }
 
