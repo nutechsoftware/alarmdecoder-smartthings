@@ -67,7 +67,6 @@ import groovy.transform.Field
 /**
  * System Settings
  */
-@Field debug = false
 @Field MAX_VIRTUAL_ZONES = 20
 @Field NOCREATEDEV = false
 @Field CREATE_DISARM = true
@@ -241,6 +240,8 @@ def szt(String name, Object... args) {
     //  Main Page
     "page_main_title": "Setup And Management",
     "page_main_device_found": "${lname} service found.\nSelect from management options below.",
+	"debug_logging": "Enable debug logging",
+	"trace_logging": "Enable trace logging",
 
     // Discover/Install
     "page_discover_title": "Install Service",
@@ -471,6 +472,10 @@ def page_main() {
         )
       }
     }
+	section("") {
+		input("debugOutput", "bool", title: szt("debug_logging"), submitOnChange: true)
+		input("traceOutput", "bool", title: szt("trace_logging"), submitOnChange: true)
+	}
   }
 }
 
@@ -542,7 +547,7 @@ def page_remove_selected_cid() {
           it == device_name
         }
         if (d) {
-          log.trace("removing CID device ${device.deviceNetworkId}")
+          logTrace("removing CID device ${device.deviceNetworkId}")
           try {
             deleteChildDevice(device.deviceNetworkId)
             input_cid_devices.remove(device_name)
@@ -838,7 +843,7 @@ def page_remove_selected_rfx() {
           it == device_name
         }
         if (d) {
-          log.trace("removing RFX device ${device.deviceNetworkId}")
+          logTrace("removing RFX device ${device.deviceNetworkId}")
           try {
             deleteChildDevice(device.deviceNetworkId)
             input_rfx_devices.remove(device_name)
@@ -1140,7 +1145,7 @@ def page_select_device() {
   // build list of currently known AlarmDecoder parent devices
   def found_devices = [: ]
   def options = getDevices().each { k, v ->
-    if (debug) log.debug "page_select: ${v}"
+    logDebug "page_select: ${v}"
     def ip = convertHexToIP(v.ip)
     found_devices["${v.ip}:${v.port}"] = "AlarmDecoder @ ${ip}"
   }
@@ -1179,9 +1184,9 @@ def page_discover() {
 
   // build list of currently known AlarmDecoder parent devices
   def found_devices = [: ]
-  log.debug "devices ${getDevices()}"
+  logDebug "devices ${getDevices()}"
   def options = getDevices().each { k, v ->
-    if (debug) log.debug "page_discover: ${v}"
+    logDebug "page_discover: ${v}"
     def ip = convertHexToIP(v.ip)
     found_devices["${v.ip}:${v.port}"] = "AlarmDecoder @ ${ip}"
   }
@@ -1440,8 +1445,8 @@ def page_relink_update(params) {
  *  installed()
  */
 def installed() {
-  log.trace "installed"
-  if (debug) log.debug "Installed with settings: ${settings}"
+  logTrace "installed"
+  logDebug "Installed with settings: ${settings}"
 
   // initialize everything
   initialize()
@@ -1451,8 +1456,8 @@ def installed() {
  * updated()
  */
 def updated() {
-  log.trace "updated"
-  if (debug) log.debug "Updated with settings: ${settings}"
+  logTrace "updated"
+  logDebug "Updated with settings: ${settings}"
 
   // re initialize everything
   initialize()
@@ -1462,7 +1467,7 @@ def updated() {
  * uninstalled()
  */
 def uninstalled() {
-  log.trace "uninstalled"
+  logTrace "uninstalled"
 
   // disable all scheduling and subscriptions
   unschedule()
@@ -1471,10 +1476,10 @@ def uninstalled() {
   def devices = getAllChildDevices()
   devices.each {
     try {
-      log.debug "deleting child device: ${it.deviceNetworkId}"
+      logDebug "deleting child device: ${it.deviceNetworkId}"
       deleteChildDevice(it.deviceNetworkId)
     } catch (Exception e) {
-      log.trace("exception while uninstalling: ${e}")
+      log.error("exception while uninstalling: ${e}")
     }
   }
 }
@@ -1485,7 +1490,7 @@ def uninstalled() {
  *   Create our default state
  */
 def initialize() {
-  log.trace "initialize"
+  logTrace "initialize"
 
   // unsubscribe from everything
   unsubscribe()
@@ -1514,8 +1519,7 @@ def initialize() {
       // Only refresh the main device that has a panel_state
       def device_type = device.getTypeName()
     if (device_type == "AlarmDecoder network appliance") {
-      if (debug)
-        log.debug("initialize: Found device refresh subscription.")
+      logDebug("initialize: Found device refresh subscription.")
       device.subscribeNotifications()
     }
   }
@@ -1535,13 +1539,11 @@ def initialize() {
  *
  */
 def locationHandler(evt) {
-  if (debug)
-    log.trace "locationHandler: name: '${evt.name}'"
+  logTrace "locationHandler: name: '${evt.name}'"
 
   // only process events with a description.
   if (!evt.description) {
-    if (debug)
-      log.info("locationHandler: skipping event missing 'description'")
+    logDebug("locationHandler: skipping event missing 'description'")
     return
   }
 
@@ -1553,8 +1555,7 @@ def locationHandler(evt) {
   if (parsedEvent.ssdpTerm?.contains(SSDPTERM)) {
     def ct = now()
 
-    if (debug)
-      log.debug "locationHandler: received ssdpTerm match."
+    logDebug "locationHandler: received ssdpTerm match."
 
     // Pre fill parsed event object with hubId the event was from.
     parsedEvent << ["hubId": evt?.hubId]
@@ -1594,17 +1595,15 @@ def locationHandler(evt) {
     // add/update the device in state.devices with local discovered devices.
     alarmdecoders << ["${parsedEvent.ssdpUSN.toString()}": parsedEvent]
 
-    if (debug)
-      log.debug("locationHandler: alarmdecoders found: ${alarmdecoders}")
+    logDebug("locationHandler: alarmdecoders found: ${alarmdecoders}")
 
   } else {
 
     // Content type already parsed here.
     def type = parsedEvent.contenttype
 
-    if (debug)
-      log.debug("locationHandler: HTTP request type:${type} " +
-        "body:${parsedEvent?.body} headers:${parsedEvent?.headers}")
+    logDebug("locationHandler: HTTP request type:${type} " +
+      "body:${parsedEvent?.body} headers:${parsedEvent?.headers}")
 
     // XML PUSH data
     if (type?.contains("xml")) {
@@ -1612,8 +1611,7 @@ def locationHandler(evt) {
       def d = getChildDevice("${getDeviceKey()}")
       if (d) {
         if (d.getDeviceDataByName("mac") == parsedEvent.mac) {
-          if (debug)
-            log.debug("push_update_alarmdecoders: Found device parse xml data.")
+          logDebug("push_update_alarmdecoders: Found device parse xml data.")
 
           d.parse_xml(parsedEvent?.body).each {
             e-> d.sendEvent(e)
@@ -1625,9 +1623,8 @@ def locationHandler(evt) {
     }
 
     // Unkonwn silently ignore
-    if (debug)
-      log.debug("locationHandler: ignoring unknown message from " +
-        "name:${evt.name} parsedEvent: ${parsedEvent}")
+    logDebug("locationHandler: ignoring unknown message from " +
+      "name:${evt.name} parsedEvent: ${parsedEvent}")
   }
 }
 
@@ -1635,7 +1632,7 @@ def locationHandler(evt) {
  * Handle remote web requests for http://somegraph/update
  */
 def webserviceUpdate() {
-  log.trace "webserviceUpdate"
+  logTrace "webserviceUpdate"
   refresh_alarmdecoders()
   return [status: "OK"]
 }
@@ -1648,7 +1645,7 @@ def actionButton(id) {
 
   // grab our primary AlarmDecoder device object
   def d = getChildDevice("${getDeviceKey()}")
-  if (debug) log.debug("actionButton: desc=${id} dev=${d}")
+  logDebug("actionButton: desc=${id} dev=${d}")
 
   if (!d) {
     log.error("actionButton: Could not find primary dev. '${getDeviceKey()}'.")
@@ -1705,7 +1702,7 @@ def actionButton(id) {
  * send event to smokeAlarm device to set state [detected, clear]
  */
 def smokeSet(evt) {
-  if (debug) log.debug("smokeSet: desc=${evt.value}")
+  logDebug("smokeSet: desc=${evt.value}")
 
   def d = getChildDevices().find {
     it.deviceNetworkId.contains(":smokeAlarm")
@@ -1729,7 +1726,7 @@ def smokeSet(evt) {
  * send event to armAway device to set state
  */
 def armAwaySet(evt) {
-  if (debug) log.debug("armAwaySet ${evt.value}")
+  logDebug("armAwaySet ${evt.value}")
   def d = getChildDevice("${getDeviceKey()}:armAway")
   if (!d) {
     log.info("armAwaySet: Could not find 'armAway' device.")
@@ -1749,7 +1746,7 @@ def armAwaySet(evt) {
  * send event to armStay device to set state
  */
 def armStaySet(evt) {
-  if (debug) log.debug("armStaySet ${evt.value}")
+  logDebug("armStaySet ${evt.value}")
   def d = getChildDevice("${getDeviceKey()}:armStay")
   if (!d) {
     log.info("armStaySet: Could not find 'armStay' device.")
@@ -1774,7 +1771,7 @@ def armStaySet(evt) {
  * send event to armNight device to set state
  */
 def armNightSet(evt) {
-  if (debug) log.debug("armStaySet ${evt.value}")
+  logDebug("armStaySet ${evt.value}")
   def d = getChildDevice("${getDeviceKey()}:armNight")
   if (!d) {
     log.info("armNightSet: Could not find 'armNight' device.")
@@ -1799,7 +1796,7 @@ def armNightSet(evt) {
  * send event to alarmbell indicator device to set state
  */
 def alarmBellSet(evt) {
-  if (debug) log.debug("alarmBellSet ${evt.value}")
+  logDebug("alarmBellSet ${evt.value}")
   def d = getChildDevice("${getDeviceKey()}:alarmBell")
   if (!d) {
     log.info("alarmBellSet: Could not find 'alarmBell' device.")
@@ -1819,8 +1816,7 @@ def alarmBellSet(evt) {
  * send event to chime indicator device to set state
  */
 def chimeSet(evt) {
-  /* if (debug)*/
-  log.debug("chimeSet ${evt.value}")
+  logDebug("chimeSet ${evt.value}")
   def d = getChildDevice("${getDeviceKey()}:chimeMode")
   if (!d) {
     log.info("chimeSet: Could not find device 'chimeMode'")
@@ -1840,7 +1836,7 @@ def chimeSet(evt) {
  * send event to exit indicator device to set state
  */
 def exitSet(evt) {
-  if (debug) log.debug("exitSet ${evt.value}")
+  logDebug("exitSet ${evt.value}")
   def d = getChildDevice("${getDeviceKey()}:exit")
   if (!d) {
     log.info("exitSet: Could not find device 'exit'")
@@ -1860,7 +1856,7 @@ def exitSet(evt) {
  * send event to perimeter only indicator device to set state
  */
 def perimeterOnlySet(evt) {
-  if (debug) log.debug("perimeterOnlySet ${evt.value}")
+  logDebug("perimeterOnlySet ${evt.value}")
   def d = getChildDevice("${getDeviceKey()}:perimeterOnlyStatus")
   if (!d) {
     log.info("perimeterOnlySet: Could not find device 'perimeterOnly'")
@@ -1873,7 +1869,7 @@ def perimeterOnlySet(evt) {
  * send event to entry delay off indicator device to set state
  */
 def entryDelayOffSet(evt) {
-  if (debug) log.debug("entryDelayOffSet ${evt.value}")
+  logDebug("entryDelayOffSet ${evt.value}")
   def d = getChildDevice("${getDeviceKey()}:entryDelayOffStatus")
   if (!d) {
     log.info("entryDelayOffSet: Could not find device 'entryDelayOff'")
@@ -1887,7 +1883,7 @@ def entryDelayOffSet(evt) {
  * send event to bypass status device to set state
  */
 def bypassSet(evt) {
-  if (debug) log.debug("bypassSet ${evt.value}")
+  logDebug("bypassSet ${evt.value}")
   def d = getChildDevice("${getDeviceKey()}:bypassStatus")
   if (!d) {
     log.info("bypassSet: Could not find device 'bypassStatus'")
@@ -1900,7 +1896,7 @@ def bypassSet(evt) {
  * send event to ready status device to set state
  */
 def readySet(evt) {
-  if (debug) log.debug("readySet ${evt.value}")
+  logDebug("readySet ${evt.value}")
   def d = getChildDevice("${getDeviceKey()}:readyStatus")
   if (!d) {
     log.info("readySet: Could not find 'readyStatus' device.")
@@ -1913,7 +1909,7 @@ def readySet(evt) {
  * send event to disarm status device to set state
  */
 def disarmSet(evt) {
-  if (debug) log.debug("disarmSet ${evt.value}")
+  logDebug("disarmSet ${evt.value}")
   def d = getChildDevice("${getDeviceKey()}:disarm")
   if (!d) {
     log.info("disarmSet: Could not find 'disarm' device.")
@@ -1944,9 +1940,8 @@ def cidSet(evt) {
   // the partition # with 0 being system
   def partition = parts[1].toInteger()
 
-  if (debug)
-    log.debug("cidSet num:${cidnum} part: ${partition} " +
-      "state:${cidstate} val:${cidvalue}")
+  logDebug("cidSet num:${cidnum} part: ${partition} " +
+    "state:${cidstate} val:${cidvalue}")
 
   def sent = false
   def rawmsg = evt.value
@@ -1961,16 +1956,14 @@ def cidSet(evt) {
       match = match.replace("?", ".")
 
       if (device_name =~ /${match}/) {
-        if (debug)
-          log.debug("cidSet device: ${device_name} matches ${match} " +
-            "sending state ${cidstate}")
+        logDebug("cidSet device: ${device_name} matches ${match} " +
+          "sending state ${cidstate}")
 
         _sendEventTranslate(it, cidstate)
 
         sent = true
       } else {
-        if (debug)
-          log.debug("cidSet device: ${device_name} no match ${match}")
+        logDebug("cidSet device: ${device_name} no match ${match}")
       }
     }
   }
@@ -2161,7 +2154,7 @@ def addZone(evt) {
  * sets Contact attributes of the alarmdecoder device to open/closed
  */
 def zoneOn(evt) {
-  if (debug) log.debug("zoneOn: desc=${evt.value}")
+  logDebug("zoneOn: desc=${evt.value}")
 
   // Find all :switch devices with a matching zone the event.
   def d = getChildDevices().findAll {
@@ -2184,7 +2177,7 @@ def zoneOn(evt) {
  * sets Contact attributes of the alarmdecoder device to open/closed
  */
 def zoneOff(evt) {
-  if (debug) log.debug("zoneOff: desc=${evt.value}")
+  logDebug("zoneOff: desc=${evt.value}")
 
   def d = getChildDevices().findAll {
     it.deviceNetworkId.contains(":switch") &&
@@ -2211,9 +2204,8 @@ def monitorAlarmHandler(evt) {
 
 
   if (state.lastMONStatus != evt.value) {
-    if (debug)
-      log.debug("monitorAlarmHandler -- update lastMONStatus " +
-        "to ${evt.value} from ${state.lastMONStatus}")
+    logDebug("monitorAlarmHandler -- update lastMONStatus " +
+      "to ${evt.value} from ${state.lastMONStatus}")
 
     // Update last known MON state
     state.lastMONStatus = evt.value
@@ -2223,8 +2215,7 @@ def monitorAlarmHandler(evt) {
         // Only refresh the main device that has a panel_state
         def device_type = device.getTypeName()
       if (device_type == "AlarmDecoder network appliance") {
-        if (debug)
-          log.debug("monitorAlarmHandler DEBUG-- ${device.deviceNetworkId}")
+        logDebug("monitorAlarmHandler DEBUG-- ${device.deviceNetworkId}")
 
         /* SmartThings */
         if (isSmartThings()) {
@@ -2234,7 +2225,7 @@ def monitorAlarmHandler(evt) {
               !device.getStateValue("panel_armed_stay")) {
               device.arm_away()
             } else {
-              log.trace "monitorAlarmHandler -- no send arm_away already set"
+              logTrace "monitorAlarmHandler -- no send arm_away already set"
             }
           } else if (evt.value == "stay" || evt.value == "armHome") {
             // do not send if already in that state.
@@ -2242,7 +2233,7 @@ def monitorAlarmHandler(evt) {
               !device.getStateValue("panel_armed_stay")) {
               device.arm_stay()
             } else {
-              log.trace "monitorAlarmHandler -- no send arm_stay already set"
+              logTrace "monitorAlarmHandler -- no send arm_stay already set"
             }
           } else if (evt.value == "off" || evt.value == "disarm") {
             // do not send if already in that state.
@@ -2250,10 +2241,10 @@ def monitorAlarmHandler(evt) {
               device.getStateValue("panel_armed_stay")) {
               device.disarm()
             } else {
-              log.trace "monitorAlarmHandler -- no send disarm already set"
+              logTrace "monitorAlarmHandler -- no send disarm already set"
             }
           } else
-            log.debug "Unknown SHM alarm value: ${evt.value}"
+            logDebug "Unknown SHM alarm value: ${evt.value}"
         }
         /* Hubitat */
         else if (isHubitat()) {
@@ -2263,7 +2254,7 @@ def monitorAlarmHandler(evt) {
               !device.getStateValue("panel_armed_stay")) {
               device.arm_away()
             } else {
-              log.trace "monitorAlarmHandler -- no send arm_away already set"
+              logTrace "monitorAlarmHandler -- no send arm_away already set"
             }
           } else if (evt.value == "armedHome") {
             // do not send if already in that state.
@@ -2271,7 +2262,7 @@ def monitorAlarmHandler(evt) {
               !device.getStateValue("panel_armed_stay")) {
               device.arm_stay()
             } else {
-              log.trace "monitorAlarmHandler -- no send arm_stay already set"
+              logTrace "monitorAlarmHandler -- no send arm_stay already set"
             }
           } else if (evt.value == "armedNight") {
 			// do not send if already in that state.
@@ -2279,7 +2270,7 @@ def monitorAlarmHandler(evt) {
               !device.getStateValue("panel_armed_night")) {
               device.arm_night()
             } else {
-              log.trace "monitorAlarmHandler -- no send arm_night already set"
+              logTrace "monitorAlarmHandler -- no send arm_night already set"
             }
 		  } else if (evt.value == "disarmed") {
             // do not send if already in that state.
@@ -2287,12 +2278,12 @@ def monitorAlarmHandler(evt) {
               device.getStateValue("panel_armed_stay")) {
               device.disarm()
             } else {
-              log.trace "monitorAlarmHandler -- no send disarm already " +
+              logTrace "monitorAlarmHandler -- no send disarm already " +
                 "set ${device.getStateValue('panel_armed')} " +
                 "${device.getStateValue('panel_armed_stay')}"
             }
           } else
-            log.debug "Unknown HSM alarm value: ${evt.value}"
+            logDebug "Unknown HSM alarm value: ${evt.value}"
         }
       }
     }
@@ -2308,16 +2299,14 @@ def alarmdecoderAlarmHandler(evt) {
   if (settings.monIntegration == false || settings.monChangeStatus == false)
     return
 
-  if (debug)
-    log.debug("alarmdecoderAlarmHandler -- update lastAlarmDecoderStatus " +
-      "to ${evt.value} from ${state.lastAlarmDecoderStatus}")
+  logDebug("alarmdecoderAlarmHandler -- update lastAlarmDecoderStatus " +
+    "to ${evt.value} from ${state.lastAlarmDecoderStatus}")
 
   state.lastAlarmDecoderStatus = evt.value
 
   if (isSmartThings()) {
     /* no traslation needed for [stay,away,off] but night has to be translated to stay */
-    if (debug)
-      log.debug("alarmdecoderAlarmHandler alarmSystemStatus ${evt.value}")
+    logDebug("alarmdecoderAlarmHandler alarmSystemStatus ${evt.value}")
 
     msg = evt.value
 	
@@ -2348,9 +2337,8 @@ def alarmdecoderAlarmHandler(evt) {
       nstate = "disarmed" // prevent loop
     }
 
-    if (debug)
-      log.debug("alarmdecoderAlarmHandler: hsmSetArm ${msg} " +
-        "last ${state.lastMONStatus} new ${nstate}")
+    logDebug("alarmdecoderAlarmHandler: hsmSetArm ${msg} " +
+      "last ${state.lastMONStatus} new ${nstate}")
 
     // Update last known MON state
     state.lastMONStatus = nstate
@@ -2384,7 +2372,7 @@ def isHubitat() {
  */
 def initSubscriptions() {
   // subscribe to the Smart Home Manager api for alarm status events
-  if (debug) log.debug("initSubscriptions: Subscribe to handlers")
+  logDebug("initSubscriptions: Subscribe to handlers")
 
   if (isSmartThings()) {
     subscribe(location, "alarmSystemStatus", monitorAlarmHandler)
@@ -2406,7 +2394,7 @@ def initSubscriptions() {
  * to the local network
  */
 def discover_alarmdecoder() {
-  if (debug) log.debug("discover_alarmdecoder")
+  logDebug("discover_alarmdecoder")
   def haobj =
     getHubAction("lan discovery ${SSDPTERM}}")
 
@@ -2420,8 +2408,7 @@ def sendVerify(DNI, ssdpPath) {
 
   String ip = getHostAddressFromDNI(DNI)
 
-  if (debug)
-    log.debug("verifyAlarmDecoder: ${DNI} ssdpPath: ${ssdpPath} ip: ${ip}")
+  logDebug("verifyAlarmDecoder: ${DNI} ssdpPath: ${ssdpPath} ip: ${ip}")
 
   def haobj =
     getHubAction(
@@ -2438,7 +2425,7 @@ def sendVerify(DNI, ssdpPath) {
  * Network Appliance. and get back the current status of the AlarmDecoder.
  */
 def refresh_alarmdecoders() {
-  if (debug) log.debug("refresh_alarmdecoders")
+  logDebug("refresh_alarmdecoders")
 
   // just because it seems to get lost.
   initSubscriptions()
@@ -2512,8 +2499,7 @@ def getDevices() {
  * Add all devices if triggered by the "Setup And Management" pages.
  */
 def addExistingDevices() {
-  if (debug)
-    log.debug("addExistingDevices: ${input_selected_devices}")
+  logDebug("addExistingDevices: ${input_selected_devices}")
 
   // resubscribe just in case it was lost
   configureDeviceSubscriptions()
@@ -2523,13 +2509,12 @@ def addExistingDevices() {
   if (selected_devices instanceof java.lang.String) {
     selected_devices = [selected_devices]
   } else {
-    log.debug("addExistingDevices: FIXME not input_selected_devices not String")
+    logDebug("addExistingDevices: FIXME not input_selected_devices not String")
   }
 
   selected_devices.each {
     dni->
-      if (debug)
-        log.debug("addExistingDevices, getChildDevice(${dni})")
+      logDebug("addExistingDevices, getChildDevice(${dni})")
 
     def d = getChildDevice(dni)
 
@@ -2539,8 +2524,7 @@ def addExistingDevices() {
         getDevices().find { k, v -> "${v.ip}:${v.port}" == dni
         }
 
-      if (debug)
-        log.debug("addExistingDevices, devices.find=${newDevice}")
+      logDebug("addExistingDevices, devices.find=${newDevice}")
 
       if (newDevice) {
         // FIXME: Save DNI details for filtering
@@ -2554,9 +2538,8 @@ def addExistingDevices() {
         state.urn = convertHexToIP(state.ip) + ":" +
           convertHexToInt(state.port)
 
-        if (debug)
-          log.debug("AlarmDecoder webapp urn ('${state.urn}') " +
-            "hub ('${state.hubId}')")
+        logDebug("AlarmDecoder webapp urn ('${state.urn}') " +
+          "hub ('${state.hubId}')")
 
         try {
           // Create device adding the URN to its data object
@@ -2596,7 +2579,7 @@ def addExistingDevices() {
     // asynchronous to avoid timeout. Apps can only run for 20 seconds or
     // it will be killed.
     for (def i = 0; i < MAX_VIRTUAL_ZONES; i++) {
-      if (debug) log.debug("Adding virtual zone sensor ${i}")
+      logDebug("Adding virtual zone sensor ${i}")
       // SmartThings we do out of band with callback
       if (isSmartThings()) {
         sendEvent(
@@ -2783,7 +2766,7 @@ def addAD2VirtualDevices(name, label, initstate, createButton, createContact) {
  * Configure subscriptions the virtual devices will send too.
  */
 private def configureDeviceSubscriptions() {
-  if (debug) log.debug("configureDeviceSubscriptions")
+  logDebug("configureDeviceSubscriptions")
   def device = getChildDevice("${getDeviceKey()}")
   if (!device) {
     log.error("configureDeviceSubscriptions: Could not find primary" +
@@ -2870,8 +2853,7 @@ private def configureDeviceSubscriptions() {
  */
 private def parseEventMessage(String message) {
 
-  if (debug)
-    log.debug "parseEventMessage: $message"
+  logDebug "parseEventMessage: $message"
 
   def event = [: ]
   try {
@@ -3246,5 +3228,17 @@ def _sendEventTranslate(ad2d, state, stateChange = true) {
       isStateChange: stateChange,
       filtered: true
     )
+  }
+}
+
+def logDebug(msg) {
+  if (settings?.debugOutput) {
+    log.debug msg
+  }
+}
+
+def logTrace(msg) {
+  if (settings?.traceOutput) {
+    log.trace msg
   }
 }
