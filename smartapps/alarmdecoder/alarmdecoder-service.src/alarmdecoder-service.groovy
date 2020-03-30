@@ -67,7 +67,6 @@ import groovy.transform.Field
 /**
  * System Settings
  */
-@Field MAX_VIRTUAL_ZONES = 20
 @Field NOCREATEDEV = false
 @Field CREATE_DISARM = true
 
@@ -426,6 +425,9 @@ def page_main() {
         )
       }
     } else {
+	  section("") {
+	    input(name: "deviceCount", type: "number", title: "How many child devices should be created?", required: true, defaultValue: 20 )
+	  }
       section(foundMsg) {
         href(
           name: "href_cid_management",
@@ -2578,7 +2580,7 @@ def addExistingDevices() {
     // Add zone contact sensors if they do not exist.
     // asynchronous to avoid timeout. Apps can only run for 20 seconds or
     // it will be killed.
-    for (def i = 0; i < MAX_VIRTUAL_ZONES; i++) {
+    for (def i = 0; i < deviceCount; i++) {
       logDebug("Adding virtual zone sensor ${i}")
       // SmartThings we do out of band with callback
       if (isSmartThings()) {
