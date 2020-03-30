@@ -83,6 +83,8 @@ metadata {
         "armed",
         "armed_stay",
         "armed_stay_exit",
+		"armed_night",
+		"armed_night_exit",
         "disarmed",
         "alarming",
         "fire",
@@ -172,6 +174,16 @@ metadata {
           label: 'Armed (exit-now)',
           icon: "st.nest.nest-away",
           backgroundColor: "#ffa81e")
+		attributeState(
+          "armed_night",
+          label: 'Armed (night)',
+          icon: "st.security.alarm.on",
+          backgroundColor: "#ffa81e")
+        attributeState(
+          "armed_night_exit",
+          label: 'Armed (exit-now)',
+          icon: "st.nest.nest-away",
+          backgroundColor: "#ffa81e")
         attributeState(
           "disarmed",
           label: 'Disarmed',
@@ -228,6 +240,16 @@ metadata {
         icon: "st.security.alarm.off",
         label: "DISARM")
       state(
+        "armed_night",
+        action: "disarm",
+        icon: "st.security.alarm.off",
+        label: "DISARM")
+	  state(
+        "armed_night_exit",
+        action: "disarm",
+        icon: "st.security.alarm.off",
+        label: "DISARM")	
+      state(
         "disarmed",
         action: "arm_away",
         icon: "st.security.alarm.on",
@@ -277,6 +299,16 @@ metadata {
         label: "EXIT")
       state(
         "armed_stay_exit",
+        action: "disarm",
+        icon: "st.security.alarm.off",
+        label: "DISARM")
+      state(
+        "armed_night",
+        action: "exit",
+        icon: "st.nest.nest-away",
+        label: "EXIT")
+      state(
+        "armed_night_exit",
         action: "disarm",
         icon: "st.security.alarm.off",
         label: "DISARM")
@@ -658,7 +690,7 @@ def installed() {
  * Called when the device page reports an uninstall event.
  */
 def uninstalled() {
-  log.trace "--- handler.uninstalled"
+  parent.logTrace "--- handler.uninstalled"
 }
 
 /**
@@ -667,7 +699,7 @@ def uninstalled() {
  * Called when the device settings are udpated.
  */
 def updated() {
-  log.trace "--- handler.updated"
+  parent.logTrace "--- handler.updated"
 
   state.faulted_zones = []
 
@@ -675,6 +707,7 @@ def updated() {
   state.panel_ready = true
   state.panel_armed = false
   state.panel_armed_stay = false
+  state.panel_armed_night = false
   state.panel_exit = false
   state.panel_fire_detected = false
   state.panel_alarming = false
@@ -720,8 +753,7 @@ def updated() {
  *
  */
 def parse(String description) {
-  if (parent.debug)
-    log.debug("--- parse: em: ${em}, description: '${description}'")
+  parent.logDebug("--- parse: em: ${em}, description: '${description}'")
 
   // Create our events array we will append into.
   def events = []
@@ -752,17 +784,15 @@ def parse(String description) {
     return events
   }
 
-  log.info("--- parse: mac: ${event?.mac} requestId: ${rID}")
+  parent.logTrace("--- parse: mac: ${event?.mac} requestId: ${rID}")
 
   // The body may be empty.
   def bodyString = (em.body) ? em.body : ""
 
   // Verbose debug details.
-  if (parent.debug) {
-    log.debug("--- parse: type: ${em.contenttype} " +
-      "rid: ${em.requestId}, headers: ${em.headers}")
-    log.debug("--- parse: rid: ${rID}, body: ${em.body}")
-  }
+  parent.logDebug("--- parse: type: ${em.contenttype} " +
+    "rid: ${em.requestId}, headers: ${em.headers}")
+  parent.logDebug("--- parse: rid: ${rID}, body: ${em.body}")
 
   def type = em.contenttype
 
@@ -776,11 +806,10 @@ def parse(String description) {
       e-> events << e
     }
   } else {
-    if (parent.debug) log.debug("--- parse: unknown type: ${type}")
+    parent.logDebug("--- parse: unknown type: ${type}")
   }
 
-  if (parent.debug)
-    log.debug("--- parse: results rid:${rID}, events: ${events}")
+  parent.logDebug("--- parse: results rid:${rID}, events: ${events}")
 
   return events
 }
@@ -790,7 +819,7 @@ def parse(String description) {
 /*** Capabilities ***/
 
 def refresh() {
-  log.trace("--- handler.refresh")
+  parent.logTrace("--- handler.refresh")
 
   def urn = getDataValue("urn")
   def apikey = _get_api_key()
@@ -805,7 +834,7 @@ def refresh() {
  * TODO: Add security
  */
 def disarm() {
-  log.trace("--- disarm")
+  parent.logTrace("--- disarm")
 
   def user_code = _get_user_code()
   def keys = ""
@@ -826,7 +855,7 @@ def disarm() {
  * TODO: Add security
  */
 def exit() {
-  log.trace("--- exit")
+  parent.logTrace("--- exit")
 
   def user_code = _get_user_code()
   def keys = ""
@@ -846,7 +875,7 @@ def exit() {
  * Sends an arm away command to the panel
  */
 def arm_away() {
-  log.trace("--- arm_away")
+  parent.logTrace("--- arm_away")
 
   def user_code = _get_user_code()
   def keys = ""
@@ -866,7 +895,7 @@ def arm_away() {
  * Sends an arm stay command to the panel
  */
 def arm_stay() {
-  log.trace("--- arm_stay")
+  parent.logTrace("--- arm_stay")
 
   def user_code = _get_user_code()
   def keys = ""
@@ -882,11 +911,28 @@ def arm_stay() {
 }
 
 /**
+ * arm_night()
+ * Sends an arm night command to the panel
+ */
+def arm_night() {
+  parent.logTrace("--- arm_night")
+  if (settings.panel_type == "ADEMCO") {
+    return send_keys("${user_code}33")
+  }
+  else if (settings.panel_type == "DSC") {
+    arm_stay()
+    return send_keys("*1")
+  }
+  else
+    log.warn("--- arm_night: unknown panel_type.")
+}
+
+/**
  * fire()
  * Sends an fire alarm command to the panel
  */
 def fire() {
-  log.trace("--- fire")
+  parent.logTrace("--- fire")
   state.fire_started = null
   def keys = "<S1>"
   return send_keys(keys)
@@ -897,7 +943,7 @@ def fire1() {
 
   runIn(10, checkFire);
 
-  log.trace("Fire stage 1: ${state.fire_started}")
+  parent.logTrace("Fire stage 1: ${state.fire_started}")
 }
 
 def fire2() {
@@ -905,14 +951,14 @@ def fire2() {
 
   runIn(10, checkFire);
 
-  log.trace("Fire stage 2: ${state.fire_started}")
+  parent.logTrace("Fire stage 2: ${state.fire_started}")
 }
 
 def checkFire() {
-  log.trace("checkFire");
+  parent.logTrace("checkFire");
   if (state.fire_started != null && new Date().time - state.fire_started >= 5) {
-    sendEvent(name: "fire_state", value: "default", isStateChange: true);
-    log.trace("clearing fire");
+    sendEvent(name: "fire_state", value: "default", isStateChange: true)
+    parent.logTrace("clearing fire")
   }
 }
 
@@ -921,7 +967,7 @@ def checkFire() {
  * Sends an panic alarm command to the panel
  */
 def panic() {
-  log.trace("--- panic")
+  parent.logTrace("--- panic")
   state.panic_started = null
   def keys = "<S2>"
   return send_keys(keys)
@@ -932,7 +978,7 @@ def panic1() {
 
   runIn(10, checkPanic);
 
-  log.trace("Panic stage 1: ${state.panic_started}")
+  parent.logTrace("Panic stage 1: ${state.panic_started}")
 }
 
 def panic2() {
@@ -940,15 +986,15 @@ def panic2() {
 
   runIn(10, checkPanic);
 
-  log.trace("Panic stage 2: ${state.panic_started}")
+  parent.logTrace("Panic stage 2: ${state.panic_started}")
 }
 
 def checkPanic() {
-  log.trace("checkPanic");
+  parent.logTrace("checkPanic");
   if (state.panic_started != null &&
     new Date().time - state.panic_started >= 5) {
     sendEvent(name: "panic_state", value: "default", isStateChange: true);
-    log.trace("clearing panic");
+    parent.logTrace("clearing panic");
   }
 }
 
@@ -957,7 +1003,7 @@ def checkPanic() {
  * Sends an aux alarm command to the panel
  */
 def aux() {
-  log.trace("--- aux")
+  parent.logTrace("--- aux")
   state.aux_started = null
   def keys = "<S3>"
   return send_keys(keys)
@@ -968,7 +1014,7 @@ def aux1() {
 
   runIn(10, checkAux);
 
-  log.trace("Aux stage 1: ${state.aux_started}")
+  parent.logTrace("Aux stage 1: ${state.aux_started}")
 }
 
 def aux2() {
@@ -976,14 +1022,14 @@ def aux2() {
 
   runIn(10, checkAux);
 
-  log.trace("Aux stage 2: ${state.aux_started}")
+  parent.logTrace("Aux stage 2: ${state.aux_started}")
 }
 
 def checkAux() {
-  log.trace("checkAux");
+  parent.logTrace("checkAux");
   if (state.aux_started != null && new Date().time - state.aux_started >= 5) {
     sendEvent(name: "aux_state", value: "default", isStateChange: true);
-    log.trace("clearing aux");
+    parent.logTrace("clearing aux");
   }
 }
 
@@ -1018,7 +1064,7 @@ def bypassN(szValue) {
  * Send a bypass command to the panel for a zone number.
  */
 def bypass(zone) {
-  log.trace("--- bypass ${zone}")
+  parent.logTrace("--- bypass ${zone}")
 
   // if no zone then skip
   if (!zone.toInteger())
@@ -1042,7 +1088,7 @@ def bypass(zone) {
  * Sends a chime command to the panel
  */
 def chime() {
-  log.trace("--- chime")
+  parent.logTrace("--- chime")
   def user_code = _get_user_code()
   def keys = ""
 
@@ -1063,7 +1109,7 @@ def chime() {
  * process a state change event object from xml/json parser
  */
 def update_state(data) {
-  log.trace("--- update_state")
+  parent.logTrace("--- update_state")
   def forceguiUpdate = false
   def skipstate = false
   def events = []
@@ -1167,11 +1213,16 @@ def update_state(data) {
       if (data.panel_exit) {
         if (data.panel_armed_stay) {
           panel_state = "armed_stay_exit"
+          if (data.panel_entry_delay_off == false && data.panel_perimeter_only == true)
+            panel_state = "armed_night_exit"
         } else {
           panel_state = "armed_exit"
         }
       } else {
-        panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
+        if (data.panel_armed_stay && data.panel_entry_delay_off == false && data.panel_perimeter_only == true)
+          panel_state = "armed_night"
+        else
+          panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
       }
     }
 
@@ -1196,18 +1247,45 @@ def update_state(data) {
         isStateChange: true)
 
     // If armed STAY changes data.panel_armed_stay
-    if (forceguiUpdate || data.panel_armed_stay != state.panel_armed_stay) {
+	if (forceguiUpdate || data.panel_armed_stay != state.panel_armed_stay) {
       if (data.panel_armed_stay) {
-        events << createEvent(
-          name: "arm-stay-set",
-          value: "on",
-          displayed: true,
-          isStateChange: true)
-        events << createEvent(
-          name: "arm-away-set",
-          value: "off",
-          displayed: true,
-          isStateChange: true)
+	  
+		if (data.panel_entry_delay_off == false && data.panel_perimeter_only)
+		{
+			events << createEvent(
+			  name: "arm-stay-set",
+			  value: "off",
+			  displayed: true,
+			  isStateChange: true)
+			events << createEvent(
+			  name: "arm-away-set",
+			  value: "off",
+			  displayed: true,
+			  isStateChange: true)
+			events << createEvent(
+			  name: "arm-night-set",
+			  value: "on",
+			  displayed: true,
+			  isStateChange: true)
+		}
+		else
+		{
+			events << createEvent(
+			  name: "arm-stay-set",
+			  value: "on",
+			  displayed: true,
+			  isStateChange: true)
+			events << createEvent(
+			  name: "arm-away-set",
+			  value: "off",
+			  displayed: true,
+			  isStateChange: true)
+			events << createEvent(
+			  name: "arm-night-set",
+			  value: "off",
+			  displayed: true,
+			  isStateChange: true)
+	    }
       }
     }
 
@@ -1221,6 +1299,11 @@ def update_state(data) {
           isStateChange: true)
         events << createEvent(
           name: "arm-stay-set",
+          value: "off",
+          displayed: true,
+          isStateChange: true)
+		events << createEvent(
+          name: "arm-night-set",
           value: "off",
           displayed: true,
           isStateChange: true)
@@ -1276,7 +1359,7 @@ def update_state(data) {
 
     // set our panel_state
     if (forceguiUpdate || panel_state != state.panel_state) {
-      log.trace("--- update_state: new state **** ${panel_state} ****")
+      parent.logTrace("--- update_state: new state **** ${panel_state} ****")
       events << createEvent(
         name: "panel_state",
         value: panel_state,
@@ -1289,7 +1372,11 @@ def update_state(data) {
     if (armed) {
       alarm_status = "away"
       if (data.panel_armed_stay == true)
+	  {
         alarm_status = "stay"
+        if (!data.panel_entry_delay_off && data.panel_perimeter_only)
+          alarm_status = "night"
+	  }
     }
 
     // Create an event to notify Smart Home Monitor in our service.
@@ -1334,6 +1421,7 @@ def update_state(data) {
     state.panel_chime = data.chime
     state.panel_perimeter_only = data.panel_perimeter_only
     state.panel_entry_delay_off = data.panel_entry_delay_off
+	state.panel_armed_night = data.panel_armed_stay && data.panel_perimeter_only && !data.panel_entry_delay_off
   }
   return events
 }
@@ -1359,8 +1447,8 @@ def parse_json(String body) {
       e-> events << e
     }
 
-    if (parent.debug) log.debug("parse_json in:****** ${resultMap}")
-    if (parent.debug) log.debug("parse_json out:****** ${events}")
+    parent.logDebug("parse_json in:****** ${resultMap}")
+    parent.logDebug("parse_json out:****** ${events}")
 
   } catch (Exception e) {
     log.error("parse_json: Exception ${e}")
@@ -1448,8 +1536,8 @@ def parse_xml(String body) {
       e-> events << e
     }
 
-    if (parent.debug) log.debug("parse_xml in:****** ${resultMap}")
-    if (parent.debug) log.debug("parse_xml out:****** ${events}")
+    parent.logDebug("parse_xml in:****** ${resultMap}")
+    parent.logDebug("parse_xml out:****** ${events}")
 
   } catch (Exception e) {
     log.error("parse_xml: Exception ${e}")
@@ -1471,8 +1559,7 @@ def parse_xml(String body) {
  * ssdpPath: /static/device_description.xml
  */
 def subscribeNotifications() {
-  if (parent.debug)
-    log.trace "--- subscribeNotifications: ${getDataValue("urn")}"
+  parent.logTrace "--- subscribeNotifications: ${getDataValue("urn")}"
 
   // Get our HUBs address details for callbacks.
   def address = parent.getHubURN()
@@ -1525,22 +1612,20 @@ private def build_zone_events(data) {
   def new_faults = current_faults.minus(state.faulted_zones)
   def cleared_faults = state.faulted_zones.minus(current_faults)
 
-  if (parent.debug) {
-    log.trace("Current faulted zones: ${current_faults}")
-    log.trace("New faults: ${new_faults}")
-    log.trace("Cleared faults: ${cleared_faults}")
-  }
+  parent.logTrace("Current faulted zones: ${current_faults}")
+  parent.logTrace("New faults: ${new_faults}")
+  parent.logTrace("Cleared faults: ${cleared_faults}")
 
   // Trigger switches for newly faulted zones.
   for (def i = 0; i < new_faults.size(); i++) {
-    if (parent.debug) log.trace("Setting switch ${new_faults[i]}")
+    parent.logTrace("Setting switch ${new_faults[i]}")
     def switch_events = update_zone_switch(new_faults[i], true)
     events = events.plus(switch_events)
   }
 
   // Reset switches for cleared zones.
   for (def i = 0; i < cleared_faults.size(); i++) {
-    if (parent.debug) log.trace("Clearing switch ${cleared_faults[i]}")
+    parent.logTrace("Clearing switch ${cleared_faults[i]}")
     def switch_events = update_zone_switch(cleared_faults[i], false)
     events = events.plus(switch_events)
   }
@@ -1606,10 +1691,7 @@ private def update_zone_switch(zone, faulted) {
  * AlarmDecoder REST api send command.
  */
 def send_keys(String keys) {
-  if (parent.debug)
-    log.trace("--- send_keys: keys=${keys}")
-  else
-    log.trace("--- send_keys")
+  parent.logTrace("--- send_keys: keys=${keys}")
 
   def urn = getDataValue("urn")
   def apikey = _get_api_key()
@@ -1627,8 +1709,7 @@ def send_keys(String keys) {
  * Build a GET request HubAction object.
  */
 def hub_http_get(host, path) {
-  if (parent.debug)
-    log.trace "--- hub_http_get: host=${host}, path=${path}"
+  parent.logTrace "--- hub_http_get: host=${host}, path=${path}"
 
   def httpRequest = [
     method: "GET",
@@ -1645,8 +1726,7 @@ def hub_http_get(host, path) {
  * Build a POST request HubAction object.
  */
 def hub_http_post(host, path, body) {
-  if (parent.debug)
-    log.trace "--- hub_http_post: host=${host}, path=${path} body=${body}"
+  parent.logTrace "--- hub_http_post: host=${host}, path=${path} body=${body}"
 
   def httpRequest = [
     method: "POST",
