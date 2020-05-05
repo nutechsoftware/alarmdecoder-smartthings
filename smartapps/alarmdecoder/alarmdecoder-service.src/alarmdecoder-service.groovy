@@ -135,8 +135,8 @@ def getHubAction(action, method = null) {
  * Service definition and preferences
  */
 definition(
-  name: "AlarmDecoder service dev",
-  namespace: APPNAMESPACE,
+  name: "AlarmDecoder service",
+  namespace: "alarmdecoder",
   author: "Nu Tech Software Solutions, Inc.",
   description: "AlarmDecoder (Service Manager)",
   category: "My Apps",
