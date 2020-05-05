@@ -121,13 +121,13 @@ def getHubAction(action, method = null) {
 
   // SmartThings specific classes here
   // Comment out the next 2 lines if we are using Hubitat
-  if (!method) method = physicalgraph.device.Protocol.LAN
-  def ha = new physicalgraph.device.HubAction(action, method)
+  //if (!method) method = physicalgraph.device.Protocol.LAN
+  //def ha = new physicalgraph.device.HubAction(action, method)
 
   // Hubitat specific classes here
   // Comment out the next line if we are using SmartThings
-  //if (!method) method = hubitat.device.Protocol.LAN
-  //def ha = new hubitat.device.HubAction(action, method)
+  if (!method) method = hubitat.device.Protocol.LAN
+  def ha = new hubitat.device.HubAction(action, method)
 
   return ha
 }
@@ -425,7 +425,7 @@ def page_main() {
         )
       }
     } else {
-	  section("") {
+      section("") {
 	    input(name: "deviceCount", type: "number", title: "How many child devices should be created?", required: true, defaultValue: 20 )
 	  }
       section(foundMsg) {
@@ -1984,7 +1984,7 @@ def cidSet(evt) {
  * 01020304:1388:RFX-123123-?-?-1-?-?-?
  */
 def rfxSet(evt) {
-  log.info("rfxSet ${evt.value}")
+ // log.info("rfxSet ${evt.value}")
 
   // get our RFX state and number
   def parts = evt.value.split(':')
@@ -2098,7 +2098,7 @@ def rfxSet(evt) {
   }    
 
   if (!sent) {
-    log.warn("rfxSet: Could not find '${device_name}|XXX' device.")
+    //log.warn("rfxSet: Could not find '${device_name}|XXX' device.")
     return
   }
 }
@@ -2170,7 +2170,7 @@ def zoneOn(evt) {
       _sendEventTranslate(it, ("on"))
     }
   } else {
-    log.warn "zoneOn: Virtual device with zone #${evt.value} not found."
+    logDebug("zoneOn: Virtual device with zone #${evt.value} not found.")
   }
 }
 
@@ -2192,7 +2192,7 @@ def zoneOff(evt) {
       _sendEventTranslate(it, ("off"))
     }
   } else {
-    log.warn "zoneOn: Virtual device with zone #${evt.value} not found."
+    logDebug("zoneOff: Virtual device with zone #${evt.value} not found.")
   }
 }
 
@@ -2205,7 +2205,7 @@ def monitorAlarmHandler(evt) {
     return
 
 
-  if (state.lastMONStatus != evt.value) {
+  //if (state.lastMONStatus != evt.value) {
     logDebug("monitorAlarmHandler -- update lastMONStatus " +
       "to ${evt.value} from ${state.lastMONStatus}")
 
@@ -2288,7 +2288,7 @@ def monitorAlarmHandler(evt) {
             logDebug "Unknown HSM alarm value: ${evt.value}"
         }
       }
-    }
+    //}
   }
 }
 
