@@ -68,7 +68,6 @@ import groovy.transform.Field
  * System Settings
  */
 @Field NOCREATEDEV = false
-@Field CREATE_DISARM = true
 
 /**
  * Install Notes:
@@ -136,7 +135,7 @@ def getHubAction(action, method = null) {
  * Service definition and preferences
  */
 definition(
-  name: "AlarmDecoder service${idname}",
+  name: "AlarmDecoder service dev",
   namespace: APPNAMESPACE,
   author: "Nu Tech Software Solutions, Inc.",
   description: "AlarmDecoder (Service Manager)",
@@ -221,14 +220,15 @@ preferences {
 /*
  * Localization strings
  */
-def szt(String name, Object... args) {
+def getText(String name, Object... args) {
   def en_strings = [
 
     // misc or used multiple places
     "home": "home",
     "home_screen": "Press the < arrow above two times to return home.",
-    "no_save_note": "Do not use the \"Save\" buttons on this page.",
+    "no_save_note": "Do not use the \"Save\" button on this page.",
     "save_note": "Press \"Save\" buttons on this page to install the service devices.",
+	"done_note": "Press \"Done\" button on this page to install the service devices.",
     "input_selected_devices_title": "Select device (%s found).",
     "section_monitor_integration": "Monitor integration",
     "section_zone_sensor_settings": "Zone Sensors",
@@ -246,12 +246,19 @@ def szt(String name, Object... args) {
     "page_discover_title": "Install Service",
     "page_discover_desc": "Tap to discover and install your ${lname} Appliance.",
     "page_discover_section_selected_device": "Selected device info: %s",
+	"section_sensor_counts": "Sensor Configuration",
+	"contact_sensor_count": "How many contact (window/door) sensors should be created?",
+	"smoke_detector_count": "How many smoke detectors should be created?",
+	"co_detector_count": "How many carbon monoxide detectors should be created?",
+	"motion_sensor_count": "How many motion sensors should be created?",
+	"shock_sensor_count": "How many shock (glass break) sensors should be created?",
+	"create_disarm_switch": "Create a switch that can be used to disarm the alarm (note this can be a security risk if this is exposed to things like Google Home or Alexa)",
 
     // Service Settings
     "monIntegrationSHM": "Integrate with Smart Home Monitor?",
-    "monIntegrationHSM": "Integrate with Home Security Monitor?",
+    "monIntegrationHSM": "Integrate with Hubitat Safety Monitor?",
     "monChangeStatusSHM": "Automatically change Smart Home Monitor status when armed or disarmed?",
-    "monChangeStatusHSM": "Automatically change Home Security Monitor status when armed or disarmed?",
+    "monChangeStatusHSM": "Automatically change Hubitat Safety Monitor status when armed or disarmed?",
     "defaultSensorToClosed": "Default zone sensors to closed?",
 
     // CID Management
@@ -373,27 +380,39 @@ mappings {
  * Misc helper sections
  */
 def section_save_note() {
-  section(szt("save_note")) {}
+	if (isSmartThings()) {
+		section(getText("save_note")) {}
+	}
+	else {
+		section(getText("done_note")) {}
+	}
 }
 
 def section_no_save_note() {
-  section(szt("no_save_note")) {}
+  if (isSmartThings()) {
+	section(getText("no_save_note")) {}
+  }
+  else {
+	section { paragraph "<script>\$('button[name=\"_action_previous\"]').hide()</script>" }
+  }
 }
 
 def section_home() {
-  section(szt("home")) {
+  section(getText("home")) {
     href(
       name: "href_home",
-      title: szt("tap_here"),
+      title: getText("tap_here"),
       required: false,
-      description: szt("home_screen"),
+      description: getText("home_screen"),
       page: "page_main"
     )
   }
 }
 
 def section_back_note() {
-  section(szt("press_back_note")) {}
+	if (isSmartThings()) {
+		section(getText("press_back_note")) {}
+	}
 }
 
 /**
@@ -410,74 +429,71 @@ def page_main() {
   // see if we are already installed
   def foundMsg = ""
   def children = getChildDevices()
-  if (children) foundMsg = szt("page_main_device_found")
+  if (children) foundMsg = getText("page_main_device_found")
 
-  dynamicPage(name: "page_main", title: szt("page_main_title")) {
+  dynamicPage(name: "page_main", title: getText("page_main_title")) {
     if (!children) {
       // Not installed show discovery page to complete the install.
       section("") {
         href(
           name: "href_discover",
-          title: szt("page_discover_title"),
+          title: getText("page_discover_title"),
           required: false,
-          description: szt("page_discover_desc"),
+          description: getText("page_discover_desc"),
           page: "page_discover"
         )
       }
     } else {
-      section("") {
-	    input(name: "deviceCount", type: "number", title: "How many child devices should be created?", required: true, defaultValue: 20 )
-	  }
       section(foundMsg) {
         href(
           name: "href_cid_management",
-          title: szt("page_cid_management_title"),
+          title: getText("page_cid_management_title"),
           required: false,
-          description: szt("page_cid_management_desc"),
+          description: getText("page_cid_management_desc"),
           page: "page_cid_management"
         )
       }
       section("") {
         href(
           name: "href_rfx_management",
-          title: szt("page_rfx_management_title"),
+          title: getText("page_rfx_management_title"),
           required: false,
-          description: szt("page_rfx_management_desc"),
+          description: getText("page_rfx_management_desc"),
           page: "page_rfx_management"
         )
       }
       section("") {
         href(
           name: "href_relink_update",
-          title: szt("page_relink_update_title"),
+          title: getText("page_relink_update_title"),
           required: false,
-          description: szt("page_relink_update_desc"),
+          description: getText("page_relink_update_desc"),
           page: "page_relink_update"
         )
       }
       section("") {
         href(
           name: "href_rebuild_all",
-          title: szt("page_rebuild_all_title"),
+          title: getText("page_rebuild_all_title"),
           required: false,
-          description: szt("page_rebuild_all_desc"),
+          description: getText("page_rebuild_all_desc"),
           page: "page_rebuild_all"
         )
       }
       section("") {
         href(
           name: "href_remove_all",
-          title: szt("page_remove_all_title"),
+          title: getText("page_remove_all_title"),
           required: false,
-          description: szt("page_remove_all_desc"),
+          description: getText("page_remove_all_desc"),
           page: "page_remove_all"
         )
       }
+	  section("") {
+		input("debugOutput", "bool", title: getText("debug_logging"), submitOnChange: true)
+		input("traceOutput", "bool", title: getText("trace_logging"), submitOnChange: true)
+	  }
     }
-	section("") {
-		input("debugOutput", "bool", title: szt("debug_logging"), submitOnChange: true)
-		input("traceOutput", "bool", title: szt("trace_logging"), submitOnChange: true)
-	}
   }
 }
 
@@ -489,7 +505,7 @@ def page_cid_management() {
   return\
   dynamicPage(
     name: "page_cid_management",
-    title: szt("page_cid_management_title")
+    title: getText("page_cid_management_title")
   ) {
     def found_devices = []
     getAllChildDevices().each {
@@ -507,8 +523,8 @@ def page_cid_management() {
           required: false,
           multiple: true,
           options: found_devices,
-          title: szt("input_cid_devices_title"),
-          description: szt("input_cid_devices_desc"),
+          title: getText("input_cid_devices_title"),
+          description: getText("input_cid_devices_desc"),
           submitOnChange: true
         )
         if (input_cid_devices) {
@@ -516,8 +532,8 @@ def page_cid_management() {
             name: "href_remove_selected_cid",
             required: false,
             page: "page_remove_selected_cid",
-            title: szt("page_remove_selected_cid_title"),
-            description: szt("page_remove_selected_cid_desc")
+            title: getText("page_remove_selected_cid_title"),
+            description: getText("page_remove_selected_cid_desc")
           )
         }
       }
@@ -527,8 +543,8 @@ def page_cid_management() {
         name: "href_add_new_cid",
         required: false,
         page: "page_add_new_cid",
-        title: szt("page_add_new_cid_title"),
-        description: szt("page_add_new_cid_desc")
+        title: getText("page_add_new_cid_title"),
+        description: getText("page_add_new_cid_desc")
       )
     }
     section_back_note()
@@ -566,11 +582,11 @@ def page_remove_selected_cid() {
   return\
   dynamicPage(
     name: "page_remove_selected_cid",
-    title: szt("page_remove_selected_cid_title")
+    title: getText("page_remove_selected_cid_title")
   ) {
     section_no_save_note()
     section {
-      paragraph szt("page_remove_selected_cid_info")
+      paragraph getText("page_remove_selected_cid_info")
       errors.each {
         error->
           paragraph(error)
@@ -589,19 +605,19 @@ def page_add_new_cid() {
   return\
   dynamicPage(
     name: "page_add_new_cid",
-    title: szt("page_add_new_cid_title")
+    title: getText("page_add_new_cid_title")
   ) {
     section_no_save_note()
     // show pre defined CID number templates to select from
-    section(szt("section_build_cid", buildcid())) {
+    section(getText("section_build_cid", buildcid())) {
       input(
         name: "input_cid_number",
         type: "enum",
         required: true,
         multiple: false,
         options: cid_numbers,
-        title: szt("input_cid_number_title"),
-        description: szt("input_cid_number_desc"),
+        title: getText("input_cid_number_title"),
+        description: getText("input_cid_number_desc"),
         submitOnChange: true
       )
     }
@@ -614,23 +630,23 @@ def page_add_new_cid() {
             name: "input_cid_number_raw",
             type: "text",
             required: true,
-            title: szt("input_cid_number_raw_title"),
+            title: getText("input_cid_number_raw_title"),
             defaultValue: 110,
             submitOnChange: true
           )
         }
       }
-      section(szt("section_cid_value", buildcidvalue())) {
+      section(getText("section_cid_value", buildcidvalue())) {
         input(
           name: "input_cid_value",
           type: "text",
           required: true,
-          title: szt("input_cid_value_title"),
+          title: getText("input_cid_value_title"),
           defaultValue: "???",
           submitOnChange: true
         )
       }
-      section(szt("section_cid_partition", input_cid_partition)) {
+      section(getText("section_cid_partition", input_cid_partition)) {
         input(
           name: "input_cid_partition",
           type: "enum",
@@ -638,27 +654,27 @@ def page_add_new_cid() {
           defaultValue: 1,
           options: ['?', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
           submitOnChange: true,
-          title: szt("input_cid_partition_title")
+          title: getText("input_cid_partition_title")
         )
       }
-      section(szt("section_cid_name")) {
+      section(getText("section_cid_name")) {
         input(
           name: "input_cid_name",
           type: "text",
           required: false,
           defaultValue: '',
           submitOnChange: true,
-          title: szt("input_cid_name_title")
+          title: getText("input_cid_name_title")
         )
       }
-      section(szt("section_cid_label")) {
+      section(getText("section_cid_label")) {
         input(
           name: "input_cid_label",
           type: "text",
           required: false,
           defaultValue: '',
           submitOnChange: true,
-          title: szt("input_cid_label_title")
+          title: getText("input_cid_label_title")
         )
       }
       // If input_cid_number or input_cid_number_raw have a value
@@ -669,9 +685,9 @@ def page_add_new_cid() {
             name: "href_add_new_cid_confirm",
             required: false,
             page: "page_add_new_cid_confirm",
-            title: szt("page_add_new_cid_confirm_title",
+            title: getText("page_add_new_cid_confirm_title",
               buildcidlabel() + "(" + buildcidnetworkid() + ")"),
-            description: szt("href_add_new_cid_confirm_desc")
+            description: getText("href_add_new_cid_confirm_desc")
           )
         }
       }
@@ -767,7 +783,7 @@ def page_add_new_cid_confirm() {
     title: buildcidlabel()
   ) {
     section_no_save_note()
-    section(szt("add_new_cid_confirm_info")) {
+    section(getText("add_new_cid_confirm_info")) {
       errors.each {
         error->
           paragraph(error)
@@ -784,7 +800,7 @@ def page_rfx_management() {
   return\
   dynamicPage(
     name: "page_rfx_management",
-    title: szt("page_rfx_management_title")
+    title: getText("page_rfx_management_title")
   ) {
     def found_devices = []
     getAllChildDevices().each {
@@ -803,8 +819,8 @@ def page_rfx_management() {
           required: false,
           multiple: true,
           options: found_devices,
-          title: szt("input_rfx_devices_title"),
-          description: szt("input_rfx_devices_desc"),
+          title: getText("input_rfx_devices_title"),
+          description: getText("input_rfx_devices_desc"),
           submitOnChange: true
         )
         if (input_rfx_devices) {
@@ -812,8 +828,8 @@ def page_rfx_management() {
             name: "href_remove_selected_rfx",
             required: false,
             page: "page_remove_selected_rfx",
-            title: szt("page_remove_selected_rfx_title"),
-            description: szt("href_remove_selected_rfx_desc")
+            title: getText("page_remove_selected_rfx_title"),
+            description: getText("href_remove_selected_rfx_desc")
           )
         }
       }
@@ -823,8 +839,8 @@ def page_rfx_management() {
         name: "href_add_new_rfx",
         required: false,
         page: "page_add_new_rfx",
-        title: szt("tap_here"),
-        description: szt("page_add_new_rfx_desc", "")
+        title: getText("tap_here"),
+        description: getText("page_add_new_rfx_desc", "")
       )
     }
     section_back_note()
@@ -861,10 +877,10 @@ def page_remove_selected_rfx() {
 
   return dynamicPage(
     name: "page_remove_selected_rfx",
-    title: szt("page_remove_selected_rfx_title")
+    title: getText("page_remove_selected_rfx_title")
   ) {
     section_no_save_note()
-    section(szt("info_page_remove_selected_rfx")) {
+    section(getText("info_page_remove_selected_rfx")) {
       errors.each {
         error->
           paragraph(error)
@@ -882,18 +898,18 @@ def page_add_new_rfx() {
   return\
   dynamicPage(
     name: "page_add_new_rfx",
-    title: szt("page_add_new_rfx_title")
+    title: getText("page_add_new_rfx_title")
   ) {
     section_no_save_note()
-    section(szt("section_build_rfx")) {
-      paragraph szt("section_rfx_names")
+    section(getText("section_build_rfx")) {
+      paragraph getText("section_rfx_names")
       input(
         name: "input_rfx_label",
         type: "text",
         required: false,
         defaultValue: '',
         submitOnChange: true,
-        title: szt("input_rfx_label")
+        title: getText("input_rfx_label")
       )
       input(
         name: "input_rfx_name",
@@ -901,7 +917,7 @@ def page_add_new_rfx() {
         required: false,
         defaultValue: '',
         submitOnChange: true,
-        title: szt("input_rfx_name")
+        title: getText("input_rfx_name")
       )
     }
     section {
@@ -911,7 +927,7 @@ def page_add_new_rfx() {
         required: true,
         defaultValue: '000000',
         submitOnChange: true,
-        title: szt("input_rfx_sn")
+        title: getText("input_rfx_sn")
       )
       input(
         name: "input_rfx_bat",
@@ -919,7 +935,7 @@ def page_add_new_rfx() {
         required: true,
         defaultValue: '?',
         submitOnChange: true,
-        title: szt("input_rfx_bat")
+        title: getText("input_rfx_bat")
       )
       input(
         name: "input_rfx_supv",
@@ -927,7 +943,7 @@ def page_add_new_rfx() {
         required: true,
         defaultValue: '?',
         submitOnChange: true,
-        title: szt("input_rfx_supv")
+        title: getText("input_rfx_supv")
       )
       input(
         name: "input_rfx_loop0",
@@ -935,7 +951,7 @@ def page_add_new_rfx() {
         required: true,
         defaultValue: '1',
         submitOnChange: true,
-        title: szt("input_rfx_loop0")
+        title: getText("input_rfx_loop0")
       )
       input(
         name: "input_rfx_loop1",
@@ -943,7 +959,7 @@ def page_add_new_rfx() {
         required: true,
         defaultValue: '?',
         submitOnChange: true,
-        title: szt("input_rfx_loop1")
+        title: getText("input_rfx_loop1")
       )
       input(
         name: "input_rfx_loop2",
@@ -951,7 +967,7 @@ def page_add_new_rfx() {
         required: true,
         defaultValue: '?',
         submitOnChange: true,
-        title: szt("input_rfx_loop2")
+        title: getText("input_rfx_loop2")
       )
       input(
         name: "input_rfx_loop3",
@@ -959,7 +975,7 @@ def page_add_new_rfx() {
         required: true,
         defaultValue: '?',
         submitOnChange: true,
-        title: szt("input_rfx_loop3")
+        title: getText("input_rfx_loop3")
       )
     }
     section {
@@ -967,8 +983,8 @@ def page_add_new_rfx() {
         name: "href_add_new_rfx_confirm",
         required: false,
         page: "page_add_new_rfx_confirm",
-        title: szt("tap_here"),
-        description: szt("page_add_new_rfx_desc",
+        title: getText("tap_here"),
+        description: getText("page_add_new_rfx_desc",
           "${buildrfxlabel()} (${buildrfxnetworkid()})")
       )
     }
@@ -1056,7 +1072,7 @@ def page_add_new_rfx_confirm() {
   ) {
     section_no_save_note()
     section("") {
-      paragraph szt("info_add_new_rfx_confirm")
+      paragraph getText("info_add_new_rfx_confirm")
       errors.each {
         error->
           paragraph(error)
@@ -1075,25 +1091,34 @@ def page_rebuild_all(params) {
   return\
   dynamicPage(
     name: "page_rebuild_all",
-    title: szt("page_rebuild_all_title")
+    title: getText("page_rebuild_all_title")
   ) {
     section_no_save_note()
     if (params?.confirm) {
       // Call rebuild device function here
       addExistingDevices()
-      message = szt("info_rebuild_all_done")
+      message = getText("info_rebuild_all_done")
     } else {
       section("") {
         href(
           name: "href_confirm_rebuild_all_devices",
-          title: szt("confirm_rebuild_all"),
-          description: szt("href_rebuild_devices"),
+          title: getText("confirm_rebuild_all"),
+          description: getText("href_rebuild_devices"),
           required: false,
           page: "page_rebuild_all",
           params: [confirm: true]
         )
+
       }
-      message = szt("info_rebuild_all_confirm")
+	  		section(getText("section_sensor_counts")) {	  
+			  input(name: "inputContactSensorCount", type: "number", defaultValue: 20, required: true, title: getText("contact_sensor_count"))
+			  input(name: "inputSmokeDetector", type: "number", defaultValue: 2, required: true, title: getText("smoke_detector_count"))
+			  input(name: "inputCODetector", type: "number", defaultValue: 2, required: true, title: getText("co_detector_count"))
+			  input(name: "inputMotionDetector", type: "number", defaultValue: 2, required: true, title: getText("motion_sensor_count"))
+			  input(name: "inputShockSensor", type: "number", defaultValue: 1, required: true, title: getText("shock_sensor_count"))
+			  input(name: "inputCreateDisarm", type: "bool", defaultValue: true, title: getText("create_disarm_switch"))
+		  }
+      message = getText("info_rebuild_all_confirm")
     }
     section("") {
       paragraph message
@@ -1111,18 +1136,18 @@ def page_remove_all(params) {
   return\
   dynamicPage(
     name: "page_remove_all",
-    title: szt("page_remove_all_title")
+    title: getText("page_remove_all_title")
   ) {
     section_no_save_note()
     if (params?.confirm) {
       uninstalled()
-      message = szt("info_remove_all_done")
+      message = getText("info_remove_all_done")
     } else {
       section("") {
         href(
           name: "href_confirm_remove_all_devices",
-          title: szt("remove_all_href_confirm"),
-          description: szt("info_remove_all_confirm"),
+          title: getText("remove_all_href_confirm"),
+          description: getText("info_remove_all_confirm"),
           required: false,
           page: "page_remove_all",
           params: [confirm: true]
@@ -1154,19 +1179,29 @@ def page_select_device() {
 
   // How many do we have?
   def numFound = found_devices.size() ?: 0
-
+	def install = true
+	def nextPage = ""
+	 if (isHubitat()) {
+		install = false
+		nextPage = "page_discover"
+	}
+	
   return\
   dynamicPage(
     name: "page_select_device",
-    title: szt("page_select_device_title")
+    title: getText("page_select_device_title"),
+	install: install,
+	nextPage: nextPage
   ) {
-    section_no_save_note()
+	if (isSmartThings()) {
+		section_no_save_note()
+	}
     section("Discovered devices: (scanning)") {
       input(
         name: "input_selected_devices",
         type: "enum",
         required: false,
-        title: szt("input_selected_devices_title", numFound),
+        title: getText("input_selected_devices_title", numFound),
         multiple: false,
         submitOnChange: true,
         options: found_devices
@@ -1206,7 +1241,7 @@ def page_discover() {
   return\
   dynamicPage(
     name: "page_discover",
-    title: szt("page_discover_title")
+    title: getText("page_discover_title")
   ) {
     def section_select_device_heading = ""
 
@@ -1225,7 +1260,7 @@ def page_discover() {
       def uuid = d?.value?.ssdpUSN
 
       section_select_device_heading =
-        szt("page_discover_section_selected_device",
+        getText("page_discover_section_selected_device",
           "\ndni: ${dni}\nurn: ${urn}\nssdpPath: ${ssdpPath}\n" +
           "mac: ${mac}\nusn: ${uuid}")
       section_save_note()
@@ -1233,34 +1268,44 @@ def page_discover() {
     section(section_select_device_heading) {
       href(
         name: "href_confirm_discover_update",
-        title: szt("tap_here"),
-        description: szt("page_select_device_desc"),
+        title: getText("tap_here"),
+        description: getText("page_select_device_desc"),
         required: false,
         page: "page_select_device"
       )
     }
-    section(szt("section_mon_integration")) {
-      input(
-        name: "monIntegration",
-        type: "bool",
-        defaultValue: true,
-        title: szt("monIntegration${monitor_suffix}")
-      )
-      input(
-        name: "monChangeStatus",
-        type: "bool",
-        defaultValue: true,
-        title: szt("monChangeStatus${monitor_suffix}")
-      )
-    }
-    section(szt("section_zone_sensor_settings")) {
-      input(
-        name: "defaultSensorToClosed",
-        type: "bool",
-        defaultValue: true,
-        title: szt("defaultSensorToClosed")
-      )
-    }
+	if (input_selected_devices) {
+		section(getText("section_sensor_counts")) {	  
+			  input(name: "inputContactSensorCount", type: "number", defaultValue: 20, required: true, title: getText("contact_sensor_count"))
+			  input(name: "inputSmokeDetector", type: "number", defaultValue: 2, required: true, title: getText("smoke_detector_count"))
+			  input(name: "inputCODetector", type: "number", defaultValue: 2, required: true, title: getText("co_detector_count"))
+			  input(name: "inputMotionDetector", type: "number", defaultValue: 2, required: true, title: getText("motion_sensor_count"))
+			  input(name: "inputShockSensor", type: "number", defaultValue: 1, required: true, title: getText("shock_sensor_count"))
+			  input(name: "inputCreateDisarm", type: "bool", defaultValue: true, title: getText("create_disarm_switch"))
+		  }
+		section(getText("section_mon_integration")) {
+		  input(
+			name: "monIntegration",
+			type: "bool",
+			defaultValue: true,
+			title: getText("monIntegration${monitor_suffix}")
+		  )
+		  input(
+			name: "monChangeStatus",
+			type: "bool",
+			defaultValue: true,
+			title: getText("monChangeStatus${monitor_suffix}")
+		  )
+		}
+		section(getText("section_zone_sensor_settings")) {
+		  input(
+			name: "defaultSensorToClosed",
+			type: "bool",
+			defaultValue: true,
+			title: getText("defaultSensorToClosed")
+		  )
+		}
+	}
 
     section_back_note()
   }
@@ -1283,12 +1328,12 @@ def page_relink_update(params) {
   return\
   dynamicPage(
     name: "page_relink_update",
-    title: szt("page_relink_update_title")
+    title: getText("page_relink_update_title")
   ) {
     section_no_save_note()
 
     if (params?.confirm) {
-      message = szt("info_relink_update_done")
+      message = getText("info_relink_update_done")
       // re-init subs just in case they were lost in the cloud.
       initSubscriptions()
 
@@ -1354,13 +1399,13 @@ def page_relink_update(params) {
       def mac = d.getDeviceDataByName("mac")
       def uuid = d.getDeviceDataByName("ssdpUSN")
 
-      section(szt("page_relink_section_active_device",
+      section(getText("page_relink_section_active_device",
         "\ndni: ${dni}\nurn: ${urn}\nssdpPath: ${ssdpPath}\n" +
         "mac: ${mac}\nusn: ${uuid}")) {
         href(
           name: "href_select_device_relink_update",
-          title: szt("tap_here"),
-          description: szt("page_select_device_desc"),
+          title: getText("tap_here"),
+          description: getText("page_select_device_desc"),
           required: false,
           page: "page_select_device"
         )
@@ -1382,13 +1427,13 @@ def page_relink_update(params) {
         mac = d.value.mac
         uuid = d.value.ssdpUSN
 
-        section(szt("page_relink_section_selected_device",
+        section(getText("page_relink_section_selected_device",
           "\ndni: ${dni}\nurn: ${urn}\nssdpPath: ${ssdpPath}\n" +
           "mac: ${mac}\nusn: ${uuid}")) {
           href(
             name: "href_confirm_relink_update",
-            title: szt("tap_here"),
-            description: szt("info_confirm_relink_update", "${urn}"),
+            title: getText("tap_here"),
+            description: getText("info_confirm_relink_update", "${urn}"),
             required: false,
             page: "page_relink_update",
             params: [
@@ -1403,29 +1448,29 @@ def page_relink_update(params) {
         }
       }
 
-      section(szt("section_monitor_integration")) {
+      section(getText("section_monitor_integration")) {
         input(
           name: "monIntegration",
           type: "bool",
           defaultValue: true,
           submitOnChange: true,
-          title: szt("monIntegration${monitor_suffix}")
+          title: getText("monIntegration${monitor_suffix}")
         )
         input(
           name: "monChangeStatus",
           type: "bool",
           defaultValue: true,
           submitOnChange: true,
-          title: szt("monChangeStatus${monitor_suffix}")
+          title: getText("monChangeStatus${monitor_suffix}")
         )
       }
-      section(szt("section_zone_sensor_settings")) {
+      section(getText("section_zone_sensor_settings")) {
         input(
           name: "defaultSensorToClosed",
           type: "bool",
           defaultValue: true,
           submitOnChange: true,
-          title: szt("defaultSensorToClosed")
+          title: getText("defaultSensorToClosed")
         )
       }
     }
@@ -1655,7 +1700,7 @@ def actionButton(id) {
   }
 
   /* FIXME: Need a pin code or some way to trust the request. */
-  if (CREATE_DISARM) {
+  if (inputCreateDisarm) {
     if (id.contains(":disarm")) {
       d.disarm()
     }
@@ -2115,36 +2160,94 @@ def addZone(evt) {
   // do not create devices if testing. Real PITA to delete them
   // every time. ST needs to add a way to delete multiple devices at once.
   if (NOCREATEDEV) {
-    log.warn "addZone: NOCREATEDEV enabled skipping ${evt.data}."
+    log.warn "addZone: NOCREATEDEV enabled skipping ${evt.data.id}."
     return
   }
 
-  def d = getChildDevice("${evt.data}")
+  def d = getChildDevice("${evt.data.id}")
   if (d) {
-    log.warn "addZone: Already found zone ${i} device ${evt.data} skipping."
+    log.warn "addZone: Already found zone ${i} device ${evt.data.id} skipping."
     return
   }
 
   try {
-    def zone_switch = \
-      addChildDevice(
-        APPNAMESPACE,
-        "AlarmDecoder virtual contact sensor",
-        "${evt.data}",
-        state.hubId,
-        [
-          name: "${evt.data}",
-          label: "${sname} Zone Sensor #${i}",
-          completedSetup: true
-        ]
-      )
-    def sensorValue = "open"
-    if (settings.defaultSensorToClosed == true) {
-      sensorValue = "closed"
-    }
-
+	def zone_switch = null
+	if (evt.data.type == "contact") {
+		zone_switch = \
+		  addChildDevice(
+			APPNAMESPACE,
+			"AlarmDecoder virtual contact sensor",
+			"${evt.data.id}",
+			state.hubId,
+			[
+			  name: "${evt.data.id}",
+			  label: "${sname} Zone Sensor #${i}",
+			  completedSetup: true
+			]
+		  )
+	}
+	else if (evt.data.type == "smoke") {
+		zone_switch = \
+		  addChildDevice(
+			APPNAMESPACE,
+			"AlarmDecoder virtual smoke alarm",
+			"${evt.data.id}",
+			state.hubId,
+			[
+			  name: "${evt.data.id}",
+			  label: "${sname} Zone Sensor #${i}",
+			  completedSetup: true
+			]
+		  )	
+	}
+	else if (evt.data.type == "co") {
+		zone_switch = \
+		  addChildDevice(
+			APPNAMESPACE,
+			"AlarmDecoder virtual carbon monoxide detector",
+			"${evt.data.id}",
+			state.hubId,
+			[
+			  name: "${evt.data.id}",
+			  label: "${sname} Zone Sensor #${i}",
+			  completedSetup: true
+			]
+		  )	
+	}
+	else if (evt.data.type == "shock") {
+		zone_switch = \
+		  addChildDevice(
+			APPNAMESPACE,
+			"AlarmDecoder virtual shock sensor",
+			"${evt.data.id}",
+			state.hubId,
+			[
+			  name: "${evt.data.id}",
+			  label: "${sname} Zone Sensor #${i}",
+			  completedSetup: true
+			]
+		  )	
+	}	
+	else if (evt.data.type == "motion") {
+		zone_switch = \
+		  addChildDevice(
+			APPNAMESPACE,
+			"AlarmDecoder virtual motion detector",
+			"${evt.data.id}",
+			state.hubId,
+			[
+			  name: "${evt.data.id}",
+			  label: "${sname} Zone Sensor #${i}",
+			  completedSetup: true
+			]
+		  )	
+	}
+	def sensorValue = "on"
+	if (settings.defaultSensorToClosed == true) {
+	  sensorValue = "off"
+	}
     // Set default contact state.
-    //_sendEventTranslate(zone_switch, (sensorValue == "open" ? "on" : "off"))
+    _sendEventTranslate(zone_switch, sensorValue)
   } catch (e) {
     log.error "There was an error (${e}) when trying to addZone ${i}"
   }
@@ -2577,26 +2680,104 @@ def addExistingDevices() {
       }
     }
 
+	def deviceIdx = 0
     // Add zone contact sensors if they do not exist.
     // asynchronous to avoid timeout. Apps can only run for 20 seconds or
     // it will be killed.
-    for (def i = 0; i < deviceCount; i++) {
-      logDebug("Adding virtual zone sensor ${i}")
+    for (def i = 0; i < inputContactSensorCount; i++) {
+      logDebug("Adding virtual zone sensor ${deviceIdx}")
       // SmartThings we do out of band with callback
       if (isSmartThings()) {
         sendEvent(
           name: "addZone",
-          value: "${i+1}",
-          data: "${getDeviceKey()}:switch${i+1}"
+          value: "${deviceIdx+1}",
+          data: [id:"${getDeviceKey()}:switch${deviceIdx+1}",type:"contact"]
         )
       }
       // Callbacks to local events seem to not work on HT
       else if (isHubitat()) {
         if (debug)
-          log.warn("NOTE: Hubitate calling addZone directly")
-        def evt = [value: "${i+1}", data: "${getDeviceKey()}:switch${i+1}"]
+          log.warn("NOTE: Hubitat calling addZone directly")
+        def evt = [value: "${deviceIdx+1}", data: [id:"${getDeviceKey()}:switch${deviceIdx+1}",type: "contact"]]
         addZone(evt)
       }
+	  deviceIdx++
+    }
+    for (def i = 0; i < inputCODetector; i++) {
+      logDebug("Adding virtual zone sensor ${deviceIdx}")
+      // SmartThings we do out of band with callback
+      if (isSmartThings()) {
+        sendEvent(
+          name: "addZone",
+          value: "${deviceIdx+1}",
+          data: [id:"${getDeviceKey()}:switch${deviceIdx+1}",type:"co"]
+        )
+      }
+      // Callbacks to local events seem to not work on HT
+      else if (isHubitat()) {
+        if (debug)
+          log.warn("NOTE: Hubitat calling addZone directly")
+        def evt = [value: "${deviceIdx+1}", data: [id:"${getDeviceKey()}:switch${deviceIdx+1}",type: "co"]]
+        addZone(evt)
+      }
+	  deviceIdx++
+    }
+    for (def i = 0; i < inputMotionDetector; i++) {
+      logDebug("Adding virtual zone sensor ${deviceIdx}")
+      // SmartThings we do out of band with callback
+      if (isSmartThings()) {
+        sendEvent(
+          name: "addZone",
+          value: "${deviceIdx+1}",
+          data: [id:"${getDeviceKey()}:switch${deviceIdx+1}",type:"motion"]
+        )
+      }
+      // Callbacks to local events seem to not work on HT
+      else if (isHubitat()) {
+        if (debug)
+          log.warn("NOTE: Hubitat calling addZone directly")
+        def evt = [value: "${deviceIdx+1}", data: [id:"${getDeviceKey()}:switch${deviceIdx+1}",type: "motion"]]
+        addZone(evt)
+      }
+	  deviceIdx++
+    }
+    for (def i = 0; i < inputShockSensor; i++) {
+      logDebug("Adding virtual zone sensor ${deviceIdx}")
+      // SmartThings we do out of band with callback
+      if (isSmartThings()) {
+        sendEvent(
+          name: "addZone",
+          value: "${deviceIdx+1}",
+          data: [id:"${getDeviceKey()}:switch${deviceIdx+1}",type:"shock"]
+        )
+      }
+      // Callbacks to local events seem to not work on HT
+      else if (isHubitat()) {
+        if (debug)
+          log.warn("NOTE: Hubitat calling addZone directly")
+        def evt = [value: "${deviceIdx+1}", data: [id:"${getDeviceKey()}:switch${deviceIdx+1}",type: "shock"]]
+        addZone(evt)
+      }
+	  deviceIdx++
+    }
+    for (def i = 0; i < inputSmokeDetector; i++) {
+      logDebug("Adding virtual zone sensor ${deviceIdx}")
+      // SmartThings we do out of band with callback
+      if (isSmartThings()) {
+        sendEvent(
+          name: "addZone",
+          value: "${deviceIdx+1}",
+          data: [id:"${getDeviceKey()}:switch${deviceIdx+1}",type:"smoke"]
+        )
+      }
+      // Callbacks to local events seem to not work on HT
+      else if (isHubitat()) {
+        if (debug)
+          log.warn("NOTE: Hubitat calling addZone directly")
+        def evt = [value: "${deviceIdx+1}", data: [id:"${getDeviceKey()}:switch${deviceIdx+1}",type: "smoke"]]
+        addZone(evt)
+      }
+	  deviceIdx++
     }
 
     // do not create devices if testing. Real PITA to delete them
@@ -2677,7 +2858,7 @@ def addExistingDevices() {
       addAD2VirtualDevices("alarmAUX", "AUX Alarm", false, true, false)
 
       // Add Disarm button if it does not exist.
-      if (CREATE_DISARM) {
+      if (inputCreateDisarm) {
         addAD2VirtualDevices("disarm", "Disarm", false, true, false)
       }
     } else {
@@ -3037,7 +3218,7 @@ private String getDeviceKey() {
   if (isSmartThings())
     key = "${state.ip}:${state.port}"
   else if (isHubitat())
-    key = "${state.ip}"
+    key = "a${state.ip}"
 
   return key
 }
